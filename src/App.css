@@ -1,0 +1,101 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  transition: background var(--transition);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.file-name {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 12px;
+  cursor: text;
+}
+.file-name--editing {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--accent);
+  outline: none;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: center;
+  padding: 2px 8px;
+  cursor: text;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  transition: color var(--transition), background var(--transition);
+}
+.btn-icon:hover { color: var(--text-primary); background: var(--bg-hover); }
+.btn-icon.active { color: var(--accent); }
+
+/* Кнопка с буквой (Т — типограф) */
+.btn-icon--label {
+  font-family: Georgia, serif;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: normal;
+  width: auto;
+  padding: 0 8px;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app--zen .app-header { display: none; }
+
+.zen-exit {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 100;
+}
+.app--zen:hover .zen-exit { opacity: 1; }
+.zen-exit:hover { color: var(--text-primary); background: var(--bg-active); }
