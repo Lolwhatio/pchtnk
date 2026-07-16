@@ -5,7 +5,8 @@
       "name": "pechatniki",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3131
+      "port": 5173,
+      "autoPort": false
     }
   ]
 }

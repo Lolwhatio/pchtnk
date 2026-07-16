@@ -1,14 +1,26 @@
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 marked.setOptions({ breaks: true, gfm: true })
 
+// marked пропускает сырой HTML внутри markdown как есть — санитизируем результат,
+// иначе текст вроде `<img src=x onerror="...">` выполнится при рендере в Preview/экспорте.
+const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+  'blockquote', 'pre', 'code', 'strong', 'em', 's', 'br', 'hr', 'a', 'img']
+const ALLOWED_ATTR = ['href', 'src', 'alt', 'title']
+
 export function markdownToHtml(md) {
-  return marked.parse(md)
+  const html = marked.parse(md)
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR })
 }
 
 export function editorToMarkdown(editor) {
   const json = editor.getJSON()
   return nodesToMd(json.content || [])
+}
+
+export function jsonToMarkdown(json) {
+  return nodesToMd((json || {}).content || [])
 }
 
 function nodesToMd(nodes) {
@@ -41,6 +53,8 @@ function nodeToMd(node) {
       const code = node.content?.[0]?.text || ''
       return `\`\`\`${lang}\n${code}\n\`\`\`\n\n`
     }
+    case 'docLink':
+      return `[[${node.attrs?.label || ''}]]`
     case 'horizontalRule':
       return `---\n\n`
     case 'hardBreak':

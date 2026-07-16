@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IconClose } from './icons'
 import './TOC.css'
 
 export default function TOC({ editor, onClose }) {
@@ -34,7 +35,7 @@ export default function TOC({ editor, onClose }) {
     <div className="toc">
       <div className="toc-header">
         <span>Оглавление</span>
-        <button className="toc-close" onClick={onClose}>✕</button>
+        <button className="toc-close" onClick={onClose}><IconClose size={12} /></button>
       </div>
       <div className="toc-list">
         {headings.length === 0 && (

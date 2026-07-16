@@ -39,11 +39,255 @@
 }
 .settings-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
 .settings-section-label {
   font-size: 11px;
   font-weight: 600;
   color: var(--accent);
-  padding: 10px 16px 4px;
+  padding: 14px 16px 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+/* ── Строка с тогглом ─────────────────────────── */
+
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.settings-row-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-row-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.settings-row-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Переключатель ────────────────────────────── */
+
+.settings-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+  margin-top: 1px;
+}
+
+.settings-toggle--on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.settings-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.settings-toggle--on .settings-toggle-knob {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+/* ── API ключ ─────────────────────────────────── */
+
+.settings-api {
+  padding: 8px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-api-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-api-badge {
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--bg-active);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.settings-api-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.settings-api-input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  color: var(--text-primary);
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.15s;
+}
+.settings-api-input:focus {
+  border-color: var(--accent);
+}
+.settings-api-input::placeholder {
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+}
+
+.settings-api-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color var(--transition), background var(--transition);
+}
+.settings-api-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.settings-api-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Заглушка изоляции ───────────────────────────── */
+
+.settings-isolation-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 16px 10px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* ── Список провайдеров ───────────────────────────── */
+
+.settings-providers {
+  padding: 4px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-provider {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 6px 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-provider:hover {
+  background: var(--bg-hover);
+}
+
+.settings-provider--active {
+  background: var(--bg-active);
+  border-color: var(--border);
+}
+
+.settings-provider-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.settings-provider-radio {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.settings-provider-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.settings-provider-free {
+  font-size: 10px;
+  font-weight: 600;
+  color: #4caf7d;
+  background: rgba(76, 175, 80, 0.12);
+  padding: 1px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ── Стоп-слова ───────────────────────────────── */
+
+.settings-row--column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.settings-stopwords {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.6;
+  outline: none;
+  padding: 8px 10px;
+  resize: vertical;
+  transition: border-color var(--transition);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-stopwords:focus {
+  border-color: var(--accent);
+}
+
+.settings-stopwords::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
 }

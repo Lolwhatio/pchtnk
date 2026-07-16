@@ -61,15 +61,27 @@
 }
 .btn-icon:hover { color: var(--text-primary); background: var(--bg-hover); }
 .btn-icon.active { color: var(--accent); }
+.btn-icon svg, .btn-icon img { pointer-events: none; }
 
-/* Кнопка с буквой (Т — типограф) */
-.btn-icon--label {
-  font-family: Georgia, serif;
-  font-size: 15px;
-  font-style: italic;
-  font-weight: normal;
-  width: auto;
+.btn-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 0 8px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.15);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+.btn-back:hover {
+  background: rgba(128, 128, 128, 0.28);
+  color: var(--text-primary);
 }
 
 .app-body {
@@ -79,6 +91,18 @@
 }
 
 .app--zen .app-header { display: none; }
+
+/* ── Electron macOS: отступ под кнопки закрыть/свернуть/развернуть ── */
+.app--electron .app-header {
+  padding-left: 76px;
+  -webkit-app-region: drag; /* шапка тащит окно */
+}
+/* кнопки и интерактивные элементы внутри шапки — не тащат */
+.app--electron .app-header button,
+.app--electron .app-header input,
+.app--electron .app-header a {
+  -webkit-app-region: no-drag;
+}
 
 .zen-exit {
   position: fixed;
@@ -99,3 +123,18 @@
 }
 .app--zen:hover .zen-exit { opacity: 1; }
 .zen-exit:hover { color: var(--text-primary); background: var(--bg-active); }
+
+.readonly-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 180, 50, 0.12);
+  border-bottom: 1px solid rgba(255, 180, 50, 0.25);
+  color: rgba(200, 140, 30, 1);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 16px;
+  text-align: center;
+  letter-spacing: 0.02em;
+}

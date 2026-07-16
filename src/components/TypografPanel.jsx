@@ -62,11 +62,7 @@ const RULE_GROUPS = [
 
 const STORAGE_KEY = 'typograf-rules'
 
-function getDefaultDisabled() {
-  return {}
-}
-
-export default function TypografPanel({ typograf, enabled, onToggle, onClose, embedded }) {
+export default function TypografPanel({ typograf, enabled, onToggle, embedded }) {
   const [disabled, setDisabled] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} }
   })
@@ -83,7 +79,7 @@ export default function TypografPanel({ typograf, enabled, onToggle, onClose, em
         }
       }
     }
-  }, [disabled])
+  }, [disabled, typograf])
 
   const toggle = (name) => {
     setDisabled(prev => ({ ...prev, [name]: !prev[name] }))

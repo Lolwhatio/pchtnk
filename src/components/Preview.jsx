@@ -1,32 +1,63 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import html2pdf from 'html2pdf.js'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
 import './Preview.css'
 
 const PRINT_STYLES = `
-  body { font-family: Georgia, serif; font-size: 17px; line-height: 1.75;
-         max-width: 680px; margin: 40px auto; color: #111; padding: 0 24px; }
-  h1,h2,h3,h4,h5,h6 { font-family: system-ui, sans-serif; margin: 1.2em 0 0.4em; }
-  blockquote { border-left: 3px solid #3d6520; padding-left: 1em;
-               color: #3d5232; font-style: italic; margin: 1em 0; }
-  code { background: #eef5e8; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.875em; }
-  pre { background: #eef5e8; padding: 1em; border-radius: 6px; overflow-x: auto; }
-  pre code { background: none; padding: 0; }
-  hr { border: none; border-top: 1px solid #b8d4aa; margin: 2em 0; }
-  a { color: #3d6520; }
+  *,*::before,*::after{box-sizing:border-box}
+  body{
+    font-family:Georgia,'Times New Roman',serif;
+    font-size:17px;line-height:1.75;
+    max-width:680px;margin:56px auto;
+    color:#1a2a1c;background:#fff;
+    padding:0 32px;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1{font-family:system-ui,sans-serif;font-size:2.1em;font-weight:800;
+     line-height:1.2;margin:0 0 .5em;color:#0f1c10}
+  h2{font-family:system-ui,sans-serif;font-size:1.45em;font-weight:700;
+     margin:2em 0 .5em;color:#182818}
+  h3{font-family:system-ui,sans-serif;font-size:1.18em;font-weight:600;
+     margin:1.6em 0 .4em}
+  h4,h5,h6{font-family:system-ui,sans-serif;font-weight:600;margin:1.3em 0 .3em}
+  p{margin:0 0 .85em}
+  a{color:#3a7828;text-decoration:underline}
+  blockquote{
+    border-left:3px solid #62a030;
+    margin:1.5em 0;padding:.6em 0 .6em 1.4em;
+    color:#3a5a3c;font-style:italic;
+  }
+  code{
+    font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.875em;
+    background:#e8f0e4;color:#1a3a1c;padding:.15em .4em;border-radius:4px;
+  }
+  pre{
+    background:#e8f0e4;border:1px solid #c8d8c0;
+    border-radius:8px;padding:1.25em 1.5em;margin:1.5em 0;overflow-x:auto;
+  }
+  pre code{background:none;padding:0}
+  ul,ol{margin:.5em 0 1em 1.5em}
+  li{margin-bottom:.3em}
+  hr{border:none;border-top:1px solid #c0d4b8;margin:2.5em 0}
+  strong{font-weight:700}
+  em{font-style:italic}
+  s{text-decoration:line-through;opacity:.6}
+  span[data-doc-id]{
+    font-style:italic;color:#3a7828;
+    background:rgba(98,160,48,.08);padding:0 .25em;border-radius:3px;
+  }
 `
 
 export default function Preview({ editor, fileName, typograf, typografEnabled, onTypografToggle, onClose }) {
   const [showTypograf, setShowTypograf] = useState(false)
-  const [html, setHtml] = useState('')
   const [exporting, setExporting] = useState(false)
 
-  useEffect(() => {
-    if (!editor) return
+  const html = useMemo(() => {
+    if (!editor) return ''
     const raw = editorToMarkdown(editor)
     const rendered = markdownToHtml(raw)
-    setHtml(typografEnabled && typograf ? typograf.execute(rendered) : rendered)
+    return typografEnabled && typograf ? typograf.execute(rendered) : rendered
   }, [editor, typografEnabled, typograf])
 
   const handleExportPDF = async () => {
@@ -46,19 +77,31 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
 
       const style = document.createElement('style')
       style.textContent = `
-        * { color: #111 !important; background: transparent !important; box-shadow: none !important; }
-        h1,h2,h3,h4,h5,h6 { font-family: system-ui,sans-serif; color: #000 !important; margin: 1.2em 0 0.4em; line-height: 1.3; }
-        h1 { font-size: 2em; } h2 { font-size: 1.5em; } h3 { font-size: 1.25em; }
-        p { margin: 0 0 0.75em; }
-        a { color: #2d5a1b !important; text-decoration: underline; }
-        blockquote { border-left: 3px solid #3d6520 !important; padding-left: 1em; font-style: italic; margin: 1em 0; }
-        code { background: #eef5e8 !important; color: #333 !important; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.875em; font-family: monospace; }
-        pre { background: #eef5e8 !important; padding: 1em; border-radius: 6px; margin: 1em 0; }
-        pre code { background: transparent !important; padding: 0; }
-        ul,ol { padding-left: 1.5em; margin: 0.5em 0 0.75em; }
-        hr { border: none; border-top: 1px solid #ccc !important; margin: 2em 0; }
-        strong { font-weight: 700; }
-        em { font-style: italic; }
+        *,*::before,*::after{box-sizing:border-box}
+        *{color:#1a2a1c !important;background:transparent !important;box-shadow:none !important}
+        body{font-family:Georgia,serif;font-size:16px;line-height:1.75}
+        h1{font-family:system-ui,sans-serif;font-size:2em;font-weight:800;
+           line-height:1.2;margin:0 0 .5em;color:#0f1c10 !important}
+        h2{font-family:system-ui,sans-serif;font-size:1.4em;font-weight:700;
+           margin:1.8em 0 .45em}
+        h3{font-family:system-ui,sans-serif;font-size:1.15em;font-weight:600;
+           margin:1.4em 0 .35em}
+        h4,h5,h6{font-family:system-ui,sans-serif;font-weight:600;margin:1.2em 0 .3em}
+        p{margin:0 0 .8em}
+        a{color:#2d5a1b !important;text-decoration:underline}
+        blockquote{border-left:3px solid #62a030 !important;margin:1.4em 0;
+                   padding:.5em 0 .5em 1.3em;font-style:italic}
+        code{background:#e8f0e4 !important;color:#1a3a1c !important;
+             padding:.1em .35em;border-radius:3px;font-size:.875em;font-family:monospace}
+        pre{background:#e8f0e4 !important;border:1px solid #c8d8c0 !important;
+            border-radius:6px;padding:1em 1.25em;margin:1.2em 0}
+        pre code{background:none !important;padding:0}
+        ul,ol{margin:.4em 0 .85em 1.5em}
+        li{margin-bottom:.25em}
+        hr{border:none;border-top:1px solid #c0d4b8 !important;margin:2.2em 0}
+        strong{font-weight:700}
+        em{font-style:italic}
+        s{text-decoration:line-through;opacity:.6}
       `
       wrapper.appendChild(style)
 

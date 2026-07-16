@@ -1,3 +1,16 @@
+/* ── Стоп-слова ──────────────────────────────────────────────────────────── */
+
+.stop-word {
+  background: rgba(80, 200, 120, 0.18);
+  border-radius: 2px;
+  outline: 1px solid rgba(80, 200, 120, 0.35);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.stop-word:hover {
+  background: rgba(80, 200, 120, 0.32);
+}
+
 .editor-wrap {
   flex: 1;
   overflow-y: auto;
@@ -188,3 +201,185 @@
 .editor-wrap--zen .editor-content {
   max-width: 720px;
 }
+
+/* ── Внутренняя ссылка на документ ─────────────── */
+
+.editor-content .doc-link {
+  display: inline-block;
+  color: var(--accent);
+  background: var(--bg-active);
+  border-radius: 4px;
+  padding: 0 6px 0 4px;
+  font-size: 0.9em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition);
+  user-select: none;
+}
+.editor-content .doc-link::before {
+  content: '↗ ';
+  font-size: 0.8em;
+  opacity: 0.65;
+}
+.editor-content .doc-link:hover {
+  background: var(--bg-hover);
+}
+
+/* ── Изображения ─────────────────────────────────── */
+
+.editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 1.5em auto;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+}
+.editor-content img.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ── Изображения с ручками масштабирования ────────── */
+
+.img-wrap {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+  margin: 1em 0;
+  line-height: 0;
+}
+
+.img-node {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.ProseMirror-selectednode .img-node {
+  outline: 2px solid var(--accent);
+  border-radius: 6px;
+}
+
+.img-handle {
+  position: absolute;
+  background: var(--accent);
+  border: 2px solid #fff;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.img-wrap:hover .img-handle,
+.ProseMirror-selectednode .img-handle {
+  opacity: 1;
+}
+
+/* правая середина — ширина */
+.img-handle--e {
+  width: 8px;
+  height: 32px;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+/* правый нижний угол — пропорционально */
+.img-handle--se {
+  width: 12px;
+  height: 12px;
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+  border-radius: 50%;
+}
+
+/* ── Embed-блоки ─────────────────────────────────── */
+
+.embed-wrap {
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 1.5em 0;
+  background: var(--bg-panel);
+  cursor: default;
+}
+.embed-wrap.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.embed-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.embed-label-icon { font-size: 13px; flex-shrink: 0; }
+.embed-label-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.embed-body {
+  position: relative;
+  overflow: hidden;
+  /* height set inline via node attr */
+}
+.embed-iframe {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: none;
+}
+
+/* ── Ручка изменения высоты ──────────────────────── */
+
+.embed-resize-handle {
+  height: 10px;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border);
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+  user-select: none;
+}
+.embed-resize-handle:hover,
+.embed-resize-handle:active {
+  background: var(--bg-active);
+}
+.embed-resize-handle::before {
+  content: '';
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-light);
+  transition: background var(--transition), width var(--transition);
+}
+.embed-resize-handle:hover::before {
+  background: var(--accent-dim);
+  width: 48px;
+}
+
+/* ── Ссылки на файлы/документы (автоиконки) ─────── */
+
+.editor-content a[href*="docs.google.com/document"]::before     { content: "📄 "; font-style: normal; }
+.editor-content a[href*="docs.google.com/spreadsheets"]::before { content: "📊 "; font-style: normal; }
+.editor-content a[href*="docs.google.com/presentation"]::before { content: "📽 "; font-style: normal; }
+.editor-content a[href*="drive.google.com"]::before             { content: "📁 "; font-style: normal; }
+.editor-content a[href$=".pdf"]::before  { content: "📑 "; font-style: normal; }
+.editor-content a[href$=".doc"]::before,
+.editor-content a[href$=".docx"]::before { content: "📄 "; font-style: normal; }
+.editor-content a[href$=".xls"]::before,
+.editor-content a[href$=".xlsx"]::before { content: "📊 "; font-style: normal; }
+.editor-content a[href$=".zip"]::before,
+.editor-content a[href$=".rar"]::before  { content: "🗜 "; font-style: normal; }

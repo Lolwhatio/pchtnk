@@ -1,38 +1,34 @@
-import { useCallback, useRef } from 'react'
-
 const SPELLER_URL = 'https://speller.yandex.net/services/spellservice.json/checkText'
 
-export function useYandexSpeller(editor) {
-  const decorationsRef = useRef([])
+// Маппинг: индекс символа в getText() → позиция ProseMirror
+// Воспроизводит алгоритм TipTap v3 getText() с blockSeparator='\n\n':
+//   • перед каждым не-первым дочерним блоком doc добавляется '\n\n' (2 позиции)
+//   • hardBreak и другие инлайн-листья добавляют 1 позицию (без записи в map)
+export function buildPosMap(doc) {
+  const map = []
+  let textPos = 0
+  let firstBlock = true
 
-  const check = useCallback(async () => {
-    if (!editor) return
-    const text = editor.getText()
-    if (!text.trim()) return
-
-    try {
-      const params = new URLSearchParams({ text, lang: 'ru,en', format: 'plain' })
-      const res = await fetch(`${SPELLER_URL}?${params}`)
-      if (!res.ok) return
-      const errors = await res.json()
-
-      editor.view.dispatch(
-        editor.view.state.tr.setMeta('spellErrors', errors)
-      )
-
-      if (errors.length === 0) {
-        alert('Ошибок не найдено.')
-        return
-      }
-
-      const words = errors.map(e => e.word).join(', ')
-      const msg = `Возможные ошибки (${errors.length}): ${words}\n\nВ полноценной интеграции ошибки подсвечиваются в тексте.`
-      alert(msg)
-    } catch (err) {
-      console.error('Yandex Speller error:', err)
-      alert('Не удалось подключиться к сервису орфографии. Проверьте интернет-соединение.')
+  doc.nodesBetween(0, doc.content.size, (node, pos, parent) => {
+    if (node.type.name === 'hardBreak') {
+      textPos++
+      return false
     }
-  }, [editor])
+    if (node.isText) {
+      for (let i = 0; i < node.text.length; i++) map[textPos++] = pos + i
+    } else if (node.isBlock && parent === doc) {
+      if (!firstBlock) textPos += 2
+      firstBlock = false
+    }
+  })
 
-  return { check }
+  return map
+}
+
+export async function fetchSpellerErrors(text) {
+  const params = new URLSearchParams({ text, lang: 'ru,en', format: 'plain' })
+  const res = await fetch(`${SPELLER_URL}?${params}`)
+  if (!res.ok) throw new Error('Speller unavailable')
+  const data = await res.json()
+  return data.filter(e => e.s?.length > 0)
 }

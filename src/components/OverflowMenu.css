@@ -1,0 +1,43 @@
+.overflow-menu-wrap {
+  position: relative;
+}
+
+.overflow-menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 50;
+}
+
+.overflow-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+}
+.overflow-menu-item:hover:not(:disabled) { background: var(--bg-hover); }
+.overflow-menu-item--active { color: var(--accent); background: var(--bg-active); }
+.overflow-menu-item:disabled { color: var(--text-muted); cursor: not-allowed; opacity: 0.5; }
+
+.overflow-menu-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 15px;
+}

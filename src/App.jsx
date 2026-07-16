@@ -4,38 +4,218 @@ import Toolbar from './components/Toolbar'
 import Preview from './components/Preview'
 import TOC from './components/TOC'
 import Settings from './components/Settings'
+import DocsPanel from './components/DocsPanel'
+import SpellDialog from './components/SpellDialog'
+import InputDialog from './components/InputDialog'
+import BufferPanel from './components/BufferPanel'
+import ShareDialog from './components/ShareDialog'
+import ShortcutsDialog from './components/ShortcutsDialog'
+import OverflowMenu from './components/OverflowMenu'
+import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter } from './components/icons'
 import Typograf from 'typograf'
-import { useYandexSpeller } from './hooks/useYandexSpeller'
-import { markdownToHtml, editorToMarkdown } from './utils/markdown'
+import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
+import { loadStopPhrases } from './hooks/useStopWords'
+import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdown'
+import { exportKnowledgeBase } from './utils/export'
+import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
 import './App.css'
 
 const tp = new Typograf({ locale: ['ru', 'en-US'] })
 
+// ── Хранилище документов ──────────────────────────────────────────────────────
+
+const DOCS_KEY     = 'pechatniki-docs'
+const CUR_KEY      = 'pechatniki-current-id'
+const PROJECTS_KEY = 'pechatniki-projects'
+const genId        = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
+
+function loadDocs()           { try { return JSON.parse(localStorage.getItem(DOCS_KEY)     || '[]') } catch { return [] } }
+function storeDocs(docs)      { try { localStorage.setItem(DOCS_KEY,     JSON.stringify(docs))      } catch { /* ignore */ } }
+function loadProjects()       { try { return JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]') } catch { return [] } }
+function storeProjects(list)  { try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(list))      } catch { /* ignore */ } }
+
+function titleFromJson(json) {
+  const nodes = json?.content || []
+  const h1 = nodes.find(n => n.type === 'heading' && n.attrs?.level === 1)
+  if (h1) { const t = (h1.content || []).map(n => n.text || '').join('').trim(); if (t) return t }
+  const first = nodes.find(n => n.content?.length > 0)
+  if (first) { const t = (first.content || []).map(n => n.text || '').join('').trim(); if (t) return t.slice(0, 60) }
+  return ''
+}
+
+// Синхронно читаем из localStorage при старте
+function bootstrap() {
+  const all = loadDocs()
+  if (all.length > 0) {
+    const curId = localStorage.getItem(CUR_KEY)
+    const cur   = all.find(d => d.id === curId) || [...all].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+    return { docs: all, currentId: cur.id, content: cur.content, title: cur.title || '' }
+  }
+  // Первый запуск — мигрируем старый черновик и сразу создаём документ
+  let content = { type: 'doc', content: [{ type: 'paragraph' }] }
+  try { const s = localStorage.getItem('pechatniki-draft'); if (s) content = JSON.parse(s) } catch { /* ignored */ }
+  const id    = genId()
+  const title = titleFromJson(content) || 'Без названия'
+  const doc   = { id, title, content, createdAt: Date.now(), updatedAt: Date.now() }
+  storeDocs([doc])
+  localStorage.setItem(CUR_KEY, id)
+  return { docs: [doc], currentId: id, content, title }
+}
+
+// Синглтон — вычисляем один раз при загрузке модуля
+let _bootstrap = null
+function getBootstrap() {
+  if (!_bootstrap) _bootstrap = bootstrap()
+  return _bootstrap
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
-  const [zenMode, setZenMode] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
-  const [showTOC, setShowTOC] = useState(false)
+  const [zenMode,      setZenMode]      = useState(false)
+  const [showPreview,  setShowPreview]  = useState(false)
+  const [showTOC,      setShowTOC]      = useState(false)
+  const [showDocs,     setShowDocs]     = useState(false)
   const [showTypograf, setShowTypograf] = useState(false)
   const [typografEnabled, setTypografEnabled] = useState(
     () => JSON.parse(localStorage.getItem('typograf-enabled') ?? 'true')
   )
-  const [editor, setEditor] = useState(null)
+  const [isolationMode, setIsolationMode] = useState(
+    () => JSON.parse(localStorage.getItem('pechatniki-isolation') ?? 'false')
+  )
+  const [showBuffer,   setShowBuffer]   = useState(false)
+  const [showShare,    setShowShare]    = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [readOnly,     setReadOnly]     = useState(false)
+  const navHistoryRef = useRef([]) // стек id документов для кнопки «Назад»
+  const [stopPhrases] = useState(() => loadStopPhrases())
+  const [editor,     setEditor]     = useState(null)
   const [fileHandle, setFileHandle] = useState(null)
-  const [fileName, setFileName] = useState('Без названия')
-  const [isDirty, setIsDirty] = useState(false)
+  const [isDirty,    setIsDirty]    = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
   const nameInputRef = useRef(null)
-  const { check: checkSpelling } = useYandexSpeller(editor)
+  const autoTitleRef = useRef(true)
 
-  // Применяем тему
+  // ── Документы ─────────────────────────────────────────────────────────────
+  const [projects,     setProjects]     = useState(() => loadProjects())
+  const projectsRef = useRef([])
+  useEffect(() => { projectsRef.current = projects }, [projects])
+  const flushProjects = useCallback((updated) => {
+    projectsRef.current = updated
+    setProjects(updated)
+    storeProjects(updated)
+  }, [])
+
+  const [docs,         setDocs]         = useState(() => getBootstrap().docs)
+  const [currentDocId, setCurrentDocId] = useState(() => getBootstrap().currentId)
+  const [fileName,     setFileName]     = useState(() => { const b = getBootstrap(); return b.title || titleFromJson(b.content) || 'Без названия' })
+  const [initialContent]               = useState(() => getBootstrap().content)
+
+  // рефы — стабильный доступ без stale-closure
+  const docsRef     = useRef(docs)
+  const curIdRef    = useRef(currentDocId)
+  const nameRef     = useRef(fileName)
+  const timerRef    = useRef(null)
+  useEffect(() => { docsRef.current  = docs         }, [docs])
+  useEffect(() => { curIdRef.current = currentDocId }, [currentDocId])
+  useEffect(() => { nameRef.current  = fileName     }, [fileName])
+
+  const flushDocs = useCallback((updated) => {
+    docsRef.current = updated
+    setDocs(updated)
+    storeDocs(updated)
+  }, [])
+
+  // ── Проекты ───────────────────────────────────────────────────────────────
+  const handleCreateProject = useCallback((title = 'Новый проект') => {
+    const project = { id: genId(), title, createdAt: Date.now() }
+    flushProjects([...projectsRef.current, project])
+    return project.id
+  }, [flushProjects])
+
+  const handleRenameProject = useCallback((id, title) => {
+    flushProjects(projectsRef.current.map(p => p.id === id ? { ...p, title } : p))
+  }, [flushProjects])
+
+  const handleDeleteProject = useCallback((id) => {
+    // Снимаем projectId с документов этого проекта
+    flushDocs(docsRef.current.map(d => d.projectId === id ? { ...d, projectId: null } : d))
+    flushProjects(projectsRef.current.filter(p => p.id !== id))
+  }, [flushProjects, flushDocs])
+
+  const handleMoveDoc = useCallback((docId, projectId) => {
+    flushDocs(docsRef.current.map(d => d.id === docId ? { ...d, projectId: projectId || null } : d))
+  }, [flushDocs])
+
+  // ── Орфография (Яндекс Спеллер) ──────────────────────────────────────────
+  const [spellErrors, setSpellErrors] = useState([])  // { pos, len, word, s[] }[]
+  const [spellIdx,    setSpellIdx]    = useState(0)
+
+  // ── Диалог ссылок ─────────────────────────────────────────────────────────
+  const [linkDialog, setLinkDialog] = useState(null) // null | { currentUrl: string }
+
+  // ── Расшифровка входящей ссылки ───────────────────────────────────────────
+  useEffect(() => {
+    if (!editor) return
+    const params = new URLSearchParams(window.location.search)
+    if (!params.get('d')) return
+
+    decodeShareUrl().then(async result => {
+      if (!result) return
+
+      let raw
+      if (result.needsPassword) {
+        const password = window.prompt('Этот документ защищён паролем. Введите пароль:')
+        if (!password) return
+        try {
+          raw = await decodeWithPassword(result.d, result.salt, password)
+        } catch {
+          window.alert('Неверный пароль.')
+          return
+        }
+      } else {
+        raw = result.doc
+      }
+
+      // Поддержка envelope { v:1, readonly, doc } и старого формата (TipTap JSON)
+      const isEnvelope = raw && raw.v === 1 && raw.doc
+      const doc = isEnvelope ? raw.doc : raw
+      const ro  = isEnvelope ? !!raw.readonly : false
+
+      if (ro) {
+        setReadOnly(true)
+        editor.setEditable(false)
+      }
+
+      const id     = genId()
+      const title  = titleFromJson(doc) || 'Входящий документ'
+      const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now() }
+      flushDocs([newDoc, ...docsRef.current])
+      editor.commands.setContent(doc)
+      curIdRef.current = id
+      setCurrentDocId(id)
+      localStorage.setItem(CUR_KEY, id)
+      setFileName(title)
+      autoTitleRef.current = false
+      window.history.replaceState({}, '', window.location.pathname)
+    })
+  }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleShare = useCallback(async ({ password = '', readonly = false } = {}) => {
+    if (!editor) throw new Error('no editor')
+    const content = editor.getJSON()
+    const data = readonly ? { v: 1, readonly: true, doc: content } : content
+    return encodeShareUrl(data, window.location.href, password)
+  }, [editor])
+
+  // ── Тема ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
 
-  // Авто-заголовок из H1 или первой строки (не перебивает ручное переименование)
-  const autoTitleRef = useRef(true)
+  // ── Авто-заголовок ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!editor) return
     const updateTitle = () => {
@@ -43,15 +223,9 @@ export default function App() {
       const json = editor.getJSON()
       const nodes = json.content || []
       const h1 = nodes.find(n => n.type === 'heading' && n.attrs?.level === 1)
-      if (h1) {
-        const text = (h1.content || []).map(n => n.text || '').join('').trim()
-        if (text) { setFileName(text); return }
-      }
+      if (h1) { const t = (h1.content || []).map(n => n.text || '').join('').trim(); if (t) { setFileName(t); return } }
       const first = nodes.find(n => n.content?.length > 0)
-      if (first) {
-        const text = (first.content || []).map(n => n.text || '').join('').trim()
-        if (text) { setFileName(text.slice(0, 60)); return }
-      }
+      if (first) { const t = (first.content || []).map(n => n.text || '').join('').trim(); if (t) { setFileName(t.slice(0, 60)); return } }
       setFileName('Без названия')
     }
     editor.on('update', updateTitle)
@@ -59,7 +233,7 @@ export default function App() {
     return () => editor.off('update', updateTitle)
   }, [editor])
 
-  // Фокус на инпут имени при переходе в режим редактирования
+  // ── Фокус на инпут имени ──────────────────────────────────────────────────
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus()
@@ -67,43 +241,238 @@ export default function App() {
     }
   }, [isEditingName])
 
-  // Глобальные горячие клавиши — точь-в-точь как в оригинале
-  useEffect(() => {
-    const handler = (e) => {
-      const mod = e.metaKey || e.ctrlKey
+  // ── Сохранить текущий документ (дебаунс 600 мс) ──────────────────────────
+  const scheduleSave = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      if (!editor || !curIdRef.current) return
+      const updated = docsRef.current.map(d =>
+        d.id === curIdRef.current
+          ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
+          : d
+      )
+      flushDocs(updated)
+    }, 600)
+  }, [editor, flushDocs])
 
-      if (!mod) {
-        if (e.key === 'Escape' && zenMode) setZenMode(false)
-        return
-      }
+  // ── Немедленное сохранение перед переключением ───────────────────────────
+  const saveNow = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+    if (!editor || !curIdRef.current) return
+    const updated = docsRef.current.map(d =>
+      d.id === curIdRef.current
+        ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
+        : d
+    )
+    flushDocs(updated)
+  }, [editor, flushDocs])
 
-      // ⌘D — дзен
-      if (e.key === 'd') { e.preventDefault(); setZenMode(z => !z); return }
-      // ⌘T — применить типограф к тексту
-      if (e.key === 't' && !e.shiftKey) { e.preventDefault(); handleApplyTypograf(); return }
-      // ⌘⇧T — оглавление
-      if (e.shiftKey && e.key === 'T') { e.preventDefault(); setShowTOC(t => !t); return }
-      // ⌘N — новый файл
-      if (e.key === 'n' && !e.shiftKey) { e.preventDefault(); handleNew(); return }
-      // ⌘O — открыть
-      if (e.key === 'o' && !e.shiftKey) { e.preventDefault(); handleOpen(); return }
-      // ⌘S — сохранить
-      if (e.key === 's' && !e.shiftKey) { e.preventDefault(); handleSave(); return }
-      // ⌘⇧S — сохранить как
-      if (e.key === 's' && e.shiftKey) { e.preventDefault(); handleSaveAs(); return }
-      // ⌘Y — Яндекс-орфография
-      if (e.key === 'y') { e.preventDefault(); checkSpelling(); return }
+  const handleNewInProject = useCallback((projectId) => {
+    saveNow?.()
+    const id     = genId()
+    const empty  = { type: 'doc', content: [{ type: 'paragraph' }] }
+    const newDoc = { id, title: 'Без названия', content: empty, createdAt: Date.now(), updatedAt: Date.now(), projectId }
+    flushDocs([newDoc, ...docsRef.current])
+    editor?.commands.setContent(empty)
+    curIdRef.current = id
+    setCurrentDocId(id)
+    localStorage.setItem(CUR_KEY, id)
+    setFileName('Без названия')
+    autoTitleRef.current = true
+    setIsDirty(false)
+    setShowDocs(false)
+  }, [editor, flushDocs, saveNow])
+
+  // ── История навигации по @-ссылкам ───────────────────────────────────────
+  const [navCanBack, setNavCanBack] = useState(false)
+
+  // ── Переключить документ ─────────────────────────────────────────────────
+  const handleSelectDoc = useCallback((id, fromLink = false) => {
+    if (id === curIdRef.current) { setShowDocs(false); return }
+    if (fromLink && curIdRef.current) {
+      // Переход по @-ссылке — запоминаем откуда пришли
+      navHistoryRef.current = [...navHistoryRef.current, curIdRef.current]
+    } else {
+      // Переход через панель документов — сбрасываем историю
+      navHistoryRef.current = []
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [editor, fileHandle, isDirty, zenMode, checkSpelling])
+    saveNow()
+    const doc = docsRef.current.find(d => d.id === id)
+    if (!doc) return
+    editor?.commands.setContent(doc.content)
+    curIdRef.current = id
+    setCurrentDocId(id)
+    localStorage.setItem(CUR_KEY, id)
+    setFileName(doc.title || 'Без названия')
+    autoTitleRef.current = false
+    setIsDirty(false)
+    setShowDocs(false)
+    setNavCanBack(navHistoryRef.current.length > 0)
+  }, [editor, saveNow])
 
+  const handleNavBack = useCallback(() => {
+    const stack = navHistoryRef.current
+    if (!stack.length) return
+    const prevId = stack[stack.length - 1]
+    navHistoryRef.current = stack.slice(0, -1)
+    saveNow()
+    const doc = docsRef.current.find(d => d.id === prevId)
+    if (!doc) { setNavCanBack(navHistoryRef.current.length > 0); return }
+    editor?.commands.setContent(doc.content)
+    curIdRef.current = prevId
+    setCurrentDocId(prevId)
+    localStorage.setItem(CUR_KEY, prevId)
+    setFileName(doc.title || 'Без названия')
+    autoTitleRef.current = false
+    setIsDirty(false)
+    setNavCanBack(navHistoryRef.current.length > 0)
+  }, [editor, saveNow])
+
+  // ── Новый документ ────────────────────────────────────────────────────────
+  const handleNewDoc = useCallback(() => {
+    saveNow()
+    const id      = genId()
+    const empty   = { type: 'doc', content: [{ type: 'paragraph' }] }
+    const newDoc  = { id, title: 'Без названия', content: empty, createdAt: Date.now(), updatedAt: Date.now() }
+    flushDocs([newDoc, ...docsRef.current])
+    editor?.commands.setContent(empty)
+    curIdRef.current = id
+    setCurrentDocId(id)
+    localStorage.setItem(CUR_KEY, id)
+    setFileName('Без названия')
+    autoTitleRef.current = true
+    setIsDirty(false)
+    setShowDocs(false)
+  }, [editor, saveNow, flushDocs])
+
+  // ── Удалить документ ─────────────────────────────────────────────────────
+  const handleDeleteDoc = useCallback((id) => {
+    if (docsRef.current.length <= 1) return
+    const newDocs = docsRef.current.filter(d => d.id !== id)
+    flushDocs(newDocs)
+    if (id === curIdRef.current) {
+      const latest = [...newDocs].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+      editor?.commands.setContent(latest.content)
+      curIdRef.current = latest.id
+      setCurrentDocId(latest.id)
+      localStorage.setItem(CUR_KEY, latest.id)
+      setFileName(latest.title || 'Без названия')
+      autoTitleRef.current = false
+      setIsDirty(false)
+    }
+  }, [editor, flushDocs])
+
+  // ── Экспорт всех документов в ZIP ────────────────────────────────────────
+  const handleExportDocs = useCallback(async () => {
+    const { default: JSZip } = await import('jszip')
+    const zip = new JSZip()
+
+    // Бэкап JSON — для точного восстановления
+    zip.file('_backup.json', JSON.stringify(docsRef.current, null, 2))
+
+    // Каждый документ как .md (для чтения вне приложения)
+    const seen = {}
+    docsRef.current.forEach(doc => {
+      let base = (doc.title || 'doc').replace(/[\\/:*?"<>|]/g, '-').slice(0, 80).trim() || 'doc'
+      seen[base] = (seen[base] || 0) + 1
+      const name = seen[base] > 1 ? `${base} (${seen[base]})` : base
+      const md = typeof doc.content === 'string'
+        ? doc.content.replace(/<[^>]+>/g, '') // HTML-строка → plain text
+        : jsonToMarkdown(doc.content)
+      zip.file(`${name}.md`, md)
+    })
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+    const url = URL.createObjectURL(blob)
+    const a = Object.assign(document.createElement('a'), {
+      href: url, download: 'pechatniki-backup.zip'
+    })
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }, [])
+
+  // ── Экспорт базы знаний (HTML) ────────────────────────────────────────────
+  const handleExportKnowledgeBase = useCallback(() => {
+    exportKnowledgeBase(docsRef.current)
+  }, [])
+
+  // ── Импорт из ZIP ─────────────────────────────────────────────────────────
+  const handleImportDocs = useCallback(() => {
+    const input = document.createElement('input')
+    input.type   = 'file'
+    input.accept = '.zip'
+    input.onchange = async (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      try {
+        const { default: JSZip } = await import('jszip')
+        const zip = await JSZip.loadAsync(file)
+
+        let imported = []
+        const backupFile = zip.file('_backup.json')
+
+        if (backupFile) {
+          // Точное восстановление из бэкапа
+          imported = JSON.parse(await backupFile.async('string'))
+        } else {
+          // Читаем .md файлы (сторонний архив)
+          const mdFiles = Object.values(zip.files).filter(f => !f.dir && f.name.endsWith('.md'))
+          for (const f of mdFiles) {
+            const text  = await f.async('string')
+            const title = f.name.replace(/\.md$/i, '').split('/').pop()
+            imported.push({
+              id: genId(), title,
+              content: markdownToHtml(text), // HTML — TipTap понимает оба формата
+              createdAt: Date.now(), updatedAt: Date.now(),
+            })
+          }
+        }
+
+        if (imported.length === 0) return
+
+        const existingIds = new Set(docsRef.current.map(d => d.id))
+        const fresh = imported.filter(d => !existingIds.has(d.id))
+        if (fresh.length > 0) {
+          flushDocs([...docsRef.current, ...fresh])
+          alert(`Импортировано: ${fresh.length} документ(ов)`)
+        } else {
+          alert('Все документы уже есть в истории')
+        }
+      } catch (err) {
+        alert('Ошибка при импорте: ' + err.message)
+      }
+    }
+    input.click()
+  }, [flushDocs])
+
+  // ── Файловые операции ─────────────────────────────────────────────────────
   const handleNew = useCallback(() => {
     if (isDirty && !confirm('Несохранённые изменения будут потеряны. Продолжить?')) return
-    editor?.commands.setContent('<h1></h1><p></p>')
-    setFileHandle(null)
-    setIsDirty(false)
-  }, [editor, isDirty])
+    handleNewDoc()
+  }, [isDirty, handleNewDoc])
+
+  const handleOpenFallback = useCallback(() => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.md,.txt'
+    input.onchange = async (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      const text  = await file.text()
+      saveNow()
+      const id    = genId()
+      const title = file.name.replace(/\.(md|txt)$/i, '')
+      const empty = { type: 'doc', content: [{ type: 'paragraph' }] }
+      flushDocs([{ id, title, content: empty, createdAt: Date.now(), updatedAt: Date.now() }, ...docsRef.current])
+      editor?.commands.setContent(markdownToHtml(text))
+      curIdRef.current = id
+      setCurrentDocId(id)
+      localStorage.setItem(CUR_KEY, id)
+      autoTitleRef.current = true
+      setIsDirty(false)
+    }
+    input.click()
+  }, [editor, saveNow, flushDocs])
 
   const handleOpen = useCallback(async () => {
     if (!window.showOpenFilePicker) return handleOpenFallback()
@@ -113,40 +482,20 @@ export default function App() {
       })
       const file = await handle.getFile()
       const text = await file.text()
+      saveNow()
+      const id    = genId()
+      const title = handle.name.replace(/\.(md|txt)$/i, '')
+      const empty = { type: 'doc', content: [{ type: 'paragraph' }] }
+      flushDocs([{ id, title, content: empty, createdAt: Date.now(), updatedAt: Date.now() }, ...docsRef.current])
       editor?.commands.setContent(markdownToHtml(text))
+      curIdRef.current = id
+      setCurrentDocId(id)
+      localStorage.setItem(CUR_KEY, id)
       setFileHandle(handle)
+      autoTitleRef.current = true
       setIsDirty(false)
-    } catch {}
-  }, [editor])
-
-  const handleOpenFallback = useCallback(() => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.md,.txt'
-    input.onchange = async (e) => {
-      const file = e.target.files[0]
-      if (!file) return
-      const text = await file.text()
-      editor?.commands.setContent(markdownToHtml(text))
-      setIsDirty(false)
-    }
-    input.click()
-  }, [editor])
-
-  const handleSave = useCallback(async () => {
-    if (!editor) return
-    const md = editorToMarkdown(editor)
-    if (fileHandle) {
-      try {
-        const writable = await fileHandle.createWritable()
-        await writable.write(md)
-        await writable.close()
-        setIsDirty(false)
-        return
-      } catch {}
-    }
-    handleSaveAs()
-  }, [editor, fileHandle])
+    } catch { /* ignored — user cancelled or API unavailable */ }
+  }, [editor, saveNow, flushDocs, handleOpenFallback])
 
   const handleSaveAs = useCallback(async () => {
     if (!editor) return
@@ -163,7 +512,7 @@ export default function App() {
         setFileHandle(handle)
         setIsDirty(false)
         return
-      } catch {}
+      } catch { /* ignored — user cancelled */ }
     }
     const blob = new Blob([md], { type: 'text/markdown' })
     const a = document.createElement('a')
@@ -171,42 +520,247 @@ export default function App() {
     a.download = fileName + '.md'
     a.click()
     URL.revokeObjectURL(a.href)
-  }, [editor, fileName, fileHandle])
+  }, [editor, fileName])
+
+  const handleSave = useCallback(async () => {
+    if (!editor) return
+    const md = editorToMarkdown(editor)
+    if (fileHandle) {
+      try {
+        const writable = await fileHandle.createWritable()
+        await writable.write(md)
+        await writable.close()
+        setIsDirty(false)
+        return
+      } catch { /* ignored — fallback to Save As */ }
+    }
+    handleSaveAs()
+  }, [editor, fileHandle, handleSaveAs])
+
+  const handleDeyo = useCallback(() => {
+    if (!editor) return
+    const { state, view, schema } = editor
+    const replacements = []
+    state.doc.descendants((node, pos) => {
+      if (!node.isText) return
+      // NFD: Ё→Е+U+0308, ё→е+U+0308 — нормализуем до NFC чтобы regex работал
+      const nfc = node.text.normalize('NFC')
+      const replaced = nfc.replace(/[ёЁëË]/g, c =>
+        (c === 'ё' || c === 'ë') ? 'е' : 'Е'
+      )
+      if (replaced !== nfc) {
+        replacements.push({ from: pos, to: pos + node.nodeSize, text: replaced, marks: node.marks })
+      }
+    })
+    if (!replacements.length) return
+    // Применяем с конца, чтобы позиции не съезжали
+    let tr = state.tr
+    for (let i = replacements.length - 1; i >= 0; i--) {
+      const { from, to, text, marks } = replacements[i]
+      tr = tr.replaceWith(from, to, schema.text(text, marks))
+    }
+    view.dispatch(tr)
+    editor.commands.focus()
+  }, [editor])
 
   const handleTypografToggle = (val) => {
     setTypografEnabled(val)
     localStorage.setItem('typograf-enabled', JSON.stringify(val))
   }
 
-  // ⌘T — применяет типограф прямо к тексту редактора
+  const handleIsolationToggle = () => {
+    setIsolationMode(v => {
+      const next = !v
+      localStorage.setItem('pechatniki-isolation', JSON.stringify(next))
+      return next
+    })
+  }
+
   const handleApplyTypograf = useCallback(() => {
     if (!editor) return
-    const { from, to } = editor.state.selection
+    const { from } = editor.state.selection
     const html = editor.getHTML()
     const processed = tp.execute(html)
-    // Сохраняем позицию курсора
     editor.commands.setContent(processed, false)
-    // Восстанавливаем курсор (приблизительно)
-    try { editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size)) } catch {}
+    try { editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size)) } catch { /* ignored */ }
     setIsDirty(true)
   }, [editor])
 
+  // ── Запуск проверки орфографии ────────────────────────────────────────────
+  const checkSpelling = useCallback(async () => {
+    if (!editor || isolationMode) return
+    const text = editor.getText()
+    let raw
+    try { raw = await fetchSpellerErrors(text) } catch { return }
+    if (!raw.length) return
+    // Храним только текстовые позиции; PM-позиции считаем свежо каждый раз
+    setSpellErrors(raw.map(e => ({ ...e, word: text.slice(e.pos, e.pos + e.len) })))
+    setSpellIdx(0)
+  }, [editor, isolationMode])
+
+  // Получить PM-позиции текущей ошибки по актуальному состоянию документа
+  const getSpellPmRange = useCallback((err) => {
+    if (!editor || !err) return null
+    const posMap = buildPosMap(editor.state.doc)
+    const pmFrom = posMap[err.pos]
+    const pmTo   = posMap[err.pos + err.len - 1] != null ? posMap[err.pos + err.len - 1] + 1 : null
+    if (pmFrom == null || pmTo == null) return null
+    return { from: pmFrom, to: pmTo }
+  }, [editor])
+
+  // Подсветить текущую ошибку в редакторе при каждом переходе
+  useEffect(() => {
+    if (!editor || !spellErrors.length || spellIdx >= spellErrors.length) return
+    const range = getSpellPmRange(spellErrors[spellIdx])
+    if (!range) return
+    try { editor.chain().focus().setTextSelection(range).run() } catch { /* ignored */ }
+  }, [spellIdx, spellErrors, editor, getSpellPmRange])
+
+  const handleSpellSkip = useCallback(() => {
+    setSpellIdx(i => {
+      const next = i + 1
+      if (next >= spellErrors.length) { setSpellErrors([]); return 0 }
+      return next
+    })
+  }, [spellErrors.length])
+
+  const handleSpellClose = useCallback(() => {
+    setSpellErrors([]); setSpellIdx(0)
+  }, [])
+
+  const handleSpellFixAll = useCallback(() => {
+    if (!editor || !spellErrors.length) return
+
+    // Строим posMap один раз по текущему документу
+    const posMap = buildPosMap(editor.state.doc)
+    const { schema } = editor
+
+    // Сортируем по убыванию позиции — правим с конца, чтобы смещения не ломали предыдущие
+    const toFix = [...spellErrors]
+      .filter(e => e.s?.length > 0)
+      .sort((a, b) => b.pos - a.pos)
+
+    let tr = editor.state.tr
+    for (const err of toFix) {
+      const suggestion = err.s[0]
+      const pmFrom = posMap[err.pos]
+      const pmTo   = posMap[err.pos + err.len - 1] != null ? posMap[err.pos + err.len - 1] + 1 : null
+      if (pmFrom == null || pmTo == null) continue
+
+      const actual = tr.doc.textBetween(pmFrom, pmTo)
+      if (actual.toLowerCase() !== err.word.toLowerCase()) continue
+
+      const marks = tr.doc.resolve(pmFrom).marks()
+      tr = tr.replaceWith(pmFrom, pmTo, schema.text(suggestion, marks))
+    }
+
+    editor.view.dispatch(tr)
+    editor.commands.focus()
+    setSpellErrors([])
+    setSpellIdx(0)
+  }, [editor, spellErrors])
+
+  const handleSpellFix = useCallback((suggestion) => {
+    if (!editor || spellIdx >= spellErrors.length) return
+    const err   = spellErrors[spellIdx]
+    const range = getSpellPmRange(err)
+    if (!range) { handleSpellSkip(); return }
+
+    // Проверяем, что слово всё ещё на месте
+    const actual = editor.state.doc.textBetween(range.from, range.to)
+    if (actual.toLowerCase() !== err.word.toLowerCase()) { handleSpellSkip(); return }
+
+    // Применяем замену через прямую транзакцию — надёжнее цепочки команд
+    const { state, view, schema } = editor
+    const $from = state.doc.resolve(range.from)
+    const marks  = $from.marks()
+    view.dispatch(state.tr.replaceWith(range.from, range.to, schema.text(suggestion, marks)))
+    editor.commands.focus()
+
+    // Корректируем текстовые позиции оставшихся ошибок
+    const delta   = suggestion.length - err.len
+    const updated = spellErrors.map((e, i) =>
+      i > spellIdx ? { ...e, pos: e.pos + delta } : e
+    )
+    if (spellIdx + 1 >= updated.length) {
+      setSpellErrors([]); setSpellIdx(0)
+    } else {
+      setSpellErrors(updated)
+      setSpellIdx(i => i + 1)
+    }
+  }, [editor, spellErrors, spellIdx, getSpellPmRange, handleSpellSkip])
+
+  // ── Диалог ссылок: слушаем событие от Editor ──────────────────────────────
+  useEffect(() => {
+    const handler = (e) => setLinkDialog({ currentUrl: e.detail?.currentUrl || '' })
+    window.addEventListener('pechatniki:link-dialog', handler)
+    return () => window.removeEventListener('pechatniki:link-dialog', handler)
+  }, [])
+
+  const handleLinkConfirm = useCallback((url) => {
+    if (editor) editor.chain().focus().setLink({ href: url }).run()
+    setLinkDialog(null)
+  }, [editor])
+
+  // ── Глобальные горячие клавиши ────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (!mod) {
+        if (e.key === 'Escape') {
+          if (zenMode) setZenMode(false)
+          else if (showShortcuts) setShowShortcuts(false)
+          else if (showDocs) setShowDocs(false)
+          else if (showTOC)  setShowTOC(false)
+        }
+        return
+      }
+      if (e.shiftKey && e.key === 'D') { e.preventDefault(); setZenMode(z => !z);   return }
+      if (e.shiftKey && e.key === 'T') { e.preventDefault(); handleApplyTypograf(); return }
+      if (e.shiftKey && e.key === 'N') { e.preventDefault(); handleNew();           return }
+      if (e.shiftKey && e.key === 'S') { e.preventDefault(); handleSave();          return }
+      if (e.shiftKey && e.key === 'Y') { e.preventDefault(); if (!isolationMode) checkSpelling(); return }
+      if (e.key === '/' || e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s); return }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [editor, fileHandle, isDirty, zenMode, showDocs, showTOC, showShortcuts, isolationMode,
+      checkSpelling, handleNew, handleOpen, handleSave, handleSaveAs, handleApplyTypograf])
+
+  // ── Рендер ────────────────────────────────────────────────────────────────
   return (
-    <div className={`app${zenMode ? ' app--zen' : ''}`}>
+    <div className={`app${zenMode ? ' app--zen' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
       {!zenMode && !showPreview && (
         <div className="app-header">
-          {/* Левая группа */}
           <div className="header-left">
+            {/* ≡ — история документов */}
             <button
-              className={`btn-icon${showTOC ? ' active' : ''}`}
-              onClick={() => setShowTOC(t => !t)}
-              title="Оглавление (⌘⇧T)"
+              className={`btn-icon${showDocs ? ' active' : ''}`}
+              onClick={() => setShowDocs(s => !s)}
+              title="Документы"
             >
               <IconMenu />
             </button>
+            {/* § — оглавление */}
+            <button
+              className={`btn-icon${showTOC ? ' active' : ''}`}
+              onClick={() => setShowTOC(t => !t)}
+              title="Оглавление"
+            >
+              <IconTOC />
+            </button>
+            {/* ← Назад — появляется при навигации по @-ссылкам */}
+            {navCanBack && (
+              <button
+                className="btn-back"
+                onClick={handleNavBack}
+                title="Назад"
+              >
+                <IconBack /> Назад
+              </button>
+            )}
           </div>
 
-          {/* Имя файла по центру — клик для переименования */}
           {isEditingName ? (
             <input
               ref={nameInputRef}
@@ -216,81 +770,102 @@ export default function App() {
               onBlur={() => { setIsEditingName(false); autoTitleRef.current = false }}
               onKeyDown={e => {
                 if (e.key === 'Enter' || e.key === 'Escape') {
-                  setIsEditingName(false)
-                  autoTitleRef.current = false
-                  e.preventDefault()
+                  setIsEditingName(false); autoTitleRef.current = false; e.preventDefault()
                 }
               }}
             />
           ) : (
-            <span
-              className="file-name"
-              onClick={() => setIsEditingName(true)}
-              title="Нажмите, чтобы переименовать"
-            >
-              {fileName}{isDirty ? '  *' : ''}
+            <span className="file-name" onClick={() => setIsEditingName(true)} title="Нажмите, чтобы переименовать">
+              {fileName}{isDirty ? '  *' : ''}
             </span>
           )}
 
-          {/* Правая группа */}
           <div className="header-right">
-            {/* Т — применить типограф к тексту (⌘T) */}
-            <button
-              className="btn-icon btn-icon--label"
-              onClick={handleApplyTypograf}
-              title="Применить типограф (⌘T)"
-            >
-              Т
-            </button>
-            <button
-              className="btn-icon"
-              onClick={() => setShowPreview(true)}
-              title="Экспорт"
-            >
-              <IconExport />
-            </button>
-            <button
-              className={`btn-icon${zenMode ? ' active' : ''}`}
-              onClick={() => setZenMode(z => !z)}
-              title="Режим Дзен (⌘D)"
-            >
-              <IconZen />
-            </button>
-            <button
-              className="btn-icon"
-              onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-              title="Сменить тему"
-            >
+            <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)"><IconTypograf /></button>
+            <button className={`btn-icon${showBuffer ? ' active' : ''}`} onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков"><IconTray /></button>
+            <button className={`btn-icon${zenMode ? ' active' : ''}`} onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)"><IconZen /></button>
+            <OverflowMenu
+              icon={<IconWrench />}
+              title="Инструменты"
+              items={[
+                {
+                  key: 'spell',
+                  icon: <IconSpellcheck size={14} />,
+                  label: 'Яндекс.Спеллер',
+                  title: isolationMode ? 'Отключено в режиме самоизоляции' : 'Проверить орфографию (⌘⇧Y)',
+                  disabled: isolationMode,
+                  onClick: checkSpelling,
+                },
+                {
+                  key: 'deyo',
+                  icon: <IconSwapLetter size={14} />,
+                  label: 'Деёизация (ё→е)',
+                  title: 'Заменить ё→е во всём тексте',
+                  onClick: handleDeyo,
+                },
+                {
+                  key: 'shortcuts',
+                  icon: <IconKeyboard size={14} />,
+                  label: 'Горячие клавиши',
+                  title: 'Список горячих клавиш (⌘/)',
+                  onClick: () => setShowShortcuts(true),
+                },
+              ]}
+            />
+            <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться (зашифрованная ссылка)"><IconShare /></button>
+            <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт"><IconExport /></button>
+            <button className="btn-icon" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
               {theme === 'dark' ? <IconSun /> : <IconMoon />}
             </button>
-            {/* ⚙ Настройки — типограф и прочее */}
-            <button
-              className={`btn-icon${showTypograf ? ' active' : ''}`}
-              onClick={() => setShowTypograf(t => !t)}
-              title="Настройки"
-            >
-              <IconSettings />
-            </button>
+            <button className={`btn-icon${showTypograf ? ' active' : ''}`} onClick={() => setShowTypograf(t => !t)} title="Настройки"><IconGear /></button>
           </div>
         </div>
       )}
 
       <div className="app-body">
-        {/* Боковое меню — оглавление */}
+        {showDocs && !zenMode && !showPreview && (
+          <DocsPanel
+            docs={docs}
+            projects={projects}
+            currentId={currentDocId}
+            onSelect={handleSelectDoc}
+            onNew={handleNewDoc}
+            onDelete={handleDeleteDoc}
+            onExport={handleExportDocs}
+            onExportKb={handleExportKnowledgeBase}
+            onImport={handleImportDocs}
+            onClose={() => setShowDocs(false)}
+            onCreateProject={handleCreateProject}
+            onRenameProject={handleRenameProject}
+            onDeleteProject={handleDeleteProject}
+            onMoveDoc={handleMoveDoc}
+            onNewInProject={handleNewInProject}
+          />
+        )}
+
         {showTOC && !zenMode && !showPreview && (
           <TOC editor={editor} onClose={() => setShowTOC(false)} />
         )}
 
-        {/* Редактор — всегда смонтирован, скрыт при превью (иначе editor instance уничтожается) */}
         <div style={{ display: showPreview ? 'none' : 'contents' }}>
+          {readOnly && (
+            <div className="readonly-banner">
+              Документ открыт только для чтения
+            </div>
+          )}
           <Editor
             onReady={setEditor}
-            onChange={() => setIsDirty(true)}
+            onChange={() => { setIsDirty(true); scheduleSave() }}
             zenMode={zenMode}
+            initialContent={initialContent}
+            docs={docs}
+            onDocSelect={handleSelectDoc}
+            stopPhrases={stopPhrases}
+            typograf={typografEnabled ? tp : null}
+            readOnly={readOnly}
           />
         </div>
 
-        {/* Панель экспорта / предпросмотра */}
         {showPreview && (
           <Preview
             editor={editor}
@@ -302,50 +877,100 @@ export default function App() {
           />
         )}
 
-        {/* Панель настроек */}
         {showTypograf && !showPreview && (
           <Settings
             typograf={tp}
             typografEnabled={typografEnabled}
             onToggle={handleTypografToggle}
+            isolationMode={isolationMode}
+            onIsolationToggle={handleIsolationToggle}
             onClose={() => setShowTypograf(false)}
           />
         )}
+
+        {showBuffer && !zenMode && !showPreview && (
+          <BufferPanel onClose={() => setShowBuffer(false)} />
+        )}
       </div>
 
-      {!showPreview && (
-        <Toolbar editor={editor} />
+      {!showPreview && <Toolbar editor={editor} />}
+
+      {zenMode && (
+        <button className="zen-exit" onClick={() => setZenMode(false)} title="Выйти из Дзен (Esc)">✕</button>
       )}
 
-      {/* Выход из дзен-режима */}
-      {zenMode && (
-        <button
-          className="zen-exit"
-          onClick={() => setZenMode(false)}
-          title="Выйти из Дзен (Esc)"
-        >
-          ✕
-        </button>
+      {spellErrors.length > 0 && (
+        <SpellDialog
+          errors={spellErrors}
+          idx={spellIdx}
+          onFix={handleSpellFix}
+          onFixAll={handleSpellFixAll}
+          onSkip={handleSpellSkip}
+          onClose={handleSpellClose}
+        />
+      )}
+
+      {showShare && (
+        <ShareDialog
+          onShare={handleShare}
+          onClose={() => setShowShare(false)}
+        />
+      )}
+
+      {showShortcuts && (
+        <ShortcutsDialog onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {linkDialog && (
+        <InputDialog
+          title="Ссылка"
+          placeholder="https://..."
+          defaultValue={linkDialog.currentUrl}
+          onConfirm={handleLinkConfirm}
+          onClose={() => setLinkDialog(null)}
+        />
       )}
     </div>
   )
 }
 
+function IconBack() {
+  return <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2L4 6.5L8 11"/></svg>
+}
 function IconMenu() {
   return <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect y="2" width="15" height="1.5" rx="0.75"/><rect y="6.75" width="15" height="1.5" rx="0.75"/><rect y="11.5" width="15" height="1.5" rx="0.75"/></svg>
+}
+function IconTOC() {
+  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><line x1="5" y1="3.5" x2="13" y2="3.5"/><line x1="3" y1="7.5" x2="13" y2="7.5"/><line x1="5" y1="11.5" x2="13" y2="11.5"/><circle cx="1.5" cy="3.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="1.5" cy="7.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="1.5" cy="11.5" r="0.75" fill="currentColor" stroke="none"/></svg>
 }
 function IconExport() {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1v9M5 7l3 3 3-3"/><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
 }
 function IconZen() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="10" y="1" width="5" height="5" rx="1"/><rect x="1" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/></svg>
+  // Энсо — незамкнутый круг, символ дзена
+  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M10.1 2.2A6.2 6.2 0 1 1 5.9 2.2"/></svg>
 }
-function IconSettings() {
+function IconWrench() {
   return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 1.5a3 3 0 0 0-2.2 5L2 12.8a.85.85 0 0 0 1.2 1.2L9.5 7.7a3 3 0 0 0 4.1-4.1L11.8 5.4 10.6 4.2l1.8-1.8a3 3 0 0 0-1.9-.9z"/></svg>
+}
+function IconGear() {
+  const teeth = [0, 45, 90, 135, 180, 225, 270, 315]
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+      <circle cx="8" cy="8" r="2.1" />
+      <circle cx="8" cy="8" r="4.2" />
+      {teeth.map(a => (
+        <rect key={a} x="7.25" y="0.6" width="1.5" height="2.1" rx="0.5" fill="currentColor" stroke="none" transform={`rotate(${a} 8 8)`} />
+      ))}
+    </svg>
+  )
 }
 function IconSun() {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3" y1="3" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="13" y2="13"/><line x1="13" y1="3" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3" y2="13"/></svg>
 }
 function IconMoon() {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 10.5A6 6 0 0 1 5.5 2.5a6.5 6.5 0 1 0 8 8z"/></svg>
+}
+function IconShare() {
+  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11.5" cy="3" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><circle cx="3.5" cy="7.5" r="1.5"/><line x1="5" y1="7.5" x2="10" y2="3.8"/><line x1="5" y1="7.5" x2="10" y2="11.2"/></svg>
 }

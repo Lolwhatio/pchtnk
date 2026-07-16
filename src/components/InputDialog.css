@@ -1,0 +1,105 @@
+.input-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.input-dialog {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+  width: 340px;
+  overflow: hidden;
+  font-family: var(--font-ui);
+}
+
+/* ── Header ─────────────────────────────── */
+
+.input-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.input-dialog-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-dialog-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color var(--transition), background var(--transition);
+}
+.input-dialog-close:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* ── Body ───────────────────────────────── */
+
+.input-dialog-body {
+  padding: 14px;
+}
+
+.input-dialog-field {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--transition);
+}
+.input-dialog-field:focus { border-color: var(--accent); }
+.input-dialog-field::placeholder { color: var(--text-muted); }
+
+/* ── Footer ─────────────────────────────── */
+
+.input-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 2px 14px 12px;
+}
+
+.input-dialog-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.input-dialog-btn:hover { background: var(--bg-active); }
+
+.input-dialog-btn--primary {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.input-dialog-btn--primary:hover { background: var(--bg-active); }
+.input-dialog-btn--primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: none;
+}

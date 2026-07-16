@@ -1,0 +1,161 @@
+.spell-dialog {
+  position: fixed;
+  bottom: 72px; /* над тулбаром */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.25);
+  min-width: 260px;
+  max-width: 400px;
+  width: max-content;
+  z-index: 200;
+  overflow: hidden;
+  font-family: var(--font-ui);
+}
+
+/* ── Header ─────────────────────────────── */
+
+.spell-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.spell-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.spell-counter {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.spell-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color var(--transition), background var(--transition);
+}
+.spell-close:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* ── Word row ───────────────────────────── */
+
+.spell-word-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 10px;
+}
+
+.spell-error-word {
+  font-size: 15px;
+  font-weight: 600;
+  color: #bf6060;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #bf6060;
+  text-underline-offset: 3px;
+}
+
+.spell-arrow {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.spell-fix-word {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ── Suggestions ────────────────────────── */
+
+.spell-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 14px 10px;
+}
+
+.spell-sugg {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.spell-sugg:hover { background: var(--bg-active); border-color: var(--border-light); }
+.spell-sugg--active {
+  background: var(--bg-active);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* ── Footer ─────────────────────────────── */
+
+.spell-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.spell-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.spell-btn:hover { background: var(--bg-active); }
+
+.spell-btn--primary {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.spell-btn--primary:hover { background: var(--bg-active); }
+
+.spell-btn--fix-all {
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+.spell-btn--fix-all:hover { background: var(--bg-active); color: var(--accent); }
+
+.spell-btn kbd {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  opacity: 0.55;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 1.5;
+}

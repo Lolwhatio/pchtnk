@@ -69,3 +69,65 @@
 
 /* Hide toolbar in zen */
 .app--zen .toolbar { display: none; }
+
+/* ── Заголовок: dropdown вместо 4 отдельных кнопок H1-H4 ─────────────────── */
+
+.toolbar-heading-wrap { position: relative; }
+
+.toolbar-btn--label {
+  width: auto;
+  padding: 0 6px 0 8px;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.toolbar-heading-caret {
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transform: rotate(90deg);
+}
+
+.toolbar-heading-menu {
+  position: absolute;
+  bottom: 34px;
+  left: 0;
+  min-width: 160px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 50;
+}
+
+.toolbar-heading-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  text-align: left;
+  transition: background var(--transition);
+}
+.toolbar-heading-item:hover { background: var(--bg-hover); }
+.toolbar-heading-item--active { color: var(--accent); background: var(--bg-active); }
+
+.toolbar-heading-item kbd {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  opacity: 0.55;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 1.5;
+}

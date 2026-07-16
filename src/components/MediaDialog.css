@@ -1,0 +1,107 @@
+.media-dialog {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  width: 420px;
+  overflow: hidden;
+  font-family: var(--font-ui);
+}
+
+/* ── Tabs ─────────────────────────────── */
+
+.media-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.media-tab {
+  flex: 1;
+  padding: 9px 0;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+}
+.media-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.media-tab--active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: -1px;
+}
+
+/* ── Body ─────────────────────────────── */
+
+.media-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── URL preview ──────────────────────── */
+
+.media-preview {
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.media-preview img {
+  max-width: 100%;
+  max-height: 240px;
+  display: block;
+  object-fit: contain;
+}
+.media-preview-error {
+  font-size: 12px;
+  color: #bf6060;
+  padding: 16px;
+  text-align: center;
+}
+
+/* ── Drop zone ────────────────────────── */
+
+.media-drop {
+  border: 1.5px dashed var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  overflow: hidden;
+}
+.media-drop:hover { border-color: var(--accent-dim); background: var(--bg-hover); }
+.media-drop--over { border-color: var(--accent); background: var(--bg-active); }
+.media-drop--filled { border-style: solid; border-color: var(--border); min-height: 0; }
+
+.media-drop-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 20px;
+}
+.media-drop-icon { font-size: 22px; margin-bottom: 2px; }
+.media-drop-sub  { font-size: 11px; color: var(--text-muted); opacity: .6; }
+
+.media-drop-img {
+  max-width: 100%;
+  max-height: 240px;
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+}

@@ -1,0 +1,339 @@
+.docs-panel {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Шапка ─────────────────────────────────────── */
+
+.docs-panel__header {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--border);
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.docs-panel__title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.docs-panel__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  transition: color var(--transition), background var(--transition);
+}
+.docs-panel__btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* ── Список ─────────────────────────────────────── */
+
+.docs-panel__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.docs-panel__empty {
+  padding: 24px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Проект ─────────────────────────────────────── */
+
+.docs-panel__project {
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-panel__project-header {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px 0 2px;
+  gap: 1px;
+}
+
+.docs-panel__project-toggle {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.docs-panel__project-toggle:hover { background: var(--bg-hover); }
+
+.docs-panel__project-arrow {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+  transform: rotate(0deg);
+  transition: transform var(--transition);
+  user-select: none;
+}
+.docs-panel__project-arrow--open {
+  transform: rotate(90deg);
+}
+
+.docs-panel__project-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+}
+
+.docs-panel__project-count {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: 0 5px;
+  letter-spacing: 0;
+  flex-shrink: 0;
+  text-transform: none;
+}
+
+.docs-panel__project-input {
+  flex: 1;
+  background: var(--bg-hover);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  outline: none;
+  min-width: 0;
+}
+
+.docs-panel__project-add,
+.docs-panel__project-del {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity var(--transition), color var(--transition), background var(--transition);
+  flex-shrink: 0;
+}
+.docs-panel__project-header:hover .docs-panel__project-add,
+.docs-panel__project-header:hover .docs-panel__project-del {
+  opacity: 1;
+}
+.docs-panel__project-add:hover { background: var(--bg-hover); color: var(--text-primary); }
+.docs-panel__project-del:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.docs-panel__project-docs {
+  padding: 2px 0 4px;
+}
+
+.docs-panel__project-empty {
+  padding: 6px 12px 6px 28px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Без проекта ─────────────────────────────────── */
+
+.docs-panel__noproj-label {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+/* ── Элемент ─────────────────────────────────────── */
+
+.docs-panel__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  transition: background var(--transition);
+}
+.docs-panel__item:hover {
+  background: var(--bg-hover);
+}
+.docs-panel__item--active {
+  background: var(--bg-active);
+}
+
+.docs-panel__item-main {
+  flex: 1;
+  text-align: left;
+  padding: 7px 6px 7px 12px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.docs-panel__project-docs .docs-panel__item-main {
+  padding-left: 22px;
+}
+
+.docs-panel__item-title {
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.docs-panel__item-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── Кнопки действий у элемента ─────────────────── */
+
+.docs-panel__item-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 4px;
+  opacity: 0;
+  transition: opacity var(--transition);
+  flex-shrink: 0;
+}
+.docs-panel__item:hover .docs-panel__item-actions {
+  opacity: 1;
+}
+
+.docs-panel__item-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+}
+.docs-panel__item-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Попап перемещения в проект ─────────────────── */
+
+.docs-panel__mover-wrap {
+  position: relative;
+}
+
+.docs-panel__mover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  min-width: 140px;
+  max-width: 180px;
+  z-index: 100;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.docs-panel__mover-item {
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docs-panel__mover-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.docs-panel__mover-item--active {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* ── Футер: экспорт / импорт ─────────────────────── */
+
+.docs-panel__footer {
+  display: flex;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.docs-panel__footer-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 36px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition), background var(--transition);
+}
+.docs-panel__footer-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.docs-panel__footer-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.docs-panel__footer-btn--kb {
+  color: var(--accent);
+  opacity: .8;
+}
+.docs-panel__footer-btn--kb:hover {
+  opacity: 1;
+  color: var(--accent);
+  background: var(--bg-active);
+}
