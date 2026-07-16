@@ -392,13 +392,8 @@ const OptimaShortcuts = Extension.create({
         window.dispatchEvent(new CustomEvent('pechatniki:link-dialog', { detail: { currentUrl } }))
         return true
       },
-      'Mod-Shift-0': () => this.editor.chain().focus().setParagraph().run(),
-      'Mod-Shift-1': () => this.editor.chain().focus().toggleHeading({ level: 1 }).run(),
-      'Mod-Shift-2': () => this.editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      'Mod-Shift-3': () => this.editor.chain().focus().toggleHeading({ level: 3 }).run(),
-      'Mod-Shift-4': () => this.editor.chain().focus().toggleHeading({ level: 4 }).run(),
-      'Mod-Shift-5': () => this.editor.chain().focus().toggleHeading({ level: 5 }).run(),
-      'Mod-Shift-6': () => this.editor.chain().focus().toggleHeading({ level: 6 }).run(),
+      // Заголовки — ⌘⌥1…6 и абзац — ⌘⌥0: родные шорткаты TipTap
+      // (⌘⇧3/4/5 в macOS заняты системными скриншотами)
       'Mod-Shift--': () => this.editor.chain().focus().toggleStrike().run(),
       'Mod-Shift-Backspace': () =>
         this.editor.chain().focus().unsetAllMarks().clearNodes().run(),
@@ -415,7 +410,7 @@ const OptimaShortcuts = Extension.create({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Editor({ onReady, onChange, zenMode, initialContent, docs, onDocSelect, stopPhrases, typograf, readOnly }) {
+export default function Editor({ onReady, onChange, zenMode, initialContent, docs, onDocSelect, stopPhrases, typograf }) {
   const wrapRef = useRef(null)
   const phrasesRef = useRef(stopPhrases ?? [])
   const typografRef = useRef(typograf)
@@ -453,7 +448,6 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
 
   // ── TipTap ────────────────────────────────────────────────────────────────
   const editor = useEditor({
-    editable: !readOnly,
     editorProps: {
       attributes: { spellcheck: 'true' },
       // Drag & drop изображений прямо в редактор

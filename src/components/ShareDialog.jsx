@@ -1,28 +1,40 @@
 import { useState } from 'react'
 import { IconClose } from './icons'
+import { shortenShareUrl } from '../utils/share'
 import './ShareDialog.css'
 
-export default function ShareDialog({ onShare, onClose }) {
-  const [status,   setStatus]   = useState('idle') // idle | loading | done | copy_failed | too_large | error
+export default function ShareDialog({ onShare, isolationMode, onClose }) {
+  const [status,   setStatus]   = useState('idle') // idle | loading | done | done_noshort | copy_failed | too_large | error
   const [password, setPassword] = useState('')
-  const [readonly, setReadonly] = useState(false)
+  const [shorten,  setShorten]  = useState(false)
   const [link,     setLink]     = useState('')
 
   const handleShare = async () => {
     setStatus('loading')
     let url
     try {
-      url = await onShare({ password: password.trim(), readonly })
+      url = await onShare({ password: password.trim() })
     } catch (err) {
       setStatus(err.message === 'too_large' ? 'too_large' : 'error')
       return
     }
+
+    // Сокращаем, если попросили; при неудаче оставляем полную ссылку
+    let shortFailed = false
+    if (shorten && !isolationMode) {
+      try {
+        url = await shortenShareUrl(url)
+      } catch {
+        shortFailed = true
+      }
+    }
+
+    setLink(url)
     try {
       await navigator.clipboard.writeText(url)
-      setStatus('done')
+      setStatus(shortFailed ? 'done_noshort' : 'done')
     } catch {
       // Ссылка уже создана — не теряем её из-за отказа буфера обмена
-      setLink(url)
       setStatus('copy_failed')
     }
   }
@@ -50,18 +62,23 @@ export default function ShareDialog({ onShare, onClose }) {
             </ul>
           </div>
 
-          <div className="share-readonly-row">
-            <div className="share-readonly-text">
-              <span className="share-readonly-label">Только для чтения</span>
-              <span className="share-readonly-desc">Получатель не сможет редактировать документ</span>
+          {!isolationMode && (
+            <div className="share-readonly-row">
+              <div className="share-readonly-text">
+                <span className="share-readonly-label">Сократить ссылку</span>
+                <span className="share-readonly-desc">
+                  Через сервис is.gd. Он видит только зашифрованный текст —
+                  ключ расшифровки остаётся в ссылке после # и на сервер не уходит.
+                </span>
+              </div>
+              <button
+                className={`share-toggle${shorten ? ' share-toggle--on' : ''}`}
+                onClick={() => setShorten(s => !s)}
+              >
+                <span className="share-toggle-knob" />
+              </button>
             </div>
-            <button
-              className={`share-toggle${readonly ? ' share-toggle--on' : ''}`}
-              onClick={() => setReadonly(r => !r)}
-            >
-              <span className="share-toggle-knob" />
-            </button>
-          </div>
+          )}
 
           <div className="share-password">
             <label className="share-password-label">
@@ -92,10 +109,23 @@ export default function ShareDialog({ onShare, onClose }) {
             <div className="share-status share-status--loading">Упаковываем…</div>
           )}
 
-          {status === 'done' && (
-            <div className="share-status share-status--done">
-              ✓ Ссылка скопирована в буфер обмена
-            </div>
+          {(status === 'done' || status === 'done_noshort') && (
+            <>
+              <div className="share-status share-status--done">
+                ✓ Ссылка скопирована в буфер обмена
+              </div>
+              {status === 'done_noshort' && (
+                <p className="share-status share-status--error">
+                  Сократить не получилось (текст длинный или сервис недоступен) — скопирована полная ссылка.
+                </p>
+              )}
+              <input
+                className="share-password-input"
+                readOnly
+                value={link}
+                onFocus={e => e.target.select()}
+              />
+            </>
           )}
 
           {status === 'copy_failed' && (

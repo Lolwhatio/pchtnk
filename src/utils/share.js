@@ -122,3 +122,22 @@ export async function decodeWithPassword(d, salt, password) {
   const compressed = await decrypt(d, key)
   return JSON.parse(LZString.decompressFromUTF16(compressed))
 }
+
+// ── Сокращение ссылки ─────────────────────────────────────────────────────────
+// Сокращателю уходит ТОЛЬКО часть с зашифрованными данными (?d=…).
+// Ключ расшифровки живёт во #fragment: он не отправляется на сервер,
+// а при переходе по короткой ссылке браузер сам переносит фрагмент
+// на конечный адрес после редиректа.
+// /api/shorten проксируется на is.gd (netlify.toml / vite.config.js).
+
+export async function shortenShareUrl(fullUrl) {
+  const hashIdx  = fullUrl.indexOf('#')
+  const base     = hashIdx === -1 ? fullUrl : fullUrl.slice(0, hashIdx)
+  const fragment = hashIdx === -1 ? ''      : fullUrl.slice(hashIdx)
+
+  const res = await fetch(`/api/shorten?format=json&url=${encodeURIComponent(base)}`)
+  if (!res.ok) throw new Error('shorten_failed')
+  const data = await res.json()
+  if (!data.shorturl) throw new Error('shorten_failed')
+  return data.shorturl + fragment
+}

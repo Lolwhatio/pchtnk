@@ -23,7 +23,7 @@ function HeadingDropdown({ editor }) {
       <button
         className={`toolbar-btn toolbar-btn--label${activeLevel ? ' active' : ''}`}
         onClick={() => setOpen(o => !o)}
-        title="Заголовок (⌘⇧1…6)"
+        title="Заголовок (⌘⌥1…6)"
       >
         {label}
         <span className="toolbar-heading-caret"><IconChevronRight size={9} /></span>
@@ -42,7 +42,7 @@ function HeadingDropdown({ editor }) {
               className={`toolbar-heading-item${activeLevel === level ? ' toolbar-heading-item--active' : ''}`}
               onClick={() => { editor.chain().focus().toggleHeading({ level }).run(); setOpen(false) }}
             >
-              Заголовок {level} <kbd>⌘⇧{level}</kbd>
+              Заголовок {level} <kbd>⌘⌥{level}</kbd>
             </button>
           ))}
         </div>

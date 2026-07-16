@@ -1,0 +1,112 @@
+/* ── Мобильная вёрстка ────────────────────────────────────────────────────────
+   Главная причина «мелкого масштаба» на телефоне — контент шире экрана
+   (тулбар, отступ под метки H1–H6), из-за чего браузер отдаляет страницу.
+   Здесь всё ужимается до ширины экрана. */
+
+@media (max-width: 700px) {
+
+  /* Высота с учётом плавающей адресной строки iOS/Android */
+  html, body, #root {
+    height: 100dvh;
+  }
+
+  /* ── Шапка ── */
+  .app-header {
+    padding: 0 4px;
+  }
+  .header-left,
+  .header-right {
+    gap: 0;
+  }
+  .file-name,
+  .file-name--editing {
+    padding: 0 6px;
+    font-size: 12px;
+    min-width: 0;
+  }
+  .btn-back {
+    padding: 0 6px;
+  }
+
+  /* ── Редактор ── */
+  .editor-wrap {
+    padding: 20px 14px 32px;
+  }
+  .editor-content {
+    padding-left: 0; /* место под метки H1–H6 не нужно */
+  }
+  .editor-content .ProseMirror h1::before,
+  .editor-content .ProseMirror h2::before,
+  .editor-content .ProseMirror h3::before,
+  .editor-content .ProseMirror h4::before,
+  .editor-content .ProseMirror h5::before,
+  .editor-content .ProseMirror h6::before {
+    display: none;
+  }
+
+  /* ── Тулбар: кнопки скроллятся, статистика ужата ── */
+  .toolbar {
+    padding: 0 8px calc(env(safe-area-inset-bottom, 0px)) 8px;
+    height: calc(40px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .toolbar-left {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+  .toolbar-left::-webkit-scrollbar {
+    display: none;
+  }
+  .toolbar-btn {
+    flex-shrink: 0;
+  }
+  .toolbar-sep {
+    flex-shrink: 0;
+  }
+  .toolbar-stat-dim {
+    display: none; /* «(без пробелов)» не влезает */
+  }
+
+  /* ── Боковые панели → оверлеи поверх текста ── */
+  .docs-panel {
+    position: fixed;
+    top: 40px;
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    width: min(300px, 86vw);
+    z-index: 30;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+  .buffer-panel {
+    position: fixed;
+    top: 40px;
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    right: 0;
+    width: min(320px, 86vw);
+    z-index: 30;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+  .settings {
+    width: min(300px, 86vw);
+  }
+
+  /* ── Диалоги по ширине экрана ── */
+  .share-dialog,
+  .shortcuts-dialog,
+  .input-dialog,
+  .media-dialog,
+  .spell-dialog {
+    width: calc(100vw - 24px);
+    max-width: 400px;
+  }
+
+  /* iOS Safari зумит страницу при фокусе на поле с шрифтом < 16px */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

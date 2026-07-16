@@ -19,6 +19,7 @@ import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdo
 import { exportKnowledgeBase } from './utils/export'
 import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
 import './App.css'
+import './styles/mobile.css' // последним — перекрывает стили компонентов
 
 const tp = new Typograf({ locale: ['ru', 'en-US'] })
 
@@ -43,6 +44,28 @@ function titleFromJson(json) {
   return ''
 }
 
+// ── Приветственный документ при первом запуске ──────────────────────────────
+
+const WELCOME_MD = `# Добро пожаловать в Печатники
+
+Это редактор для тех, кто пишет тексты, а нейросети держит во второй вкладке. Пишите здесь, а черновики из ChatGPT, Claude или DeepSeek просто вставляйте — Печатники сами уберут лишнее форматирование и поправят типографику.
+
+Что здесь есть:
+
+- **Типограф** — расставит «ёлочки», тире и неразрывные пробелы (кнопка в шапке или ⌘⇧T).
+- **Проверка орфографии** через Яндекс.Спеллер (⌘⇧Y).
+- **Документы и проекты** — все ваши тексты живут в панели слева (кнопка ≡).
+- **Поделиться** — текст шифруется и упаковывается прямо в ссылку, при желании с паролем.
+- **Экспорт** — Markdown, PDF или вся база знаний одним файлом.
+
+## Ваши данные — только ваши
+
+У Печатников нет серверов, и они нам не нужны. Всё, что вы пишете, хранится только на вашем устройстве — в памяти браузера. Мы не обрабатываем, не храним и не передаём ваши тексты — и уж точно не отдаём их на обучение нейросетей.
+
+Единственное исключение — проверка орфографии: при её запуске текст отправляется в сервис Яндекс.Спеллер. Не хотите даже этого — включите режим самоизоляции в настройках (⚙), и приложение перестанет обращаться в интернет совсем.
+
+Этот документ можно удалить — или начать писать прямо в нём.`
+
 // Синхронно читаем из localStorage при старте
 function bootstrap() {
   const all = loadDocs()
@@ -51,12 +74,15 @@ function bootstrap() {
     const cur   = all.find(d => d.id === curId) || [...all].sort((a, b) => b.updatedAt - a.updatedAt)[0]
     return { docs: all, currentId: cur.id, content: cur.content, title: cur.title || '' }
   }
-  // Первый запуск — мигрируем старый черновик и сразу создаём документ
-  let content = { type: 'doc', content: [{ type: 'paragraph' }] }
-  try { const s = localStorage.getItem('pechatniki-draft'); if (s) content = JSON.parse(s) } catch { /* ignored */ }
-  const id    = genId()
-  const title = titleFromJson(content) || 'Без названия'
-  const doc   = { id, title, content, createdAt: Date.now(), updatedAt: Date.now() }
+  // Мигрируем старый черновик, если был
+  let draft = null
+  try { const s = localStorage.getItem('pechatniki-draft'); if (s) draft = JSON.parse(s) } catch { /* ignored */ }
+
+  // Совсем первый запуск — показываем приветственный документ
+  const content = draft ?? markdownToHtml(WELCOME_MD)
+  const title   = draft ? (titleFromJson(draft) || 'Без названия') : 'Добро пожаловать в Печатники'
+  const id      = genId()
+  const doc     = { id, title, content, createdAt: Date.now(), updatedAt: Date.now() }
   storeDocs([doc])
   localStorage.setItem(CUR_KEY, id)
   return { docs: [doc], currentId: id, content, title }
@@ -87,7 +113,6 @@ export default function App() {
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
-  const [readOnly,     setReadOnly]     = useState(false)
   const navHistoryRef = useRef([]) // стек id документов для кнопки «Назад»
   const [stopPhrases] = useState(() => loadStopPhrases())
   const [editor,     setEditor]     = useState(null)
@@ -178,15 +203,10 @@ export default function App() {
         raw = result.doc
       }
 
-      // Поддержка envelope { v:1, readonly, doc } и старого формата (TipTap JSON)
+      // Поддержка envelope { v:1, doc } (старые ссылки могли содержать флаг
+      // readonly — игнорируем: у получателя всегда своя редактируемая копия)
       const isEnvelope = raw && raw.v === 1 && raw.doc
       const doc = isEnvelope ? raw.doc : raw
-      const ro  = isEnvelope ? !!raw.readonly : false
-
-      if (ro) {
-        setReadOnly(true)
-        editor.setEditable(false)
-      }
 
       const id     = genId()
       const title  = titleFromJson(doc) || 'Входящий документ'
@@ -202,11 +222,9 @@ export default function App() {
     })
   }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleShare = useCallback(async ({ password = '', readonly = false } = {}) => {
+  const handleShare = useCallback(async ({ password = '' } = {}) => {
     if (!editor) throw new Error('no editor')
-    const content = editor.getJSON()
-    const data = readonly ? { v: 1, readonly: true, doc: content } : content
-    return encodeShareUrl(data, window.location.href, password)
+    return encodeShareUrl(editor.getJSON(), window.location.href, password)
   }, [editor])
 
   // ── Тема ──────────────────────────────────────────────────────────────────
@@ -848,11 +866,6 @@ export default function App() {
         )}
 
         <div style={{ display: showPreview ? 'none' : 'contents' }}>
-          {readOnly && (
-            <div className="readonly-banner">
-              Документ открыт только для чтения
-            </div>
-          )}
           <Editor
             onReady={setEditor}
             onChange={() => { setIsDirty(true); scheduleSave() }}
@@ -862,7 +875,6 @@ export default function App() {
             onDocSelect={handleSelectDoc}
             stopPhrases={stopPhrases}
             typograf={typografEnabled ? tp : null}
-            readOnly={readOnly}
           />
         </div>
 
@@ -913,6 +925,7 @@ export default function App() {
       {showShare && (
         <ShareDialog
           onShare={handleShare}
+          isolationMode={isolationMode}
           onClose={() => setShowShare(false)}
         />
       )}
