@@ -98,7 +98,8 @@
   .shortcuts-dialog,
   .input-dialog,
   .media-dialog,
-  .spell-dialog {
+  .spell-dialog,
+  .kb-dialog {
     width: calc(100vw - 24px);
     max-width: 400px;
   }

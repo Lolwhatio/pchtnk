@@ -97,7 +97,7 @@ function buildSidebar(docs, activeId, filenameFor) {
 
 // ── Index content ─────────────────────────────────────────────────────────────
 
-function buildIndexContent(docs, filenameFor) {
+function buildIndexContent(docs, filenameFor, kbTitle) {
   const fmt = (ts) => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
   const cards = docs.map(doc => `
     <a href="${esc(filenameFor(doc))}" class="card">
@@ -106,7 +106,7 @@ function buildIndexContent(docs, filenameFor) {
     </a>`).join('')
   return `
     <header class="page-header">
-      <h1>База знаний</h1>
+      <h1>${esc(kbTitle)}</h1>
       <p class="subtitle">${docs.length}&nbsp;${pluralDocs(docs.length)}</p>
     </header>
     <div class="card-grid">${cards}
@@ -244,7 +244,7 @@ th{background:#ddebd5;font-family:system-ui,sans-serif;font-size:.875em;font-wei
 
 // ── Page template ─────────────────────────────────────────────────────────────
 
-function buildPage({ title, contentHtml, sidebarItems }) {
+function buildPage({ title, contentHtml, sidebarItems, kbTitle }) {
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -255,7 +255,7 @@ function buildPage({ title, contentHtml, sidebarItems }) {
 </head>
 <body>
 <aside class="sidebar">
-  <a class="sidebar-brand" href="index.html">База знаний</a>
+  <a class="sidebar-brand" href="index.html">${esc(kbTitle)}</a>
   <nav>
     <ul class="nav-list">
 ${sidebarItems}
@@ -276,7 +276,7 @@ ${contentHtml}
 
 // ── Public export ─────────────────────────────────────────────────────────────
 
-export async function exportKnowledgeBase(docs) {
+export async function exportKnowledgeBase(docs, kbTitle = 'База знаний') {
   if (!docs?.length) return
 
   const { default: JSZip } = await import('jszip')
@@ -292,28 +292,31 @@ export async function exportKnowledgeBase(docs) {
     const contentHtml  = docToHtml(doc, ctx)
     const sidebarItems = buildSidebar(sorted, doc.id, filenameFor)
     const page = buildPage({
-      title: doc.title || 'Без названия',
+      title: `${doc.title || 'Без названия'} — ${kbTitle}`,
       contentHtml: `
     <header class="page-header">
       <h1>${esc(doc.title || 'Без названия')}</h1>
     </header>
     ${contentHtml}`,
       sidebarItems,
+      kbTitle,
     })
     zip.file(filenameFor(doc), page)
   }
 
   // Index page
   const indexHtml = buildPage({
-    title: 'База знаний',
-    contentHtml: buildIndexContent(sorted, filenameFor),
+    title: kbTitle,
+    contentHtml: buildIndexContent(sorted, filenameFor, kbTitle),
     sidebarItems: buildSidebar(sorted, null, filenameFor),
+    kbTitle,
   })
   zip.file('index.html', indexHtml)
 
+  const safeName = kbTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'База знаний'
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
   const url  = URL.createObjectURL(blob)
-  const a    = Object.assign(document.createElement('a'), { href: url, download: 'knowledge-base.zip' })
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeName}.zip` })
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

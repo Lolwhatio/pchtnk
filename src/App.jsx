@@ -10,6 +10,7 @@ import InputDialog from './components/InputDialog'
 import BufferPanel from './components/BufferPanel'
 import ShareDialog from './components/ShareDialog'
 import ShortcutsDialog from './components/ShortcutsDialog'
+import KbExportDialog from './components/KbExportDialog'
 import OverflowMenu from './components/OverflowMenu'
 import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter } from './components/icons'
 import Typograf from 'typograf'
@@ -410,8 +411,11 @@ export default function App() {
   }, [])
 
   // ── Экспорт базы знаний (HTML) ────────────────────────────────────────────
-  const handleExportKnowledgeBase = useCallback(() => {
-    exportKnowledgeBase(docsRef.current)
+  const [showKbExport, setShowKbExport] = useState(false)
+
+  const handleKbConfirm = useCallback(({ docs: selectedDocs, title }) => {
+    exportKnowledgeBase(selectedDocs, title)
+    setShowKbExport(false)
   }, [])
 
   // ── Импорт из ZIP ─────────────────────────────────────────────────────────
@@ -850,7 +854,7 @@ export default function App() {
             onNew={handleNewDoc}
             onDelete={handleDeleteDoc}
             onExport={handleExportDocs}
-            onExportKb={handleExportKnowledgeBase}
+            onExportKb={() => setShowKbExport(true)}
             onImport={handleImportDocs}
             onClose={() => setShowDocs(false)}
             onCreateProject={handleCreateProject}
@@ -932,6 +936,15 @@ export default function App() {
 
       {showShortcuts && (
         <ShortcutsDialog onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {showKbExport && (
+        <KbExportDialog
+          docs={docs}
+          projects={projects}
+          onConfirm={handleKbConfirm}
+          onClose={() => setShowKbExport(false)}
+        />
       )}
 
       {linkDialog && (

@@ -220,9 +220,21 @@ export default function DocsPanel({
       </div>
 
       <div className="docs-panel__footer">
-        <button className="docs-panel__footer-btn" onClick={onExport} title="Скачать все документы как ZIP"><IconExport /> ZIP</button>
-        <button className="docs-panel__footer-btn docs-panel__footer-btn--kb" onClick={onExportKb} title="Экспорт базы знаний как HTML"><IconGlobe /> HTML</button>
-        <button className="docs-panel__footer-btn" onClick={onImport} title="Загрузить документы из ZIP"><IconImport /> Импорт</button>
+        <button
+          className="docs-panel__footer-btn"
+          onClick={onExport}
+          data-tip="Скачает вообще все записи: каждый документ в Markdown плюс архив для точного восстановления через «Импорт»"
+        ><IconExport /> Бэкап</button>
+        <button
+          className="docs-panel__footer-btn docs-panel__footer-btn--kb"
+          onClick={onExportKb}
+          data-tip="Соберёт выбранные проекты в готовый HTML-сайт с оглавлением и ссылками между документами"
+        ><IconGlobe /> База знаний</button>
+        <button
+          className="docs-panel__footer-btn"
+          onClick={onImport}
+          data-tip="Восстановит документы из ZIP-бэкапа или добавит .md-файлы из стороннего архива"
+        ><IconImport /> Импорт</button>
       </div>
     </div>
   )

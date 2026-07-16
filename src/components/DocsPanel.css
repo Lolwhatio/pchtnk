@@ -308,6 +308,34 @@
   display: flex;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  position: relative; /* якорь для тултипов кнопок */
+}
+
+/* Тултип-сноска над футером (позиционируется от футера,
+   чтобы не обрезался краями панели) */
+.docs-panel__footer-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 8px);
+  background: var(--bg-active);
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition);
+  z-index: 60;
+}
+.docs-panel__footer-btn[data-tip]:hover::after {
+  opacity: 1;
+  transition-delay: 0.35s;
 }
 
 .docs-panel__footer-btn {
@@ -315,9 +343,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   height: 36px;
-  font-size: 12px;
+  padding: 0 2px;
+  font-size: 11px;
+  white-space: nowrap;
   color: var(--text-muted);
   transition: color var(--transition), background var(--transition);
 }
