@@ -24,6 +24,11 @@
   flex: 0 0 auto;
 }
 
+/* Распорка вместо имени файла на мобильном */
+.header-spacer {
+  flex: 1;
+}
+
 .file-name {
   flex: 1;
   text-align: center;

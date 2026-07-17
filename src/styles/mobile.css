@@ -30,7 +30,7 @@
 
   /* ── Редактор ── */
   .editor-wrap {
-    padding: 20px 14px 32px;
+    padding: 20px 14px calc(32px + env(safe-area-inset-bottom, 0px));
   }
   .editor-content {
     padding-left: 0; /* место под метки H1–H6 не нужно */
@@ -44,53 +44,51 @@
     display: none;
   }
 
-  /* ── Тулбар: кнопки скроллятся, статистика ужата ── */
+  /* ── Нижний тулбар скрыт: его закрывает клавиатура.
+        Инструменты редактуры — в шапке, остальное — под гаечным ключом ── */
   .toolbar {
-    padding: 0 8px calc(env(safe-area-inset-bottom, 0px)) 8px;
-    height: calc(40px + env(safe-area-inset-bottom, 0px));
-    gap: 8px;
-  }
-  .toolbar-left {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex: 1;
-    min-width: 0;
-  }
-  .toolbar-left::-webkit-scrollbar {
     display: none;
   }
-  .toolbar-btn {
-    flex-shrink: 0;
+
+  /* Шапка: инструменты редактуры + меню, всё в один ряд */
+  .app-header {
+    gap: 0;
   }
-  .toolbar-sep {
+  .header-right .toolbar-btn {
     flex-shrink: 0;
+    color: var(--text-muted);
   }
-  .toolbar-stat-dim {
-    display: none; /* «(без пробелов)» не влезает */
+  .header-right .toolbar-btn.active {
+    color: var(--accent);
+  }
+  .header-right .toolbar-btn--label {
+    padding: 0 4px 0 6px;
   }
 
   /* ── Боковые панели → оверлеи поверх текста ── */
   .docs-panel {
     position: fixed;
     top: 40px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     left: 0;
     width: min(300px, 86vw);
     z-index: 30;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .buffer-panel {
     position: fixed;
     top: 40px;
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     right: 0;
     width: min(320px, 86vw);
     z-index: 30;
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .settings {
     width: min(300px, 86vw);
+    bottom: 0;
   }
 
   /* ── Диалоги по ширине экрана ── */

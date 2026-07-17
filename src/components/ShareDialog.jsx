@@ -6,9 +6,7 @@ import './ShareDialog.css'
 export default function ShareDialog({ onShare, isolationMode, onClose }) {
   const [status,   setStatus]   = useState('idle') // idle | loading | done | done_noshort | copy_failed | too_large | error
   const [password, setPassword] = useState('')
-  const [shorten,  setShorten]  = useState(false)
   const [link,     setLink]     = useState('')
-  const [fullLink, setFullLink] = useState('') // запасная полная ссылка при сокращении
 
   const handleShare = async () => {
     setStatus('loading')
@@ -19,11 +17,11 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
       setStatus(err.message === 'too_large' ? 'too_large' : 'error')
       return
     }
-    const full = url
 
-    // Сокращаем, если попросили; при неудаче оставляем полную ссылку
+    // Сокращаем всегда (кроме режима самоизоляции);
+    // при неудаче отдаём полную ссылку — она работает так же
     let shortFailed = false
-    if (shorten && !isolationMode) {
+    if (!isolationMode) {
       try {
         url = await shortenShareUrl(url)
       } catch {
@@ -32,7 +30,6 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
     }
 
     setLink(url)
-    setFullLink(url !== full ? full : '')
     try {
       await navigator.clipboard.writeText(url)
       setStatus(shortFailed ? 'done_noshort' : 'done')
@@ -46,42 +43,23 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
     <div className="share-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="share-dialog">
         <div className="share-header">
-          <span className="share-title">Поделиться</span>
+          <span className="share-title">Поделиться заметкой</span>
           <button className="share-close" onClick={onClose}><IconClose size={12} /></button>
         </div>
 
         <div className="share-body">
           <p className="share-desc">
-            Текст упакуется прямо в ссылку — никаких серверов и облаков.
-            Отправь ссылку кому нужно, и она откроется в Печатниках.
+            Вы получите ссылку на документ — без облачного хранения.
+            Отправьте её кому нужно, и заметка откроется в Печатниках.
           </p>
 
           <div className="share-limits">
             <span className="share-limits-title">Ограничения</span>
             <ul>
-              <li>Вмещается примерно 10 000 знаков текста</li>
-              <li>Без сокращения ссылка получается очень длинной — некоторые мессенджеры могут её не принять</li>
+              <li>Вмещается примерно 5 000 знаков</li>
               <li>Изображения и встроенные блоки в ссылку не попадают</li>
             </ul>
           </div>
-
-          {!isolationMode && (
-            <div className="share-readonly-row">
-              <div className="share-readonly-text">
-                <span className="share-readonly-label">Сократить ссылку</span>
-                <span className="share-readonly-desc">
-                  Через сервис TinyURL. Он видит только зашифрованный текст —
-                  ключ расшифровки остается в ссылке после # и на сервер не уходит.
-                </span>
-              </div>
-              <button
-                className={`share-toggle${shorten ? ' share-toggle--on' : ''}`}
-                onClick={() => setShorten(s => !s)}
-              >
-                <span className="share-toggle-knob" />
-              </button>
-            </div>
-          )}
 
           <div className="share-password">
             <label className="share-password-label">
@@ -119,7 +97,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
               </div>
               {status === 'done_noshort' && (
                 <p className="share-status share-status--error">
-                  Сократить не получилось (сервис недоступен) — скопирована полная ссылка.
+                  Сократить не получилось (сервис недоступен) — скопирована полная ссылка, она работает так же.
                 </p>
               )}
               <input
@@ -128,19 +106,6 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
                 value={link}
                 onFocus={e => e.target.select()}
               />
-              {fullLink && (
-                <>
-                  <p className="share-password-hint">
-                    Запасной вариант — полная ссылка (работает всегда, даже если сокращатель подведет):
-                  </p>
-                  <input
-                    className="share-password-input"
-                    readOnly
-                    value={fullLink}
-                    onFocus={e => e.target.select()}
-                  />
-                </>
-              )}
             </>
           )}
 
@@ -160,7 +125,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
 
           {status === 'too_large' && (
             <div className="share-status share-status--error">
-              Текст слишком большой — шеринг невозможен. Сократите документ или разбейте на части.
+              Текст слишком большой — не помещается в ссылку. Сократите документ или разбейте на части.
             </div>
           )}
 

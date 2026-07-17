@@ -4,7 +4,7 @@ import './Toolbar.css'
 
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6]
 
-function HeadingDropdown({ editor }) {
+function HeadingDropdown({ editor, direction = 'up' }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 
@@ -29,7 +29,7 @@ function HeadingDropdown({ editor }) {
         <span className="toolbar-heading-caret"><IconChevronRight size={9} /></span>
       </button>
       {open && (
-        <div className="toolbar-heading-menu">
+        <div className={`toolbar-heading-menu${direction === 'down' ? ' toolbar-heading-menu--down' : ''}`}>
           <button
             className={`toolbar-heading-item${!activeLevel ? ' toolbar-heading-item--active' : ''}`}
             onClick={() => { editor.chain().focus().setParagraph().run(); setOpen(false) }}
@@ -48,6 +48,49 @@ function HeadingDropdown({ editor }) {
         </div>
       )}
     </div>
+  )
+}
+
+// Инструменты редактуры для мобильной шапки: жирный, курсив, зачеркнутый,
+// ссылка, список и заголовки. Нижний тулбар на телефоне скрыт —
+// его закрывает клавиатура.
+export function MobileHeaderTools({ editor }) {
+  const [, forceUpdate] = useState(0)
+
+  useEffect(() => {
+    if (!editor) return
+    const update = () => forceUpdate(n => n + 1)
+    editor.on('update', update)
+    editor.on('selectionUpdate', update)
+    return () => { editor.off('update', update); editor.off('selectionUpdate', update) }
+  }, [editor])
+
+  if (!editor) return null
+
+  const btn = (action, label, icon, active) => (
+    <button
+      className={`toolbar-btn${active ? ' active' : ''}`}
+      onClick={action}
+      title={label}
+    >
+      {icon}
+    </button>
+  )
+
+  const handleLink = () => {
+    const currentUrl = editor.getAttributes('link').href || ''
+    window.dispatchEvent(new CustomEvent('pechatniki:link-dialog', { detail: { currentUrl } }))
+  }
+
+  return (
+    <>
+      {btn(() => editor.chain().focus().toggleBold().run(), 'Жирный', <IconBold />, editor.isActive('bold'))}
+      {btn(() => editor.chain().focus().toggleItalic().run(), 'Курсив', <IconItalic />, editor.isActive('italic'))}
+      {btn(() => editor.chain().focus().toggleStrike().run(), 'Зачеркнутый', <IconStrike />, editor.isActive('strike'))}
+      {btn(handleLink, 'Ссылка', <IconLink />, editor.isActive('link'))}
+      {btn(() => editor.chain().focus().toggleBulletList().run(), 'Список', <IconListUl />, editor.isActive('bulletList'))}
+      <HeadingDropdown editor={editor} direction="down" />
+    </>
   )
 }
 

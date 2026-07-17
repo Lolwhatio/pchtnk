@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Editor from './components/Editor'
-import Toolbar from './components/Toolbar'
+import Toolbar, { MobileHeaderTools } from './components/Toolbar'
 import Preview from './components/Preview'
 import TOC from './components/TOC'
 import Settings from './components/Settings'
@@ -12,7 +12,7 @@ import ShareDialog from './components/ShareDialog'
 import ShortcutsDialog from './components/ShortcutsDialog'
 import KbExportDialog from './components/KbExportDialog'
 import OverflowMenu from './components/OverflowMenu'
-import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter } from './components/icons'
+import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter, IconEmbedGeneric } from './components/icons'
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
@@ -57,7 +57,7 @@ const WELCOME_MD = `# Добро пожаловать в Печатники
 - **Проверка орфографии** через Яндекс.Спеллер (в меню инструментов, ⌘⇧Y).
 - **Деёизация** — заменит ё на е для текстов, где принята буква е.
 - **Документы и проекты** — все ваши тексты живут в панели слева (кнопка ≡).
-- **Поделиться** — текст шифруется и упаковывается прямо в ссылку, при желании с паролем.
+- **Поделиться заметкой** — документ превращается в ссылку без облачного хранения, при желании с паролем.
 - **Экспорт** — Markdown, PDF или вся база знаний одним файлом.
 
 ## Попробуйте прямо в этом документе
@@ -107,9 +107,27 @@ function getBootstrap() {
   return _bootstrap
 }
 
+// ── Мобильный экран ──────────────────────────────────────────────────────────
+// На телефоне нижний тулбар закрыт клавиатурой, поэтому инструменты
+// редактуры переезжают в шапку, а остальное — в меню под гаечным ключом.
+
+const MOBILE_QUERY = '(max-width: 700px)'
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const handler = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const isMobile = useIsMobile()
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [zenMode,      setZenMode]      = useState(false)
   const [showPreview,  setShowPreview]  = useState(false)
@@ -783,14 +801,16 @@ export default function App() {
             >
               <IconMenu />
             </button>
-            {/* § — оглавление */}
-            <button
-              className={`btn-icon${showTOC ? ' active' : ''}`}
-              onClick={() => setShowTOC(t => !t)}
-              title="Оглавление"
-            >
-              <IconTOC />
-            </button>
+            {/* § — оглавление (на мобильном — в меню инструментов) */}
+            {!isMobile && (
+              <button
+                className={`btn-icon${showTOC ? ' active' : ''}`}
+                onClick={() => setShowTOC(t => !t)}
+                title="Оглавление"
+              >
+                <IconTOC />
+              </button>
+            )}
             {/* ← Назад — появляется при навигации по @-ссылкам */}
             {navCanBack && (
               <button
@@ -803,7 +823,10 @@ export default function App() {
             )}
           </div>
 
-          {isEditingName ? (
+          {/* На мобильном имя файла не влезает — редактируется в панели документов */}
+          {isMobile ? (
+            <span className="header-spacer" />
+          ) : isEditingName ? (
             <input
               ref={nameInputRef}
               className="file-name file-name--editing"
@@ -823,9 +846,16 @@ export default function App() {
           )}
 
           <div className="header-right">
+            {/* Мобильный: инструменты редактуры прямо в шапке —
+                нижний тулбар закрывается клавиатурой */}
+            {isMobile && <MobileHeaderTools editor={editor} />}
             <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)"><IconTypograf /></button>
-            <button className={`btn-icon${showBuffer ? ' active' : ''}`} onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков"><IconTray /></button>
-            <button className={`btn-icon${zenMode ? ' active' : ''}`} onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)"><IconZen /></button>
+            {!isMobile && (
+              <>
+                <button className={`btn-icon${showBuffer ? ' active' : ''}`} onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков"><IconTray /></button>
+                <button className={`btn-icon${zenMode ? ' active' : ''}`} onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)"><IconZen /></button>
+              </>
+            )}
             <OverflowMenu
               icon={<IconWrench />}
               title="Инструменты"
@@ -845,21 +875,79 @@ export default function App() {
                   title: 'Заменить ё на е во всем тексте',
                   onClick: handleDeyo,
                 },
-                {
-                  key: 'shortcuts',
-                  icon: <IconKeyboard size={14} />,
-                  label: 'Горячие клавиши',
-                  title: 'Список горячих клавиш (⌘/)',
-                  onClick: () => setShowShortcuts(true),
-                },
+                ...(isMobile ? [
+                  {
+                    key: 'image',
+                    icon: <IconImg />,
+                    label: 'Изображение',
+                    onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image')),
+                  },
+                  {
+                    key: 'embed',
+                    icon: <IconEmbedGeneric size={14} />,
+                    label: 'Встроить (YouTube, Slides…)',
+                    onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed')),
+                  },
+                  {
+                    key: 'toc',
+                    icon: <IconTOC />,
+                    label: 'Оглавление',
+                    active: showTOC,
+                    onClick: () => setShowTOC(t => !t),
+                  },
+                  {
+                    key: 'buffer',
+                    icon: <IconTray size={14} />,
+                    label: 'Буфер черновиков',
+                    active: showBuffer,
+                    onClick: () => setShowBuffer(b => !b),
+                  },
+                  {
+                    key: 'share',
+                    icon: <IconShare />,
+                    label: 'Поделиться заметкой',
+                    onClick: () => setShowShare(true),
+                  },
+                  {
+                    key: 'export',
+                    icon: <IconExport />,
+                    label: 'Экспорт',
+                    onClick: () => setShowPreview(true),
+                  },
+                  {
+                    key: 'theme',
+                    icon: theme === 'dark' ? <IconSun /> : <IconMoon />,
+                    label: 'Сменить тему',
+                    onClick: () => setTheme(t => t === 'dark' ? 'light' : 'dark'),
+                  },
+                  {
+                    key: 'settings',
+                    icon: <IconGear />,
+                    label: 'Настройки',
+                    active: showTypograf,
+                    onClick: () => setShowTypograf(t => !t),
+                  },
+                ] : [
+                  {
+                    key: 'shortcuts',
+                    icon: <IconKeyboard size={14} />,
+                    label: 'Горячие клавиши',
+                    title: 'Список горячих клавиш (⌘/)',
+                    onClick: () => setShowShortcuts(true),
+                  },
+                ]),
               ]}
             />
-            <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться (зашифрованная ссылка)"><IconShare /></button>
-            <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт"><IconExport /></button>
-            <button className="btn-icon" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
-              {theme === 'dark' ? <IconSun /> : <IconMoon />}
-            </button>
-            <button className={`btn-icon${showTypograf ? ' active' : ''}`} onClick={() => setShowTypograf(t => !t)} title="Настройки"><IconGear /></button>
+            {!isMobile && (
+              <>
+                <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой"><IconShare /></button>
+                <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт"><IconExport /></button>
+                <button className="btn-icon" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
+                  {theme === 'dark' ? <IconSun /> : <IconMoon />}
+                </button>
+                <button className={`btn-icon${showTypograf ? ' active' : ''}`} onClick={() => setShowTypograf(t => !t)} title="Настройки"><IconGear /></button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -929,7 +1017,9 @@ export default function App() {
         )}
       </div>
 
-      {!showPreview && <Toolbar editor={editor} />}
+      {/* Нижний тулбар только на десктопе — на телефоне его закрывает клавиатура,
+          инструменты редактуры живут в шапке */}
+      {!showPreview && !isMobile && <Toolbar editor={editor} />}
 
       {zenMode && (
         <button className="zen-exit" onClick={() => setZenMode(false)} title="Выйти из Дзен (Esc)">✕</button>
@@ -1019,4 +1109,7 @@ function IconMoon() {
 }
 function IconShare() {
   return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11.5" cy="3" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><circle cx="3.5" cy="7.5" r="1.5"/><line x1="5" y1="7.5" x2="10" y2="3.8"/><line x1="5" y1="7.5" x2="10" y2="11.2"/></svg>
+}
+function IconImg() {
+  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><circle cx="5.5" cy="6" r="1.5"/><path d="M1 11l4-4 3 3 2-2 5 5"/></svg>
 }
