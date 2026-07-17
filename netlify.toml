@@ -2,12 +2,15 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "22"
+
 # Прокси на сокращатель ссылок — должен идти ДО SPA-редиректа.
 # Сюда попадает только ?d=… (зашифрованные данные); ключ во #fragment
-# браузер на сервер не отправляет.
+# браузер на сервер не отправляет. TinyURL принимает URL до ~12 000 знаков.
 [[redirects]]
   from = "/api/shorten"
-  to = "https://is.gd/create.php"
+  to = "https://tinyurl.com/api-create.php"
   status = 200
 
 [[redirects]]

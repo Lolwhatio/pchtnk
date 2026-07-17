@@ -8,6 +8,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
   const [password, setPassword] = useState('')
   const [shorten,  setShorten]  = useState(false)
   const [link,     setLink]     = useState('')
+  const [fullLink, setFullLink] = useState('') // запасная полная ссылка при сокращении
 
   const handleShare = async () => {
     setStatus('loading')
@@ -18,6 +19,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
       setStatus(err.message === 'too_large' ? 'too_large' : 'error')
       return
     }
+    const full = url
 
     // Сокращаем, если попросили; при неудаче оставляем полную ссылку
     let shortFailed = false
@@ -30,6 +32,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
     }
 
     setLink(url)
+    setFullLink(url !== full ? full : '')
     try {
       await navigator.clipboard.writeText(url)
       setStatus(shortFailed ? 'done_noshort' : 'done')
@@ -56,8 +59,8 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
           <div className="share-limits">
             <span className="share-limits-title">Ограничения</span>
             <ul>
-              <li>Работает только для коротких текстов — до ~5 000 слов</li>
-              <li>Ссылка очень длинная: превью в мессенджерах может выглядеть некрасиво, но работать будет</li>
+              <li>Вмещается примерно 10 000 знаков текста</li>
+              <li>Без сокращения ссылка получается очень длинной — некоторые мессенджеры могут её не принять</li>
               <li>Изображения и встроенные блоки в ссылку не попадают</li>
             </ul>
           </div>
@@ -67,7 +70,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
               <div className="share-readonly-text">
                 <span className="share-readonly-label">Сократить ссылку</span>
                 <span className="share-readonly-desc">
-                  Через сервис is.gd. Он видит только зашифрованный текст —
+                  Через сервис TinyURL. Он видит только зашифрованный текст —
                   ключ расшифровки остается в ссылке после # и на сервер не уходит.
                 </span>
               </div>
@@ -116,7 +119,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
               </div>
               {status === 'done_noshort' && (
                 <p className="share-status share-status--error">
-                  Сократить не получилось (текст длинный или сервис недоступен) — скопирована полная ссылка.
+                  Сократить не получилось (сервис недоступен) — скопирована полная ссылка.
                 </p>
               )}
               <input
@@ -125,6 +128,19 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
                 value={link}
                 onFocus={e => e.target.select()}
               />
+              {fullLink && (
+                <>
+                  <p className="share-password-hint">
+                    Запасной вариант — полная ссылка (работает всегда, даже если сокращатель подведет):
+                  </p>
+                  <input
+                    className="share-password-input"
+                    readOnly
+                    value={fullLink}
+                    onFocus={e => e.target.select()}
+                  />
+                </>
+              )}
             </>
           )}
 

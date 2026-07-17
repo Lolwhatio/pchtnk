@@ -14,9 +14,9 @@ export default defineConfig({
     // Зеркало netlify.toml: сокращатель ссылок в dev-режиме
     proxy: {
       '/api/shorten': {
-        target: 'https://is.gd',
+        target: 'https://tinyurl.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/shorten/, '/create.php'),
+        rewrite: (path) => path.replace(/^\/api\/shorten/, '/api-create.php'),
       },
     },
   },

@@ -198,6 +198,15 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     if (!params.get('d')) return
 
+    // Данные есть, а ключа во фрагменте нет — обычно значит, что сервис
+    // сокращения показал промежуточную страницу и потерял часть после #.
+    // Без ключа расшифровать нечего — объясняем, а не молчим.
+    if (!window.location.hash) {
+      window.alert('В ссылке не хватает ключа расшифровки — похоже, сервис сокращения его потерял. Попросите отправителя прислать полную ссылку.')
+      window.history.replaceState({}, '', window.location.pathname)
+      return
+    }
+
     decodeShareUrl().then(async result => {
       if (!result) return
 
