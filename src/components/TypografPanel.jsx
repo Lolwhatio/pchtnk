@@ -7,11 +7,11 @@ const RULE_GROUPS = [
     rules: [
       { name: 'common/punctuation/delDoublePunctuation', label: 'Удаление двойной пунктуации' },
       { name: 'common/punctuation/quote', label: 'Расстановка кавычек правильного вида' },
-      { name: 'ru/punctuation/quote', label: 'Русские кавычки «ёлочки»', locale: 'ru' },
+      { name: 'ru/punctuation/quote', label: 'Русские кавычки «елочки»', locale: 'ru' },
       { name: 'common/punctuation/apostrophe', label: 'Расстановка правильного апострофа' },
       { name: 'ru/punctuation/exclamation', label: '!! → !', locale: 'ru' },
       { name: 'ru/punctuation/exclamationQuestion', label: '!? → ?!', locale: 'ru' },
-      { name: 'common/punctuation/ellipsis', label: 'Замена трёх точек на многоточие' },
+      { name: 'common/punctuation/ellipsis', label: 'Замена трех точек на многоточие' },
     ]
   },
   {

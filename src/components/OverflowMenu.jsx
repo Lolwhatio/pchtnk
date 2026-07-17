@@ -3,7 +3,7 @@ import { IconDots } from './icons'
 import './OverflowMenu.css'
 
 // items: { key, icon, label, title?, disabled?, active?, onClick }[]
-export default function OverflowMenu({ items, icon, title = 'Ещё' }) {
+export default function OverflowMenu({ items, icon, title = 'Еще' }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 

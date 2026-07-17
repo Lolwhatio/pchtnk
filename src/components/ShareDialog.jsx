@@ -68,7 +68,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
                 <span className="share-readonly-label">Сократить ссылку</span>
                 <span className="share-readonly-desc">
                   Через сервис is.gd. Он видит только зашифрованный текст —
-                  ключ расшифровки остаётся в ссылке после # и на сервер не уходит.
+                  ключ расшифровки остается в ссылке после # и на сервер не уходит.
                 </span>
               </div>
               <button
@@ -150,7 +150,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
 
           {status === 'error' && (
             <div className="share-status share-status--error">
-              Ошибка. Попробуйте ещё раз.
+              Ошибка. Попробуйте еще раз.
             </div>
           )}
         </div>

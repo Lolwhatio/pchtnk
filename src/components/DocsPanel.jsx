@@ -228,7 +228,7 @@ export default function DocsPanel({
         <button
           className="docs-panel__footer-btn docs-panel__footer-btn--kb"
           onClick={onExportKb}
-          data-tip="Соберёт выбранные проекты в готовый HTML-сайт с оглавлением и ссылками между документами"
+          data-tip="Соберет выбранные проекты в готовый HTML-сайт с оглавлением и ссылками между документами"
         ><IconGlobe /> База знаний</button>
         <button
           className="docs-panel__footer-btn"

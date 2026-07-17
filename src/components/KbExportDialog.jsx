@@ -68,7 +68,7 @@ export default function KbExportDialog({ docs, projects = [], onConfirm, onClose
 
         <div className="kb-body">
           <p className="kb-desc">
-            Соберём выбранные документы в готовый HTML-сайт: главная страница,
+            Соберем выбранные документы в готовый HTML-сайт: главная страница,
             оглавление и рабочие ссылки между документами.
           </p>
 
@@ -98,7 +98,7 @@ export default function KbExportDialog({ docs, projects = [], onConfirm, onClose
             <p className="kb-name-hint">
               {!titleDirty && autoTitle
                 ? 'Подставили из проекта — можно поменять.'
-                : 'Попадёт на главную страницу, в боковое меню и в имя файла.'}
+                : 'Попадет на главную страницу, в боковое меню и в имя файла.'}
             </p>
           </div>
 
