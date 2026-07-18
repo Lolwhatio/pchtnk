@@ -28,3 +28,9 @@ release/
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify
+
+# Netlify CLI artifacts
+deno.lock

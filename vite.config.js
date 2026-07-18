@@ -10,14 +10,7 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_IS_ELECTRON': JSON.stringify(isElectron ? '1' : ''),
   },
-  server: {
-    // Зеркало netlify.toml: сокращатель ссылок в dev-режиме
-    proxy: {
-      '/api/shorten': {
-        target: 'https://tinyurl.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/shorten/, '/api-create.php'),
-      },
-    },
-  },
+  // Сокращатель ссылок живёт в netlify/functions — в чистом vite dev его нет,
+  // и шеринг честно отдаёт полную ссылку. Для локальной проверки функций:
+  // npx netlify dev (поднимет vite + функции на одном порту).
 })

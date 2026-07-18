@@ -44,6 +44,7 @@
     }
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.9",
     "@tiptap/extension-character-count": "^3.23.6",
     "@tiptap/extension-code-block": "^3.23.6",
     "@tiptap/extension-image": "^3.23.6",

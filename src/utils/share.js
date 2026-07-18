@@ -137,13 +137,13 @@ export async function decodeWithPassword(d, salt, password) {
 }
 
 // ── Сокращение ссылки ─────────────────────────────────────────────────────────
-// Сокращателю уходит ТОЛЬКО часть с зашифрованными данными (?d=…).
+// Собственный сокращатель на нашем же домене (netlify/functions):
+// серверу уходит ТОЛЬКО часть с зашифрованными данными (?d=…).
 // Ключ расшифровки живёт во #fragment: он не отправляется на сервер,
-// а при переходе по короткой ссылке браузер сам переносит фрагмент
-// на конечный адрес после редиректа.
-// /api/shorten проксируется на TinyURL (netlify.toml / vite.config.js).
-// TinyURL выбран потому, что принимает URL до ~12 000 знаков и отвечает
-// коротким адресом простым текстом (is.gd оказался ненадёжен).
+// а при переходе по короткой ссылке /s/<slug> браузер сам переносит
+// фрагмент на конечный адрес после 301-редиректа.
+// Сторонние сокращатели (is.gd, TinyURL) не подошли: то отказы,
+// то страница-заглушка вместо редиректа, теряющая фрагмент.
 
 export async function shortenShareUrl(fullUrl) {
   const hashIdx  = fullUrl.indexOf('#')
@@ -153,6 +153,6 @@ export async function shortenShareUrl(fullUrl) {
   const res = await fetch(`/api/shorten?url=${encodeURIComponent(base)}`)
   if (!res.ok) throw new Error('shorten_failed')
   const short = (await res.text()).trim()
-  if (!/^https:\/\/tinyurl\.com\/[\w-]+$/.test(short)) throw new Error('shorten_failed')
+  if (!short.startsWith(`${window.location.origin}/s/`)) throw new Error('shorten_failed')
   return short + fragment
 }

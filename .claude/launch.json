@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "pechatniki-netlify",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "netlify-cli", "dev", "--port", "8888"],
+      "port": 8888,
+      "autoPort": false
     }
   ]
 }

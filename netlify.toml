@@ -5,13 +5,13 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# Прокси на сокращатель ссылок — должен идти ДО SPA-редиректа.
-# Сюда попадает только ?d=… (зашифрованные данные); ключ во #fragment
-# браузер на сервер не отправляет. TinyURL принимает URL до ~12 000 знаков.
-[[redirects]]
-  from = "/api/shorten"
-  to = "https://tinyurl.com/api-create.php"
-  status = 200
+[functions]
+  directory = "netlify/functions"
+
+# Сокращатель ссылок — собственные функции (см. netlify/functions):
+#   /api/shorten — сохраняет зашифрованные данные, отдаёт /s/<slug>
+#   /s/<slug>   — 301 на /?d=<данные>; ключ во #fragment не покидает браузер
+# Маршруты функций имеют приоритет над SPA-редиректом ниже.
 
 [[redirects]]
   from = "/*"
