@@ -44,6 +44,22 @@
   background: var(--bg-hover);
 }
 
+/* ── Перетаскивание документов между проектами ──── */
+
+.docs-panel__item[draggable] {
+  cursor: grab;
+}
+.docs-panel__item[draggable]:active {
+  cursor: grabbing;
+}
+
+.docs-panel__project--dragover {
+  background: var(--bg-hover);
+  outline: 1px dashed var(--accent-dim);
+  outline-offset: -1px;
+  border-radius: 6px;
+}
+
 /* ── Список ─────────────────────────────────────── */
 
 .docs-panel__list {

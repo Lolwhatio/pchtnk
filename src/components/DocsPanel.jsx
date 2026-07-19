@@ -26,7 +26,14 @@ function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelet
   }, [showMover])
 
   return (
-    <div className={`docs-panel__item${isActive ? ' docs-panel__item--active' : ''}`}>
+    <div
+      className={`docs-panel__item${isActive ? ' docs-panel__item--active' : ''}`}
+      draggable
+      onDragStart={e => {
+        e.dataTransfer.setData('text/pechatniki-doc', doc.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+    >
       <button className="docs-panel__item-main" onClick={() => onSelect(doc.id)}>
         <div className="docs-panel__item-title">{doc.title || 'Без названия'}</div>
         <div className="docs-panel__item-date">{formatDate(doc.updatedAt)}</div>
@@ -79,6 +86,7 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
   const [collapsed, setCollapsed] = useState(false)
   const [editing, setEditing]     = useState(false)
   const [title, setTitle]         = useState(project.title)
+  const [dragOver, setDragOver]   = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => { if (editing) inputRef.current?.select() }, [editing])
@@ -91,7 +99,28 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
   }
 
   return (
-    <div className="docs-panel__project">
+    <div
+      className={`docs-panel__project${dragOver ? ' docs-panel__project--dragover' : ''}`}
+      onDragOver={e => {
+        if (!e.dataTransfer.types.includes('text/pechatniki-doc')) return
+        e.preventDefault()
+        e.stopPropagation()
+        e.dataTransfer.dropEffect = 'move'
+        setDragOver(true)
+      }}
+      onDragLeave={e => {
+        // Игнорируем «уходы» на собственные дочерние элементы
+        if (e.currentTarget.contains(e.relatedTarget)) return
+        setDragOver(false)
+      }}
+      onDrop={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragOver(false)
+        const id = e.dataTransfer.getData('text/pechatniki-doc')
+        if (id) onMove(id, project.id)
+      }}
+    >
       <div className="docs-panel__project-header">
         <button className="docs-panel__project-toggle" onClick={() => setCollapsed(c => !c)}>
           <span className={`docs-panel__project-arrow${collapsed ? '' : ' docs-panel__project-arrow--open'}`}><IconChevronRight size={10} /></span>
@@ -113,6 +142,9 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
           </button>
         )}
 
+        <button className="docs-panel__project-add" title="Переименовать проект" onClick={() => { setTitle(project.title); setEditing(true) }}>
+          <IconPencil />
+        </button>
         <button className="docs-panel__project-add" title="Новый документ в проекте" onClick={() => onNewInProject(project.id)}>
           <IconPlus />
         </button>
@@ -174,7 +206,20 @@ export default function DocsPanel({
         <button className="docs-panel__btn" onClick={onClose} title="Закрыть"><IconClose /></button>
       </div>
 
-      <div className="docs-panel__list">
+      <div
+        className="docs-panel__list"
+        onDragOver={e => {
+          // Сброс в «Без проекта» — если бросили мимо конкретного проекта
+          if (!e.dataTransfer.types.includes('text/pechatniki-doc')) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+        }}
+        onDrop={e => {
+          e.preventDefault()
+          const id = e.dataTransfer.getData('text/pechatniki-doc')
+          if (id) onMoveDoc(id, null)
+        }}
+      >
         {/* Проекты */}
         {projects.map(project => (
           <ProjectSection
@@ -245,6 +290,9 @@ function IconPlus() {
 }
 function IconClose() {
   return <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="1" y1="1" x2="10" y2="10"/><line x1="10" y1="1" x2="1" y2="10"/></svg>
+}
+function IconPencil() {
+  return <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 1.5a1.2 1.2 0 0 1 1.7 1.7L4 9.4l-2.3.6.6-2.3z"/></svg>
 }
 function IconFolder() {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3.5A1 1 0 0 1 2 2.5h2.5l1 1.5H10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5Z"/></svg>

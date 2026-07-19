@@ -78,9 +78,25 @@ const WELCOME_MD = `# Добро пожаловать в Печатники
 
 Этот документ можно удалить — или начать писать прямо в нем.`
 
+// Миграция: докам без флага manualTitle вычисляем его по факту —
+// если сохраненное название совпадает с автоназванием из содержимого
+// (или названия нет), значит пользователь его не трогал.
+function migrateManualTitles(docs) {
+  let changed = false
+  const out = docs.map(d => {
+    if (d.manualTitle !== undefined) return d
+    changed = true
+    const auto = titleFromJson(d.content)
+    const manual = !!d.title && d.title !== 'Без названия' && d.title !== auto
+    return { ...d, manualTitle: manual }
+  })
+  if (changed && out.length > 0) storeDocs(out)
+  return out
+}
+
 // Синхронно читаем из localStorage при старте
 function bootstrap() {
-  const all = loadDocs()
+  const all = migrateManualTitles(loadDocs())
   if (all.length > 0) {
     const curId = localStorage.getItem(CUR_KEY)
     const cur   = all.find(d => d.id === curId) || [...all].sort((a, b) => b.updatedAt - a.updatedAt)[0]
@@ -150,7 +166,8 @@ export default function App() {
   const [isDirty,    setIsDirty]    = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
   const nameInputRef = useRef(null)
-  const autoTitleRef = useRef(true)
+  // Название до начала ручного редактирования — чтобы понять, менял ли его пользователь
+  const nameEditStartRef = useRef('')
 
   // ── Документы ─────────────────────────────────────────────────────────────
   const [projects,     setProjects]     = useState(() => loadProjects())
@@ -249,14 +266,13 @@ export default function App() {
 
       const id     = genId()
       const title  = titleFromJson(doc) || 'Входящий документ'
-      const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now() }
+      const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
       flushDocs([newDoc, ...docsRef.current])
       editor.commands.setContent(doc)
       curIdRef.current = id
       setCurrentDocId(id)
       localStorage.setItem(CUR_KEY, id)
       setFileName(title)
-      autoTitleRef.current = false
       window.history.replaceState({}, '', window.location.pathname)
     })
   }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -273,10 +289,13 @@ export default function App() {
   }, [theme])
 
   // ── Авто-заголовок ────────────────────────────────────────────────────────
+  // Название следует за первой строкой документа, пока пользователь
+  // не переименует документ вручную (флаг manualTitle на самом документе).
   useEffect(() => {
     if (!editor) return
     const updateTitle = () => {
-      if (!autoTitleRef.current) return
+      const cur = docsRef.current.find(d => d.id === curIdRef.current)
+      if (cur?.manualTitle) return
       const json = editor.getJSON()
       const nodes = json.content || []
       const h1 = nodes.find(n => n.type === 'heading' && n.attrs?.level === 1)
@@ -289,6 +308,19 @@ export default function App() {
     updateTitle()
     return () => editor.off('update', updateTitle)
   }, [editor])
+
+  // Завершение ручного переименования: если название реально изменили —
+  // закрепляем его (авто-название для этого документа выключается)
+  const commitNameEdit = useCallback(() => {
+    setIsEditingName(false)
+    if (nameRef.current.trim() !== nameEditStartRef.current.trim()) {
+      flushDocs(docsRef.current.map(d =>
+        d.id === curIdRef.current
+          ? { ...d, title: nameRef.current.trim() || 'Без названия', manualTitle: true, updatedAt: Date.now() }
+          : d
+      ))
+    }
+  }, [flushDocs])
 
   // ── Фокус на инпут имени ──────────────────────────────────────────────────
   useEffect(() => {
@@ -328,14 +360,13 @@ export default function App() {
     saveNow?.()
     const id     = genId()
     const empty  = { type: 'doc', content: [{ type: 'paragraph' }] }
-    const newDoc = { id, title: 'Без названия', content: empty, createdAt: Date.now(), updatedAt: Date.now(), projectId }
+    const newDoc = { id, title: 'Без названия', content: empty, createdAt: Date.now(), updatedAt: Date.now(), projectId, manualTitle: false }
     flushDocs([newDoc, ...docsRef.current])
     editor?.commands.setContent(empty)
     curIdRef.current = id
     setCurrentDocId(id)
     localStorage.setItem(CUR_KEY, id)
     setFileName('Без названия')
-    autoTitleRef.current = true
     setIsDirty(false)
     setShowDocs(false)
   }, [editor, flushDocs, saveNow])
@@ -361,7 +392,6 @@ export default function App() {
     setCurrentDocId(id)
     localStorage.setItem(CUR_KEY, id)
     setFileName(doc.title || 'Без названия')
-    autoTitleRef.current = false
     setIsDirty(false)
     setShowDocs(false)
     setNavCanBack(navHistoryRef.current.length > 0)
@@ -380,7 +410,6 @@ export default function App() {
     setCurrentDocId(prevId)
     localStorage.setItem(CUR_KEY, prevId)
     setFileName(doc.title || 'Без названия')
-    autoTitleRef.current = false
     setIsDirty(false)
     setNavCanBack(navHistoryRef.current.length > 0)
   }, [editor, saveNow])
@@ -390,14 +419,13 @@ export default function App() {
     saveNow()
     const id      = genId()
     const empty   = { type: 'doc', content: [{ type: 'paragraph' }] }
-    const newDoc  = { id, title: 'Без названия', content: empty, createdAt: Date.now(), updatedAt: Date.now() }
+    const newDoc  = { id, title: 'Без названия', content: empty, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
     flushDocs([newDoc, ...docsRef.current])
     editor?.commands.setContent(empty)
     curIdRef.current = id
     setCurrentDocId(id)
     localStorage.setItem(CUR_KEY, id)
     setFileName('Без названия')
-    autoTitleRef.current = true
     setIsDirty(false)
     setShowDocs(false)
   }, [editor, saveNow, flushDocs])
@@ -414,7 +442,6 @@ export default function App() {
       setCurrentDocId(latest.id)
       localStorage.setItem(CUR_KEY, latest.id)
       setFileName(latest.title || 'Без названия')
-      autoTitleRef.current = false
       setIsDirty(false)
     }
   }, [editor, flushDocs])
@@ -523,12 +550,12 @@ export default function App() {
       const id    = genId()
       const title = file.name.replace(/\.(md|txt)$/i, '')
       const empty = { type: 'doc', content: [{ type: 'paragraph' }] }
-      flushDocs([{ id, title, content: empty, createdAt: Date.now(), updatedAt: Date.now() }, ...docsRef.current])
+      flushDocs([{ id, title, content: empty, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }, ...docsRef.current])
       editor?.commands.setContent(markdownToHtml(text))
       curIdRef.current = id
       setCurrentDocId(id)
       localStorage.setItem(CUR_KEY, id)
-      autoTitleRef.current = true
+      setFileName(title)
       setIsDirty(false)
     }
     input.click()
@@ -546,13 +573,13 @@ export default function App() {
       const id    = genId()
       const title = handle.name.replace(/\.(md|txt)$/i, '')
       const empty = { type: 'doc', content: [{ type: 'paragraph' }] }
-      flushDocs([{ id, title, content: empty, createdAt: Date.now(), updatedAt: Date.now() }, ...docsRef.current])
+      flushDocs([{ id, title, content: empty, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }, ...docsRef.current])
       editor?.commands.setContent(markdownToHtml(text))
       curIdRef.current = id
       setCurrentDocId(id)
       localStorage.setItem(CUR_KEY, id)
       setFileHandle(handle)
-      autoTitleRef.current = true
+      setFileName(title)
       setIsDirty(false)
     } catch { /* ignored — user cancelled or API unavailable */ }
   }, [editor, saveNow, flushDocs, handleOpenFallback])
@@ -832,15 +859,23 @@ export default function App() {
               className="file-name file-name--editing"
               value={fileName}
               onChange={e => setFileName(e.target.value)}
-              onBlur={() => { setIsEditingName(false); autoTitleRef.current = false }}
+              onBlur={commitNameEdit}
               onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === 'Escape') {
-                  setIsEditingName(false); autoTitleRef.current = false; e.preventDefault()
+                if (e.key === 'Enter') { commitNameEdit(); e.preventDefault() }
+                if (e.key === 'Escape') {
+                  // Отмена — возвращаем название, каким оно было
+                  setFileName(nameEditStartRef.current)
+                  setIsEditingName(false)
+                  e.preventDefault()
                 }
               }}
             />
           ) : (
-            <span className="file-name" onClick={() => setIsEditingName(true)} title="Нажмите, чтобы переименовать">
+            <span
+              className="file-name"
+              onClick={() => { nameEditStartRef.current = fileName; setIsEditingName(true) }}
+              title="Нажмите, чтобы переименовать"
+            >
               {fileName}{isDirty ? '  *' : ''}
             </span>
           )}
