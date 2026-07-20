@@ -4,6 +4,63 @@ import './Toolbar.css'
 
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6]
 
+// ── Эмодзи ───────────────────────────────────────────────────────────────────
+
+const EMOJI_GROUPS = [
+  { label: 'Лица', items: ['😀','😄','😂','🤣','😊','😉','😍','🥰','😘','😎','🤔','🤨','😏','😅','😇','🙃','😴','🥱','😳','🥺','😢','😭','😡','🤯','🤗','🤩','😬','🙄','😐','🫠'] },
+  { label: 'Жесты', items: ['👍','👎','👏','🙌','🤝','🙏','💪','👌','✌️','🤞','🤙','👉','👈','☝️','✋','🫶'] },
+  { label: 'Символы', items: ['❤️','💚','💔','✨','⭐','🔥','⚡','💥','💯','✅','❌','❗','❓','💡','🎯','🏆','🎉','🎁','📌','📎','🔗','📝','✏️','📚','💬','👀','🕐','📅','🚀','🌱'] },
+  { label: 'Разное', items: ['☕','🍕','🌞','🌧️','🌈','🐱','🐶','🦄','🌸','🍀'] },
+]
+
+function EmojiPicker({ editor }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const insert = (emoji) => {
+    editor.chain().focus().insertContent(emoji).run()
+    setOpen(false)
+  }
+
+  return (
+    <div className="emoji-wrap" ref={wrapRef}>
+      <button
+        className={`toolbar-btn${open ? ' active' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        title="Эмодзи"
+      >
+        <IconSmiley />
+      </button>
+      {open && (
+        <div className="emoji-menu">
+          {EMOJI_GROUPS.map(group => (
+            <div key={group.label} className="emoji-group">
+              <div className="emoji-group-label">{group.label}</div>
+              <div className="emoji-grid">
+                {group.items.map(e => (
+                  <button
+                    key={e}
+                    className="emoji-btn"
+                    onMouseDown={ev => ev.preventDefault()} /* не снимаем фокус с редактора */
+                    onClick={() => insert(e)}
+                  >{e}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function HeadingDropdown({ editor, direction = 'up' }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
@@ -148,6 +205,7 @@ export default function Toolbar({ editor }) {
 
         {btn(handleInsertImage, 'Изображение', <IconImage />, false)}
         {btn(handleInsertEmbed, 'Встроить (YouTube, Google Slides…)', <IconEmbed />, false)}
+        <EmojiPicker editor={editor} />
 
         <span className="toolbar-sep" />
 
@@ -172,6 +230,16 @@ export default function Toolbar({ editor }) {
   )
 }
 
+function IconSmiley() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="8" cy="8" r="6.5"/>
+      <circle cx="5.7" cy="6.5" r=".6" fill="currentColor" stroke="none"/>
+      <circle cx="10.3" cy="6.5" r=".6" fill="currentColor" stroke="none"/>
+      <path d="M5.2 9.6a3.5 3.5 0 0 0 5.6 0"/>
+    </svg>
+  )
+}
 function IconLink() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">

@@ -70,6 +70,55 @@
 /* Hide toolbar in zen */
 .app--zen .toolbar { display: none; }
 
+/* ── Эмодзи-пикер ─────────────────────────────────────────────────────────── */
+
+.emoji-wrap { position: relative; }
+
+.emoji-menu {
+  position: absolute;
+  bottom: 34px;
+  left: 0;
+  width: 268px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  padding: 8px;
+  z-index: 50;
+}
+
+.emoji-group + .emoji-group { margin-top: 6px; }
+
+.emoji-group-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 4px 4px;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1px;
+}
+
+.emoji-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  border-radius: 5px;
+  font-size: 17px;
+  line-height: 1;
+  transition: background var(--transition);
+}
+.emoji-btn:hover { background: var(--bg-hover); }
+
 /* ── Заголовок: dropdown вместо 4 отдельных кнопок H1-H4 ─────────────────── */
 
 .toolbar-heading-wrap { position: relative; }
