@@ -105,31 +105,54 @@ const ResizableImage = Node.create({
       alt:   { default: null },
       title: { default: null },
       width: { default: null }, // масштаб: отображаемая ширина картинки, px
-      cropW: { default: null }, // обрезка: видимая ширина окна, px (≤ width)
+      // Кадрирование: окно (cropW × cropH) со смещением (cropX, cropY)
+      // от левого верхнего угла картинки; null = без обрезки по этой оси
+      cropX: { default: null },
+      cropY: { default: null },
+      cropW: { default: null },
+      cropH: { default: null },
     }
   },
 
   parseHTML() {
+    const int = (el, name) => el.getAttribute(name) ? parseInt(el.getAttribute(name), 10) : null
     return [{ tag: 'img[src]', getAttrs: el => ({
       src:   el.getAttribute('src'),
       alt:   el.getAttribute('alt'),
       title: el.getAttribute('title'),
-      width: el.getAttribute('width') ? parseInt(el.getAttribute('width'), 10) : null,
-      cropW: el.getAttribute('data-crop-w') ? parseInt(el.getAttribute('data-crop-w'), 10) : null,
+      width: int(el, 'width'),
+      cropX: int(el, 'data-crop-x'),
+      cropY: int(el, 'data-crop-y'),
+      cropW: int(el, 'data-crop-w'),
+      cropH: int(el, 'data-crop-h'),
     }) }]
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const { cropW, ...rest } = HTMLAttributes
+    const { cropX, cropY, cropW, cropH, ...rest } = HTMLAttributes
     const attrs = { ...rest }
+    const hasCrop = cropX || cropY || cropW || cropH
     if (attrs.width) attrs.width = String(attrs.width)
+    if (cropX) attrs['data-crop-x'] = String(cropX)
+    if (cropY) attrs['data-crop-y'] = String(cropY)
     if (cropW) attrs['data-crop-w'] = String(cropW)
-    if (node.attrs.width) {
-      attrs.style = `width:${node.attrs.width}px;${cropW ? 'max-width:none;' : ''}`
-    }
-    // Обрезка видима и в экспорте: инлайновая обёртка с overflow hidden
-    if (cropW) {
-      return ['div', { class: 'img-crop', style: `width:${cropW}px;overflow:hidden;` }, ['img', mergeAttributes(attrs)]]
+    if (cropH) attrs['data-crop-h'] = String(cropH)
+    const imgStyle = [
+      node.attrs.width ? `width:${node.attrs.width}px` : '',
+      hasCrop ? 'max-width:none' : '',
+      cropX ? `margin-left:-${cropX}px` : '',
+      cropY ? `margin-top:-${cropY}px` : '',
+    ].filter(Boolean).join(';')
+    if (imgStyle) attrs.style = imgStyle
+    // Кадр видим и в экспорте: инлайновая обёртка с overflow hidden
+    if (hasCrop) {
+      const boxStyle = [
+        cropW ? `width:${cropW}px` : '',
+        cropH ? `height:${cropH}px` : '',
+        'max-width:100%',
+        'overflow:hidden',
+      ].filter(Boolean).join(';')
+      return ['div', { class: 'img-crop', style: boxStyle }, ['img', mergeAttributes(attrs)]]
     }
     return ['img', mergeAttributes(attrs)]
   },
@@ -142,30 +165,38 @@ const ResizableImage = Node.create({
       wrap.className = 'img-wrap'
       wrap.setAttribute('contenteditable', 'false')
 
-      // Окно обрезки: прячет края картинки, ручки остаются снаружи
+      // Окно кадра: прячет края картинки, ручки остаются снаружи
       const cropBox = document.createElement('div')
       cropBox.className = 'img-cropbox'
 
       const img = document.createElement('img')
       img.className = 'img-node'
 
-      const applyAttrs = (attrs) => {
-        img.src   = attrs.src || ''
-        img.alt   = attrs.alt || ''
-        img.title = attrs.title || ''
-        img.style.width    = attrs.width ? `${attrs.width}px` : ''
-        img.style.maxWidth = attrs.cropW ? 'none' : ''
-        cropBox.style.width = attrs.cropW ? `${attrs.cropW}px` : ''
+      const applyAttrs = (a) => {
+        img.src   = a.src || ''
+        img.alt   = a.alt || ''
+        img.title = a.title || ''
+        const hasCrop = a.cropX || a.cropY || a.cropW || a.cropH
+        img.style.width      = a.width ? `${a.width}px` : ''
+        img.style.maxWidth   = hasCrop ? 'none' : ''
+        img.style.marginLeft = a.cropX ? `-${a.cropX}px` : ''
+        img.style.marginTop  = a.cropY ? `-${a.cropY}px` : ''
+        cropBox.style.width  = a.cropW ? `${a.cropW}px` : ''
+        cropBox.style.height = a.cropH ? `${a.cropH}px` : ''
       }
       applyAttrs(node.attrs)
 
-      const handleE = document.createElement('div')
-      handleE.className = 'img-handle img-handle--e'
-      handleE.title = 'Обрезать по ширине'
-
-      const handleSE = document.createElement('div')
-      handleSE.className = 'img-handle img-handle--se'
-      handleSE.title = 'Масштаб'
+      const mkHandle = (side, title) => {
+        const h = document.createElement('div')
+        h.className = `img-handle img-handle--${side}`
+        h.title = title
+        return h
+      }
+      const handleW  = mkHandle('w',  'Кадрировать слева')
+      const handleE  = mkHandle('e',  'Кадрировать справа')
+      const handleN  = mkHandle('n',  'Кадрировать сверху')
+      const handleS  = mkHandle('s',  'Кадрировать снизу')
+      const handleSE = mkHandle('se', 'Масштаб')
 
       const commit = (patch) => {
         const pos = typeof getPos === 'function' ? getPos() : null
@@ -191,44 +222,139 @@ const ResizableImage = Node.create({
         document.addEventListener('mouseup',   up)
       }
 
-      // Правая грань — обрезка: сужаем окно, картинка не масштабируется
+      // Кадр по оси: offset (скрыто с начала) + size (видимое окно).
+      // Если окно вернулось к полному размеру — обрезка по оси снимается.
+      const normAxis = (offset, size, full) => {
+        offset = Math.max(0, Math.round(offset))
+        size   = Math.round(size)
+        if (offset <= 2) offset = 0
+        if (offset === 0 && size >= Math.round(full) - 4) return { offset: null, size: null }
+        return { offset: offset || null, size }
+      }
+
+      // Текущее состояние кадра по горизонтали/вертикали
+      const cropState = () => {
+        const imgW = img.getBoundingClientRect().width
+        const imgH = img.getBoundingClientRect().height
+        const a = currentNode.attrs
+        return {
+          imgW, imgH,
+          x: a.cropX || 0,
+          y: a.cropY || 0,
+          w: a.cropW || imgW - (a.cropX || 0),
+          h: a.cropH || imgH - (a.cropY || 0),
+        }
+      }
+
+      // Правая грань: тянем правый край окна
       handleE.addEventListener('mousedown', (e) => {
+        const s = cropState()
         const startX = e.clientX
-        const imgW   = img.getBoundingClientRect().width
-        const startC = cropBox.getBoundingClientRect().width || imgW
-        const calc = (mx) => Math.max(60, Math.min(imgW, startC + mx - startX))
+        const calc = (mx) => Math.max(40, Math.min(s.imgW - s.x, s.w + mx - startX))
         startDrag(e,
           (mv) => { cropBox.style.width = `${calc(mv.clientX)}px` },
           (mu) => {
-            const c = Math.round(calc(mu.clientX))
-            // Дотянули почти до полной ширины — обрезка снята
-            commit({ cropW: c >= Math.round(imgW) - 4 ? null : c, width: currentNode.attrs.width ?? Math.round(imgW) })
+            const n = normAxis(s.x, calc(mu.clientX), s.imgW)
+            commit({ cropX: n.offset, cropW: n.size, width: currentNode.attrs.width ?? Math.round(s.imgW) })
           },
           'ew-resize')
       })
 
-      // Правый нижний угол — масштаб (пропорционально), обрезка масштабируется вместе
+      // Левая грань: сдвигаем левый край окна (offset растет, окно ужимается)
+      handleW.addEventListener('mousedown', (e) => {
+        const s = cropState()
+        const startX = e.clientX
+        const calc = (mx) => {
+          const nx = Math.max(0, Math.min(s.x + s.w - 40, s.x + mx - startX))
+          return { x: nx, w: s.w - (nx - s.x) }
+        }
+        startDrag(e,
+          (mv) => {
+            const c = calc(mv.clientX)
+            img.style.marginLeft = c.x ? `-${c.x}px` : ''
+            cropBox.style.width = `${c.w}px`
+          },
+          (mu) => {
+            const c = calc(mu.clientX)
+            const n = normAxis(c.x, c.w, s.imgW)
+            commit({ cropX: n.offset, cropW: n.size, width: currentNode.attrs.width ?? Math.round(s.imgW) })
+          },
+          'ew-resize')
+      })
+
+      // Нижняя грань: тянем нижний край окна
+      handleS.addEventListener('mousedown', (e) => {
+        const s = cropState()
+        const startY = e.clientY
+        const calc = (my) => Math.max(40, Math.min(s.imgH - s.y, s.h + my - startY))
+        startDrag(e,
+          (mv) => { cropBox.style.height = `${calc(mv.clientY)}px` },
+          (mu) => {
+            const n = normAxis(s.y, calc(mu.clientY), s.imgH)
+            commit({ cropY: n.offset, cropH: n.size, width: currentNode.attrs.width ?? Math.round(s.imgW) })
+          },
+          'ns-resize')
+      })
+
+      // Верхняя грань: сдвигаем верхний край окна
+      handleN.addEventListener('mousedown', (e) => {
+        const s = cropState()
+        const startY = e.clientY
+        const calc = (my) => {
+          const ny = Math.max(0, Math.min(s.y + s.h - 40, s.y + my - startY))
+          return { y: ny, h: s.h - (ny - s.y) }
+        }
+        startDrag(e,
+          (mv) => {
+            const c = calc(mv.clientY)
+            img.style.marginTop = c.y ? `-${c.y}px` : ''
+            cropBox.style.height = `${c.h}px`
+          },
+          (mu) => {
+            const c = calc(mu.clientY)
+            const n = normAxis(c.y, c.h, s.imgH)
+            commit({ cropY: n.offset, cropH: n.size, width: currentNode.attrs.width ?? Math.round(s.imgW) })
+          },
+          'ns-resize')
+      })
+
+      // Угол — масштаб (пропорционально), кадр масштабируется вместе
       handleSE.addEventListener('mousedown', (e) => {
         const startX = e.clientX
         const startW = img.getBoundingClientRect().width
-        const startC = currentNode.attrs.cropW
+        const a = { ...currentNode.attrs }
         const calc = (mx) => Math.max(60, Math.min(1600, startW + mx - startX))
+        const scaled = (v, f) => v ? Math.round(v * f) : null
         startDrag(e,
           (mv) => {
             const w = calc(mv.clientX)
+            const f = w / startW
             img.style.width = `${w}px`
-            if (startC) cropBox.style.width = `${Math.round(startC * w / startW)}px`
+            if (a.cropX) img.style.marginLeft = `-${Math.round(a.cropX * f)}px`
+            if (a.cropY) img.style.marginTop  = `-${Math.round(a.cropY * f)}px`
+            if (a.cropW) cropBox.style.width  = `${Math.round(a.cropW * f)}px`
+            if (a.cropH) cropBox.style.height = `${Math.round(a.cropH * f)}px`
           },
           (mu) => {
             const w = Math.round(calc(mu.clientX))
-            commit({ width: w, cropW: startC ? Math.round(startC * w / startW) : null })
+            const f = w / startW
+            commit({
+              width: w,
+              cropX: scaled(a.cropX, f),
+              cropY: scaled(a.cropY, f),
+              cropW: scaled(a.cropW, f),
+              cropH: scaled(a.cropH, f),
+            })
           },
           'nwse-resize')
       })
 
       cropBox.appendChild(img)
       wrap.appendChild(cropBox)
+      wrap.appendChild(handleW)
       wrap.appendChild(handleE)
+      wrap.appendChild(handleN)
+      wrap.appendChild(handleS)
       wrap.appendChild(handleSE)
 
       return {

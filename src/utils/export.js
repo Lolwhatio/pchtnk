@@ -48,11 +48,24 @@ function nodeToHtml(node, ctx) {
     case 'horizontalRule': return '<hr>\n'
     case 'hardBreak':      return '<br>'
     case 'image': {
-      const { src, alt, width, cropW } = node.attrs || {}
+      const { src, alt, width, cropX, cropY, cropW, cropH } = node.attrs || {}
       if (!src) return ''
-      const img = `<img src="${esc(src)}" alt="${esc(alt || '')}"${width ? ` style="width:${Number(width)}px;${cropW ? 'max-width:none' : 'max-width:100%'}"` : ''}>`
-      if (cropW) {
-        return `<figure class="kb-img" style="width:${Number(cropW)}px;max-width:100%;overflow:hidden">${img}</figure>\n`
+      const hasCrop = cropX || cropY || cropW || cropH
+      const imgStyle = [
+        width ? `width:${Number(width)}px` : '',
+        hasCrop ? 'max-width:none' : 'max-width:100%',
+        cropX ? `margin-left:-${Number(cropX)}px` : '',
+        cropY ? `margin-top:-${Number(cropY)}px` : '',
+      ].filter(Boolean).join(';')
+      const img = `<img src="${esc(src)}" alt="${esc(alt || '')}" style="${imgStyle}">`
+      if (hasCrop) {
+        const boxStyle = [
+          cropW ? `width:${Number(cropW)}px` : '',
+          cropH ? `height:${Number(cropH)}px` : '',
+          'max-width:100%',
+          'overflow:hidden',
+        ].filter(Boolean).join(';')
+        return `<figure class="kb-img" style="${boxStyle}">${img}</figure>\n`
       }
       return `<figure class="kb-img">${img}</figure>\n`
     }
