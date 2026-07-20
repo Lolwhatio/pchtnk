@@ -12,10 +12,19 @@ export default function DocLinkPopup({ query, coords, docs, selectedIdx, onSelec
 
   if (!coords) return null
 
+  // Внизу экрана места нет — разворачиваем попап вверх от курсора,
+  // а высоту списка ужимаем под доступное место, чтобы он скроллился
+  const below  = window.innerHeight - coords.bottom - 12
+  const above  = coords.top - 12
+  const openUp = below < 180 && above > below
+  const maxList = Math.max(90, Math.min(220, (openUp ? above : below) - 40))
+
   const style = {
     position: 'fixed',
-    top:  coords.bottom + 6,
-    left: coords.left,
+    left: Math.max(8, Math.min(coords.left, window.innerWidth - 310)),
+    ...(openUp
+      ? { bottom: window.innerHeight - coords.top + 6 }
+      : { top: coords.bottom + 6 }),
   }
 
   return (
@@ -30,7 +39,7 @@ export default function DocLinkPopup({ query, coords, docs, selectedIdx, onSelec
           {query ? 'Нет совпадений' : 'Нет других документов'}
         </div>
       ) : (
-        <div className="dl-popup__list" ref={listRef}>
+        <div className="dl-popup__list" ref={listRef} style={{ maxHeight: maxList }}>
           {docs.map((doc, i) => (
             <button
               key={doc.id}

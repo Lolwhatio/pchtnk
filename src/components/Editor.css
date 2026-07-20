@@ -250,11 +250,27 @@
   line-height: 0;
 }
 
+/* Окно обрезки: прячет края картинки, само хватает ручки за пределами */
+.img-cropbox {
+  overflow: hidden;
+  line-height: 0;
+  border-radius: 6px;
+  max-width: 100%;
+}
+
 .img-node {
   display: block;
   max-width: 100%;
   height: auto;
   border-radius: 6px;
+}
+
+/* Внутри обёртки у картинки не должно быть внешних отступов —
+   иначе ручки «отрываются» от неё (общий стиль img задаёт margin) */
+.editor-content .img-wrap img {
+  margin: 0;
+  display: block;
+  box-shadow: none;
 }
 
 .ProseMirror-selectednode .img-node {

@@ -68,8 +68,9 @@ export default function KbExportDialog({ docs, projects = [], onConfirm, onClose
 
         <div className="kb-body">
           <p className="kb-desc">
-            Соберем выбранные документы в готовый HTML-сайт: главная страница,
-            оглавление и рабочие ссылки между документами.
+            Соберем выбранные документы в один HTML-файл. Откройте его двойным
+            кликом — внутри главная страница, оглавление и рабочие ссылки
+            между документами.
           </p>
 
           <div className="kb-groups">

@@ -104,7 +104,8 @@ const ResizableImage = Node.create({
       src:   { default: null },
       alt:   { default: null },
       title: { default: null },
-      width: { default: null }, // px number or null (=auto/100%)
+      width: { default: null }, // масштаб: отображаемая ширина картинки, px
+      cropW: { default: null }, // обрезка: видимая ширина окна, px (≤ width)
     }
   },
 
@@ -114,12 +115,22 @@ const ResizableImage = Node.create({
       alt:   el.getAttribute('alt'),
       title: el.getAttribute('title'),
       width: el.getAttribute('width') ? parseInt(el.getAttribute('width'), 10) : null,
+      cropW: el.getAttribute('data-crop-w') ? parseInt(el.getAttribute('data-crop-w'), 10) : null,
     }) }]
   },
 
-  renderHTML({ HTMLAttributes }) {
-    const attrs = { ...HTMLAttributes }
+  renderHTML({ node, HTMLAttributes }) {
+    const { cropW, ...rest } = HTMLAttributes
+    const attrs = { ...rest }
     if (attrs.width) attrs.width = String(attrs.width)
+    if (cropW) attrs['data-crop-w'] = String(cropW)
+    if (node.attrs.width) {
+      attrs.style = `width:${node.attrs.width}px;${cropW ? 'max-width:none;' : ''}`
+    }
+    // Обрезка видима и в экспорте: инлайновая обёртка с overflow hidden
+    if (cropW) {
+      return ['div', { class: 'img-crop', style: `width:${cropW}px;overflow:hidden;` }, ['img', mergeAttributes(attrs)]]
+    }
     return ['img', mergeAttributes(attrs)]
   },
 
@@ -131,61 +142,92 @@ const ResizableImage = Node.create({
       wrap.className = 'img-wrap'
       wrap.setAttribute('contenteditable', 'false')
 
+      // Окно обрезки: прячет края картинки, ручки остаются снаружи
+      const cropBox = document.createElement('div')
+      cropBox.className = 'img-cropbox'
+
       const img = document.createElement('img')
-      img.src   = node.attrs.src || ''
-      img.alt   = node.attrs.alt || ''
-      img.title = node.attrs.title || ''
       img.className = 'img-node'
-      if (node.attrs.width) img.style.width = `${node.attrs.width}px`
+
+      const applyAttrs = (attrs) => {
+        img.src   = attrs.src || ''
+        img.alt   = attrs.alt || ''
+        img.title = attrs.title || ''
+        img.style.width    = attrs.width ? `${attrs.width}px` : ''
+        img.style.maxWidth = attrs.cropW ? 'none' : ''
+        cropBox.style.width = attrs.cropW ? `${attrs.cropW}px` : ''
+      }
+      applyAttrs(node.attrs)
 
       const handleE = document.createElement('div')
       handleE.className = 'img-handle img-handle--e'
+      handleE.title = 'Обрезать по ширине'
 
       const handleSE = document.createElement('div')
       handleSE.className = 'img-handle img-handle--se'
+      handleSE.title = 'Масштаб'
 
-      function startResize(e, mode) {
-        e.preventDefault()
-        const startX   = e.clientX
-        const startW   = img.getBoundingClientRect().width
-        const startH   = img.getBoundingClientRect().height
-        const aspect   = startH / startW
-
-        const overlay = document.createElement('div')
-        overlay.style.cssText = `position:fixed;inset:0;z-index:9999;cursor:${mode === 'se' ? 'nwse-resize' : 'ew-resize'};`
-        document.body.appendChild(overlay)
-
-        const onMove = (mv) => {
-          const newW = Math.max(60, Math.min(1600, startW + mv.clientX - startX))
-          img.style.width  = `${newW}px`
-          if (mode === 'se') img.style.height = `${Math.round(newW * aspect)}px`
-        }
-
-        const onUp = (mu) => {
-          document.removeEventListener('mousemove', onMove)
-          document.removeEventListener('mouseup',   onUp)
-          document.body.removeChild(overlay)
-          const newW = Math.max(60, Math.min(1600, startW + mu.clientX - startX))
-          img.style.height = ''
-          const pos = typeof getPos === 'function' ? getPos() : null
-          if (typeof pos === 'number') {
-            editor.view.dispatch(
-              editor.view.state.tr.setNodeMarkup(pos, undefined, {
-                ...currentNode.attrs,
-                width: Math.round(newW),
-              })
-            )
-          }
-        }
-
-        document.addEventListener('mousemove', onMove)
-        document.addEventListener('mouseup',   onUp)
+      const commit = (patch) => {
+        const pos = typeof getPos === 'function' ? getPos() : null
+        if (typeof pos !== 'number') return
+        editor.view.dispatch(
+          editor.view.state.tr.setNodeMarkup(pos, undefined, { ...currentNode.attrs, ...patch })
+        )
       }
 
-      handleE.addEventListener('mousedown',  e => startResize(e, 'e'))
-      handleSE.addEventListener('mousedown', e => startResize(e, 'se'))
+      function startDrag(e, onMove, onUp, cursor) {
+        e.preventDefault()
+        const overlay = document.createElement('div')
+        overlay.style.cssText = `position:fixed;inset:0;z-index:9999;cursor:${cursor};`
+        document.body.appendChild(overlay)
+        const move = (mv) => onMove(mv)
+        const up = (mu) => {
+          document.removeEventListener('mousemove', move)
+          document.removeEventListener('mouseup',   up)
+          document.body.removeChild(overlay)
+          onUp(mu)
+        }
+        document.addEventListener('mousemove', move)
+        document.addEventListener('mouseup',   up)
+      }
 
-      wrap.appendChild(img)
+      // Правая грань — обрезка: сужаем окно, картинка не масштабируется
+      handleE.addEventListener('mousedown', (e) => {
+        const startX = e.clientX
+        const imgW   = img.getBoundingClientRect().width
+        const startC = cropBox.getBoundingClientRect().width || imgW
+        const calc = (mx) => Math.max(60, Math.min(imgW, startC + mx - startX))
+        startDrag(e,
+          (mv) => { cropBox.style.width = `${calc(mv.clientX)}px` },
+          (mu) => {
+            const c = Math.round(calc(mu.clientX))
+            // Дотянули почти до полной ширины — обрезка снята
+            commit({ cropW: c >= Math.round(imgW) - 4 ? null : c, width: currentNode.attrs.width ?? Math.round(imgW) })
+          },
+          'ew-resize')
+      })
+
+      // Правый нижний угол — масштаб (пропорционально), обрезка масштабируется вместе
+      handleSE.addEventListener('mousedown', (e) => {
+        const startX = e.clientX
+        const startW = img.getBoundingClientRect().width
+        const startC = currentNode.attrs.cropW
+        const calc = (mx) => Math.max(60, Math.min(1600, startW + mx - startX))
+        startDrag(e,
+          (mv) => {
+            const w = calc(mv.clientX)
+            img.style.width = `${w}px`
+            if (startC) cropBox.style.width = `${Math.round(startC * w / startW)}px`
+          },
+          (mu) => {
+            const w = Math.round(calc(mu.clientX))
+            commit({ width: w, cropW: startC ? Math.round(startC * w / startW) : null })
+          },
+          'nwse-resize')
+      })
+
+      cropBox.appendChild(img)
+      wrap.appendChild(cropBox)
       wrap.appendChild(handleE)
       wrap.appendChild(handleSE)
 
@@ -194,11 +236,7 @@ const ResizableImage = Node.create({
         update(upd) {
           if (upd.type.name !== 'image') return false
           currentNode = upd
-          img.src   = upd.attrs.src   || ''
-          img.alt   = upd.attrs.alt   || ''
-          img.title = upd.attrs.title || ''
-          img.style.width  = upd.attrs.width ? `${upd.attrs.width}px` : ''
-          img.style.height = ''
+          applyAttrs(upd.attrs)
           return true
         },
       }

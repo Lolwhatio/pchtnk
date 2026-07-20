@@ -269,17 +269,17 @@ export default function DocsPanel({
           className="docs-panel__footer-btn"
           onClick={onExport}
           data-tip="Скачает вообще все записи: каждый документ в Markdown плюс архив для точного восстановления через «Импорт»"
-        ><IconExport /> Бэкап</button>
+        >Бэкап</button>
         <button
           className="docs-panel__footer-btn docs-panel__footer-btn--kb"
           onClick={onExportKb}
-          data-tip="Соберет выбранные проекты в готовый HTML-сайт с оглавлением и ссылками между документами"
-        ><IconGlobe /> База знаний</button>
+          data-tip="Соберет выбранные проекты в один HTML-файл: открывается двойным кликом, внутри оглавление и ссылки между документами"
+        >База знаний</button>
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
           data-tip="Восстановит документы из ZIP-бэкапа или добавит .md-файлы из стороннего архива"
-        ><IconImport /> Импорт</button>
+        >Импорт</button>
       </div>
     </div>
   )
@@ -296,13 +296,4 @@ function IconPencil() {
 }
 function IconFolder() {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3.5A1 1 0 0 1 2 2.5h2.5l1 1.5H10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5Z"/></svg>
-}
-function IconExport() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 1v7M3.5 5.5 6 8l2.5-2.5"/><path d="M1 9v1.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V9"/></svg>
-}
-function IconImport() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8V1M3.5 4.5 6 2l2.5 2.5"/><path d="M1 9v1.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V9"/></svg>
-}
-function IconGlobe() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="5"/><path d="M1 6h10M6 1c-1.5 1.8-2 3-2 5s.5 3.2 2 5M6 1c1.5 1.8 2 3 2 5s-.5 3.2-2 5"/></svg>
 }

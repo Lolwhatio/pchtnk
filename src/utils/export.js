@@ -47,11 +47,20 @@ function nodeToHtml(node, ctx) {
     }
     case 'horizontalRule': return '<hr>\n'
     case 'hardBreak':      return '<br>'
+    case 'image': {
+      const { src, alt, width, cropW } = node.attrs || {}
+      if (!src) return ''
+      const img = `<img src="${esc(src)}" alt="${esc(alt || '')}"${width ? ` style="width:${Number(width)}px;${cropW ? 'max-width:none' : 'max-width:100%'}"` : ''}>`
+      if (cropW) {
+        return `<figure class="kb-img" style="width:${Number(cropW)}px;max-width:100%;overflow:hidden">${img}</figure>\n`
+      }
+      return `<figure class="kb-img">${img}</figure>\n`
+    }
     case 'docLink': {
       const { id, label } = node.attrs || {}
       const linked = id && ctx.docsById[id]
       if (linked) {
-        return `<a href="${esc(ctx.filenameFor(linked))}" class="int-link">${esc(label || linked.title || id)}</a>`
+        return `<a href="${esc(ctx.hrefFor(linked))}" class="int-link">${esc(label || linked.title || id)}</a>`
       }
       return `<span class="int-link-broken">${esc(label || id || '')}</span>`
     }
@@ -84,36 +93,7 @@ function docToHtml(doc, ctx) {
   return nodesToHtml(doc.content.content || [], ctx)
 }
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-
-function buildSidebar(docs, activeId, filenameFor) {
-  const indexActive = activeId === null ? ' class="active"' : ''
-  const items = docs.map(doc => {
-    const active = doc.id === activeId ? ' class="active"' : ''
-    return `      <li><a href="${esc(filenameFor(doc))}"${active}>${esc(doc.title || 'Без названия')}</a></li>`
-  }).join('\n')
-  return `    <li><a href="index.html"${indexActive}>🏠 Главная</a></li>\n${items}`
-}
-
-// ── Index content ─────────────────────────────────────────────────────────────
-
-function buildIndexContent(docs, filenameFor, kbTitle) {
-  const fmt = (ts) => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
-  const cards = docs.map(doc => `
-    <a href="${esc(filenameFor(doc))}" class="card">
-      <div class="card-title">${esc(doc.title || 'Без названия')}</div>
-      <div class="card-date">${fmt(doc.updatedAt || doc.createdAt || Date.now())}</div>
-    </a>`).join('')
-  return `
-    <header class="page-header">
-      <h1>${esc(kbTitle)}</h1>
-      <p class="subtitle">${docs.length}&nbsp;${pluralDocs(docs.length)}</p>
-    </header>
-    <div class="card-grid">${cards}
-    </div>`
-}
-
-// ── CSS (embedded in every page) ──────────────────────────────────────────────
+// ── CSS ───────────────────────────────────────────────────────────────────────
 
 const KB_CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -171,6 +151,10 @@ body{
 }
 .article{max-width:680px}
 
+/* Страницы: видна только одна */
+.page{display:none}
+.page.visible{display:block}
+
 h1{font-family:system-ui,sans-serif;font-size:2.25em;font-weight:800;line-height:1.2;
    margin-bottom:.5em;color:#0f1c10}
 h2{font-family:system-ui,sans-serif;font-size:1.5em;font-weight:700;
@@ -199,6 +183,8 @@ pre code{background:none;padding:0;font-size:.875em}
 ul,ol{margin:.5em 0 1em 1.5em}
 li{margin-bottom:.3em}
 hr{border:none;border-top:1px solid #c0d4b8;margin:2.5em 0}
+.kb-img{margin:1.5em 0;border-radius:8px}
+.kb-img img{display:block;max-width:100%;height:auto;border-radius:8px}
 strong{font-weight:700}
 em{font-style:italic}
 s{text-decoration:line-through;opacity:.6}
@@ -242,81 +228,109 @@ th{background:#ddebd5;font-family:system-ui,sans-serif;font-size:.875em;font-wei
 }
 `
 
-// ── Page template ─────────────────────────────────────────────────────────────
+// Мини-роутер: показывает одну страницу по location.hash, подсвечивает
+// пункт меню. Всё внутри одного файла — работает с file:// без сервера.
+const KB_JS = `
+function kbRoute(){
+  var id = location.hash.slice(1) || 'home';
+  if (!document.getElementById(id)) id = 'home';
+  var pages = document.querySelectorAll('.page');
+  for (var i = 0; i < pages.length; i++) {
+    pages[i].classList.toggle('visible', pages[i].id === id);
+  }
+  var links = document.querySelectorAll('.nav-list a, .sidebar-brand');
+  for (var j = 0; j < links.length; j++) {
+    var href = links[j].getAttribute('href') || '';
+    links[j].classList.toggle('active', href === '#' + id || (id === 'home' && href === '#'));
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', kbRoute);
+kbRoute();
+`
 
-function buildPage({ title, contentHtml, sidebarItems, kbTitle }) {
-  return `<!DOCTYPE html>
+// ── Сборка единого файла ──────────────────────────────────────────────────────
+
+function buildSidebar(docs, hrefFor) {
+  const items = docs.map(doc =>
+    `      <li><a href="${esc(hrefFor(doc))}">${esc(doc.title || 'Без названия')}</a></li>`
+  ).join('\n')
+  return `    <li><a href="#">🏠 Главная</a></li>\n${items}`
+}
+
+function buildHomePage(docs, hrefFor, kbTitle) {
+  const fmt = (ts) => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  const cards = docs.map(doc => `
+    <a href="${esc(hrefFor(doc))}" class="card">
+      <div class="card-title">${esc(doc.title || 'Без названия')}</div>
+      <div class="card-date">${fmt(doc.updatedAt || doc.createdAt || Date.now())}</div>
+    </a>`).join('')
+  return `
+  <article class="article page" id="home">
+    <header class="page-header">
+      <h1>${esc(kbTitle)}</h1>
+      <p class="subtitle">${docs.length}&nbsp;${pluralDocs(docs.length)}</p>
+    </header>
+    <div class="card-grid">${cards}
+    </div>
+  </article>`
+}
+
+function buildDocPage(doc, ctx) {
+  return `
+  <article class="article page" id="d-${esc(doc.id)}">
+    <header class="page-header">
+      <h1>${esc(doc.title || 'Без названия')}</h1>
+    </header>
+    ${docToHtml(doc, ctx)}
+    <footer class="page-footer">
+      <a href="#">← К содержанию</a>
+    </footer>
+  </article>`
+}
+
+// ── Public export ─────────────────────────────────────────────────────────────
+// База знаний — ОДИН самодостаточный HTML-файл: открывается двойным
+// кликом, внутри главная с карточками, боковое меню и все документы
+// с рабочими ссылками между ними.
+
+export function exportKnowledgeBase(docs, kbTitle = 'База знаний') {
+  if (!docs?.length) return
+
+  const hrefFor  = (doc) => `#d-${doc.id}`
+  const docsById = Object.fromEntries(docs.map(d => [d.id, d]))
+  const sorted   = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
+  const ctx      = { docsById, hrefFor }
+
+  const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title>
+<title>${esc(kbTitle)}</title>
 <style>${KB_CSS}</style>
 </head>
 <body>
 <aside class="sidebar">
-  <a class="sidebar-brand" href="index.html">${esc(kbTitle)}</a>
+  <a class="sidebar-brand" href="#">${esc(kbTitle)}</a>
   <nav>
     <ul class="nav-list">
-${sidebarItems}
+${buildSidebar(sorted, hrefFor)}
     </ul>
   </nav>
 </aside>
 <main class="main">
-  <article class="article">
-${contentHtml}
-  </article>
-  <footer class="page-footer">
-    <a href="index.html">← К содержанию</a>
-  </footer>
+${buildHomePage(sorted, hrefFor, kbTitle)}
+${sorted.map(doc => buildDocPage(doc, ctx)).join('\n')}
 </main>
+<script>${KB_JS}</script>
 </body>
 </html>`
-}
-
-// ── Public export ─────────────────────────────────────────────────────────────
-
-export async function exportKnowledgeBase(docs, kbTitle = 'База знаний') {
-  if (!docs?.length) return
-
-  const { default: JSZip } = await import('jszip')
-  const zip = new JSZip()
-
-  const filenameFor = (doc) => `doc-${doc.id}.html`
-  const docsById    = Object.fromEntries(docs.map(d => [d.id, d]))
-  const sorted      = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
-  const ctx         = { docsById, filenameFor }
-
-  // Individual pages
-  for (const doc of sorted) {
-    const contentHtml  = docToHtml(doc, ctx)
-    const sidebarItems = buildSidebar(sorted, doc.id, filenameFor)
-    const page = buildPage({
-      title: `${doc.title || 'Без названия'} — ${kbTitle}`,
-      contentHtml: `
-    <header class="page-header">
-      <h1>${esc(doc.title || 'Без названия')}</h1>
-    </header>
-    ${contentHtml}`,
-      sidebarItems,
-      kbTitle,
-    })
-    zip.file(filenameFor(doc), page)
-  }
-
-  // Index page
-  const indexHtml = buildPage({
-    title: kbTitle,
-    contentHtml: buildIndexContent(sorted, filenameFor, kbTitle),
-    sidebarItems: buildSidebar(sorted, null, filenameFor),
-    kbTitle,
-  })
-  zip.file('index.html', indexHtml)
 
   const safeName = kbTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'База знаний'
-  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
   const url  = URL.createObjectURL(blob)
-  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeName}.zip` })
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeName}.html` })
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

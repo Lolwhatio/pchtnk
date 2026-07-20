@@ -16,7 +16,7 @@ function HeadingDropdown({ editor, direction = 'up' }) {
   }, [open])
 
   const activeLevel = HEADING_LEVELS.find(l => editor.isActive('heading', { level: l }))
-  const label = activeLevel ? `H${activeLevel}` : 'Текст'
+  const label = activeLevel ? `H${activeLevel}` : 'Заголовок'
 
   return (
     <div className="toolbar-heading-wrap" ref={wrapRef}>
