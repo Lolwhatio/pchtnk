@@ -189,3 +189,12 @@
   padding: 0 3px;
   line-height: 1.5;
 }
+
+.toolbar-heading-item--danger { color: #d9705a; }
+.toolbar-heading-item--danger:hover { background: rgba(217, 112, 90, 0.12); }
+
+.toolbar-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}

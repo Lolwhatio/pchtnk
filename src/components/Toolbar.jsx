@@ -228,6 +228,78 @@ export function MobileHeaderTools({ editor }) {
   )
 }
 
+// Таблица: вне таблицы — вставка 3×3, внутри — меню операций
+function TableControl({ editor }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const inTable = editor.isActive('table')
+
+  const run = (fn) => { fn(editor.chain().focus()).run(); setOpen(false) }
+
+  const insertTable = () =>
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+
+  if (!inTable) {
+    return (
+      <button className="toolbar-btn" onClick={insertTable} title="Вставить таблицу">
+        <IconTable />
+      </button>
+    )
+  }
+
+  const items = [
+    { label: 'Столбец слева',   fn: c => c.addColumnBefore() },
+    { label: 'Столбец справа',  fn: c => c.addColumnAfter() },
+    { label: 'Удалить столбец', fn: c => c.deleteColumn() },
+    { sep: true },
+    { label: 'Строку выше',     fn: c => c.addRowBefore() },
+    { label: 'Строку ниже',     fn: c => c.addRowAfter() },
+    { label: 'Удалить строку',  fn: c => c.deleteRow() },
+    { sep: true },
+    { label: 'Строка-заголовок', fn: c => c.toggleHeaderRow() },
+    { label: 'Объединить ячейки', fn: c => c.mergeCells() },
+    { label: 'Разбить ячейку',    fn: c => c.splitCell() },
+    { sep: true },
+    { label: 'Удалить таблицу', fn: c => c.deleteTable(), danger: true },
+  ]
+
+  return (
+    <div className="toolbar-heading-wrap" ref={wrapRef}>
+      <button
+        className="toolbar-btn active"
+        onClick={() => setOpen(o => !o)}
+        title="Таблица"
+      >
+        <IconTable />
+      </button>
+      {open && (
+        <div className="toolbar-heading-menu">
+          {items.map((it, i) => it.sep
+            ? <div key={i} className="toolbar-menu-sep" />
+            : (
+              <button
+                key={i}
+                className={`toolbar-heading-item${it.danger ? ' toolbar-heading-item--danger' : ''}`}
+                onClick={() => run(it.fn)}
+              >
+                {it.label}
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Toolbar({ editor }) {
   const [stats, setStats] = useState({ words: 0, chars: 0, charsNoSpace: 0 })
   const [, forceUpdate] = useState(0)
@@ -282,6 +354,7 @@ export default function Toolbar({ editor }) {
 
         {btn(handleInsertImage, 'Изображение', <IconImage />, false)}
         {btn(handleInsertEmbed, 'Встроить (YouTube, Google Slides…)', <IconEmbed />, false)}
+        <TableControl editor={editor} />
         <EmojiPicker editor={editor} />
 
         <span className="toolbar-sep" />
@@ -307,6 +380,17 @@ export default function Toolbar({ editor }) {
   )
 }
 
+function IconTable() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1"/>
+      <line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/>
+      <line x1="1.5" y1="10" x2="14.5" y2="10"/>
+      <line x1="6" y1="2.5" x2="6" y2="13.5"/>
+      <line x1="10.5" y1="2.5" x2="10.5" y2="13.5"/>
+    </svg>
+  )
+}
 function IconSmiley() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">

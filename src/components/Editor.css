@@ -412,3 +412,57 @@
 .editor-content a[href$=".xlsx"]::before { content: "📊 "; font-style: normal; }
 .editor-content a[href$=".zip"]::before,
 .editor-content a[href$=".rar"]::before  { content: "🗜 "; font-style: normal; }
+
+/* ── Таблицы ─────────────────────────────────────── */
+
+.editor-content .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1.2em 0;
+  overflow: hidden;
+}
+.editor-content .ProseMirror td,
+.editor-content .ProseMirror th {
+  border: 1px solid var(--border-light);
+  padding: 6px 10px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  min-width: 1em;
+}
+.editor-content .ProseMirror th {
+  background: var(--bg-active);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  text-align: left;
+}
+.editor-content .ProseMirror td > *,
+.editor-content .ProseMirror th > * { margin: 0; }
+
+/* Выделенная ячейка */
+.editor-content .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--selection-bg);
+  pointer-events: none;
+}
+
+/* Ручка изменения ширины колонки */
+.editor-content .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.editor-content .ProseMirror.resize-cursor { cursor: col-resize; }
+
+/* Горизонтальный скролл для широких таблиц на узких экранах */
+.editor-content .ProseMirror .tableWrapper {
+  overflow-x: auto;
+  margin: 1.2em 0;
+}

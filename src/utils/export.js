@@ -47,6 +47,18 @@ function nodeToHtml(node, ctx) {
     }
     case 'horizontalRule': return '<hr>\n'
     case 'hardBreak':      return '<br>'
+    case 'table': {
+      const rows = (node.content || []).filter(r => r.type === 'tableRow').map(row => {
+        const cells = (row.content || []).map(cell => {
+          const tag = cell.type === 'tableHeader' ? 'th' : 'td'
+          const cs = cell.attrs?.colspan > 1 ? ` colspan="${cell.attrs.colspan}"` : ''
+          const rs = cell.attrs?.rowspan > 1 ? ` rowspan="${cell.attrs.rowspan}"` : ''
+          return `<${tag}${cs}${rs}>${nodesToHtml(cell.content, ctx)}</${tag}>`
+        }).join('')
+        return `<tr>${cells}</tr>`
+      }).join('\n')
+      return `<table>\n${rows}\n</table>\n`
+    }
     case 'image': {
       const { src, alt, width, cropX, cropY, cropW, cropH } = node.attrs || {}
       if (!src) return ''

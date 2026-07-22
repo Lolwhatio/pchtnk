@@ -6,11 +6,18 @@ marked.setOptions({ breaks: true, gfm: true })
 // marked пропускает сырой HTML внутри markdown как есть — санитизируем результат,
 // иначе текст вроде `<img src=x onerror="...">` выполнится при рендере в Preview/экспорте.
 const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
-  'blockquote', 'pre', 'code', 'strong', 'em', 's', 'br', 'hr', 'a', 'img']
-const ALLOWED_ATTR = ['href', 'src', 'alt', 'title']
+  'blockquote', 'pre', 'code', 'strong', 'em', 's', 'br', 'hr', 'a', 'img',
+  'table', 'thead', 'tbody', 'tr', 'td', 'th']
+const ALLOWED_ATTR = ['href', 'src', 'alt', 'title', 'colspan', 'rowspan']
 
 export function markdownToHtml(md) {
   const html = marked.parse(md)
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR })
+}
+
+// Санитизация произвольного HTML (импорт .docx через mammoth, .html-файлы).
+// Тот же белый список тегов/атрибутов, что и для markdown.
+export function sanitizeHtml(html) {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR })
 }
 
@@ -55,6 +62,8 @@ function nodeToMd(node) {
     }
     case 'docLink':
       return `[[${node.attrs?.label || ''}]]`
+    case 'table':
+      return tableToMd(node)
     case 'horizontalRule':
       return `---\n\n`
     case 'hardBreak':
@@ -62,6 +71,30 @@ function nodeToMd(node) {
     default:
       return nodesToMd(node.content || [])
   }
+}
+
+// TipTap-таблица → GFM-таблица. Блочное содержимое ячеек сплющивается в текст,
+// разрывы строк заменяются на <br> (GFM их понимает), | экранируется.
+function cellText(cell) {
+  const md = nodesToMd(cell.content || []).trim().replace(/\n+/g, ' ')
+  return md.replace(/\|/g, '\\|') || ' '
+}
+
+function tableToMd(node) {
+  const rows = (node.content || []).filter(r => r.type === 'tableRow')
+  if (!rows.length) return ''
+  const cellsOf = (row) => (row.content || []).map(cellText)
+  const width = Math.max(...rows.map(r => (r.content || []).length))
+  const pad = (cells) => {
+    const c = [...cells]
+    while (c.length < width) c.push(' ')
+    return c
+  }
+  const header = pad(cellsOf(rows[0]))
+  const sep = header.map(() => '---')
+  const body = rows.slice(1).map(r => pad(cellsOf(r)))
+  const line = (cells) => `| ${cells.join(' | ')} |`
+  return [line(header), line(sep), ...body.map(line)].join('\n') + '\n\n'
 }
 
 function inlinesToText(nodes = []) {

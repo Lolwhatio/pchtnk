@@ -483,39 +483,53 @@ export default function App() {
     setShowKbExport(false)
   }, [])
 
-  // ── Импорт из ZIP ─────────────────────────────────────────────────────────
+  // ── Импорт из ZIP-бэкапа ──────────────────────────────────────────────────
+  async function importFromZip(file) {
+    const { default: JSZip } = await import('jszip')
+    const zip = await JSZip.loadAsync(file)
+    const backupFile = zip.file('_backup.json')
+
+    if (backupFile) {
+      // Точное восстановление из бэкапа (с id и датами)
+      return JSON.parse(await backupFile.async('string'))
+    }
+    // Сторонний архив: собираем .md-файлы
+    const out = []
+    const mdFiles = Object.values(zip.files).filter(f => !f.dir && f.name.endsWith('.md'))
+    for (const f of mdFiles) {
+      const text  = await f.async('string')
+      const title = f.name.replace(/\.md$/i, '').split('/').pop()
+      out.push({ id: genId(), title, content: markdownToHtml(text),
+        createdAt: Date.now(), updatedAt: Date.now(), manualTitle: true })
+    }
+    return out
+  }
+
+  // ── Импорт: ZIP, Word (.docx), HTML, Markdown, текст ──────────────────────
   const handleImportDocs = useCallback(() => {
     const input = document.createElement('input')
-    input.type   = 'file'
-    input.accept = '.zip'
+    input.type     = 'file'
+    input.multiple = true
+    input.accept   = '.zip,.docx,.html,.htm,.md,.markdown,.txt'
     input.onchange = async (e) => {
-      const file = e.target.files[0]
-      if (!file) return
+      const files = [...e.target.files]
+      if (!files.length) return
       try {
-        const { default: JSZip } = await import('jszip')
-        const zip = await JSZip.loadAsync(file)
-
         let imported = []
-        const backupFile = zip.file('_backup.json')
-
-        if (backupFile) {
-          // Точное восстановление из бэкапа
-          imported = JSON.parse(await backupFile.async('string'))
-        } else {
-          // Читаем .md файлы (сторонний архив)
-          const mdFiles = Object.values(zip.files).filter(f => !f.dir && f.name.endsWith('.md'))
-          for (const f of mdFiles) {
-            const text  = await f.async('string')
-            const title = f.name.replace(/\.md$/i, '').split('/').pop()
-            imported.push({
-              id: genId(), title,
-              content: markdownToHtml(text), // HTML — TipTap понимает оба формата
-              createdAt: Date.now(), updatedAt: Date.now(),
-            })
+        for (const file of files) {
+          if (file.name.toLowerCase().endsWith('.zip')) {
+            imported = imported.concat(await importFromZip(file))
+          } else {
+            const { fileToDocs } = await import('./utils/import')
+            const docsFromFile = await fileToDocs(file)
+            imported = imported.concat(docsFromFile.map(d => ({
+              id: genId(), title: d.title, content: d.content,
+              createdAt: Date.now(), updatedAt: Date.now(), manualTitle: true,
+            })))
           }
         }
 
-        if (imported.length === 0) return
+        if (imported.length === 0) { alert('Не удалось прочитать файлы'); return }
 
         const existingIds = new Set(docsRef.current.map(d => d.id))
         const fresh = imported.filter(d => !existingIds.has(d.id))

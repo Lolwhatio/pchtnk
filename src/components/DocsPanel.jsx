@@ -278,7 +278,7 @@ export default function DocsPanel({
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
-          data-tip="Восстановит документы из ZIP-бэкапа или добавит .md-файлы из стороннего архива"
+          data-tip="Загрузит ZIP-бэкап, базу знаний (HTML), Word (.docx), Markdown или текст. Можно выбрать несколько файлов"
         >Импорт</button>
       </div>
     </div>

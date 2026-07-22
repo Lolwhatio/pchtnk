@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
+import { TableKit } from '@tiptap/extension-table'
 import { Extension, Node, mergeAttributes } from '@tiptap/core'
 import { Plugin, PluginKey } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
@@ -688,6 +689,9 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       }),
       ResizableImage,
       EmbedExtension,
+      TableKit.configure({
+        table: { resizable: true, HTMLAttributes: { class: 'pm-table' } },
+      }),
       Placeholder.configure({
         placeholder: ({ editor: e }) => {
           const { doc } = e.state
