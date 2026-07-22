@@ -129,9 +129,23 @@
 .editor-content .ProseMirror h5::before { content: 'H5'; }
 .editor-content .ProseMirror h6::before { content: 'H6'; }
 
-/* Paragraph — без отступа между абзацами, как в оригинальной Optima */
+/* Paragraph — воздух между абзацами, иначе импортированный текст
+   читается сплошной стеной. Отступ только МЕЖДУ абзацами, поэтому
+   набор с одиночными переводами строки остаётся плотным. */
 .editor-content .ProseMirror p {
   margin: 0;
+}
+.editor-content .ProseMirror p + p,
+.editor-content .ProseMirror p + blockquote,
+.editor-content .ProseMirror blockquote + p {
+  margin-top: 0.75em;
+}
+
+/* Внутри списков, ячеек и цитат абзацы не разъезжаются */
+.editor-content .ProseMirror li p + p,
+.editor-content .ProseMirror td p + p,
+.editor-content .ProseMirror th p + p {
+  margin-top: 0.35em;
 }
 
 /* Strong / Em / Strike */

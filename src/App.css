@@ -97,6 +97,20 @@
 
 .app--zen .app-header { display: none; }
 
+/* ── Авто-затухание при наборе ─────────────────────────────────────────────
+   Печатаешь — панели тают, двинул мышь — возвращаются. */
+.app-header,
+.toolbar {
+  transition: opacity 0.45s ease;
+}
+.app--faded .app-header,
+.app--faded .toolbar {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-header, .toolbar { transition: none; }
+}
+
 /* ── Electron macOS: отступ под кнопки закрыть/свернуть/развернуть ── */
 .app--electron .app-header {
   padding-left: 76px;

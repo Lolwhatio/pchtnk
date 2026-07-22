@@ -140,6 +140,37 @@ function useIsMobile() {
   return isMobile
 }
 
+// ── Авто-затухание интерфейса ────────────────────────────────────────────────
+// Печатаешь — шапка и тулбар тают, двинул мышь — возвращаются.
+// Работает фоном всегда, а не только внутри Дзена.
+function useTypingFade(editor, enabled) {
+  const [faded, setFaded] = useState(false)
+  const fadedRef = useRef(false)
+
+  useEffect(() => {
+    if (!editor || !enabled) return
+    const fade = () => {
+      if (!fadedRef.current) { fadedRef.current = true; setFaded(true) }
+    }
+    const reveal = () => {
+      if (fadedRef.current) { fadedRef.current = false; setFaded(false) }
+    }
+    editor.on('update', fade)
+    window.addEventListener('mousemove', reveal, { passive: true })
+    window.addEventListener('touchstart', reveal, { passive: true })
+    return () => {
+      editor.off('update', fade)
+      window.removeEventListener('mousemove', reveal)
+      window.removeEventListener('touchstart', reveal)
+      // Сбрасываем при отписке, иначе затухание «залипнет» при возврате
+      fadedRef.current = false
+      setFaded(false)
+    }
+  }, [editor, enabled])
+
+  return enabled && faded
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -829,8 +860,14 @@ export default function App() {
       checkSpelling, handleNew, handleOpen, handleSave, handleSaveAs, handleApplyTypograf])
 
   // ── Рендер ────────────────────────────────────────────────────────────────
+  // Интерфейс не тает, пока открыта любая панель или диалог
+  const uiBusy = showDocs || showTOC || showBuffer || showTypograf || showPreview ||
+    showShare || showShortcuts || showKbExport || isEditingName ||
+    !!linkDialog || spellErrors.length > 0
+  const uiFaded = useTypingFade(editor, !zenMode && !isMobile && !uiBusy)
+
   return (
-    <div className={`app${zenMode ? ' app--zen' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
+    <div className={`app${zenMode ? ' app--zen' : ''}${uiFaded ? ' app--faded' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
       {!zenMode && !showPreview && (
         <div className="app-header">
           <div className="header-left">

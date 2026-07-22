@@ -300,18 +300,33 @@ function TableControl({ editor }) {
   )
 }
 
+function countOf(text) {
+  return {
+    words: text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0,
+    chars: text.length,
+    charsNoSpace: text.replace(/\s/g, '').length,
+  }
+}
+
 export default function Toolbar({ editor }) {
   const [stats, setStats] = useState({ words: 0, chars: 0, charsNoSpace: 0 })
+  // Счётчик выделенного фрагмента — null, когда ничего не выделено
+  const [selStats, setSelStats] = useState(null)
   const [, forceUpdate] = useState(0)
 
   useEffect(() => {
     if (!editor) return
     const update = () => {
-      const text = editor.getText()
-      const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0
-      const chars = text.length
-      const charsNoSpace = text.replace(/\s/g, '').length
-      setStats({ words, chars, charsNoSpace })
+      setStats(countOf(editor.getText()))
+
+      const { from, to, empty } = editor.state.selection
+      if (empty) {
+        setSelStats(null)
+      } else {
+        // textBetween с разделителями, иначе слова из соседних блоков слипаются
+        const sel = editor.state.doc.textBetween(from, to, ' ', ' ')
+        setSelStats(sel.trim() ? countOf(sel) : null)
+      }
       forceUpdate(n => n + 1)
     }
     editor.on('update', update)
@@ -368,6 +383,13 @@ export default function Toolbar({ editor }) {
       </div>
 
       <div className="toolbar-right">
+        {selStats && (
+          <span className="toolbar-stat toolbar-stat--sel" title="Выделенный фрагмент">
+            Выделено: {selStats.words.toLocaleString('ru')} сл.
+            {' · '}
+            {selStats.chars.toLocaleString('ru')} зн.
+          </span>
+        )}
         <span className="toolbar-stat">
           {stats.words.toLocaleString('ru')} сл.
           {' · '}

@@ -19,6 +19,16 @@
 .toolbar-right {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+/* Счётчик выделенного — акцентом, чтобы не путался с общим */
+.toolbar-stat--sel {
+  color: var(--accent);
+  background: var(--bg-active);
+  border-radius: 100px;
+  padding: 2px 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .toolbar-btn {
