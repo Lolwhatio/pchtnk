@@ -35,14 +35,31 @@ function looksLikeMarkdown(text) {
 const ALLOWED_TAGS = new Set(['p','h1','h2','h3','h4','h5','h6','ul','ol','li',
   'blockquote','pre','code','strong','em','s','br','a','img'])
 
+// Безопасна ли ссылка. Отсекаем javascript:, vbscript:, data:text/html и т.п.
+// Разрешаем http(s), mailto, tel, относительные/протокол-относительные ссылки
+// и data:image/* (для встроенных картинок).
+function isSafeUrl(value, forImage) {
+  const v = (value || '').trim()
+  if (!v) return false
+  // Схему опасно определять по «:» до первого / ? # — так браузер её и читает
+  const scheme = v.split(/[/?#]/, 1)[0]
+  if (!scheme.includes(':')) return true // относительная ссылка — безопасна
+  const proto = scheme.slice(0, scheme.indexOf(':')).toLowerCase().replace(/\s/g, '')
+  if (forImage) return proto === 'https' || proto === 'http' ||
+    (proto === 'data' && /^data:image\//i.test(v))
+  return ['http', 'https', 'mailto', 'tel'].includes(proto)
+}
+
 function sanitizeAiHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html')
 
   function clean(el) {
-    // Снимаем все атрибуты кроме href у ссылок и src у картинок
+    // Снимаем все атрибуты кроме href у ссылок и src у картинок,
+    // и только если схема ссылки безопасна
     for (const attr of [...el.attributes]) {
-      const keep = (el.tagName === 'A' && attr.name === 'href') ||
-                   (el.tagName === 'IMG' && attr.name === 'src')
+      const keep =
+        (el.tagName === 'A'   && attr.name === 'href' && isSafeUrl(attr.value, false)) ||
+        (el.tagName === 'IMG' && attr.name === 'src'  && isSafeUrl(attr.value, true))
       if (!keep) el.removeAttribute(attr.name)
     }
     for (const child of [...el.childNodes]) {
