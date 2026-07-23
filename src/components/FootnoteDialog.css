@@ -1,0 +1,126 @@
+.fn-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fn-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.fn-optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.fn-textarea {
+  resize: vertical;
+  min-height: 52px;
+  line-height: 1.5;
+  font-family: var(--font-ui);
+}
+
+.fn-hint {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.fn-delete {
+  margin-right: auto;
+  color: #d9705a;
+}
+.fn-delete:hover {
+  background: rgba(217, 112, 90, 0.12);
+}
+
+/* ── Повторное использование источника ───────────── */
+
+.fn-reuse { position: relative; }
+
+.fn-reuse__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-active);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  transition: background var(--transition), color var(--transition);
+}
+.fn-reuse__toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.fn-reuse__toggle--open { border-color: var(--accent-dim); }
+
+.fn-reuse__count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 100px;
+  background: var(--bg-panel);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fn-reuse__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+}
+
+.fn-reuse__item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  transition: background var(--transition);
+}
+.fn-reuse__item:hover { background: var(--bg-hover); }
+
+.fn-reuse__note {
+  font-size: 12.5px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.fn-reuse__url {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -11,7 +11,9 @@ import { DOMParser as ProseDOMParser } from 'prosemirror-model'
 import DocLinkPopup from './DocLinkPopup'
 import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
+import FootnoteDialog from './FootnoteDialog'
 import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
+import { collectFootnotes, uniqueSources } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
 import './Editor.css'
 
@@ -563,6 +565,124 @@ const DocLink = Node.create({
   },
 })
 
+// ── Сноски ────────────────────────────────────────────────────────────────────
+// Надстрочный номер в тексте + источник за ним, как в Word.
+// Номер НЕ хранится в документе — его рисует CSS-счётчик, поэтому
+// вставка сноски в середину автоматически перенумеровывает остальные.
+
+const Footnote = Node.create({
+  name: 'footnote',
+  group: 'inline',
+  inline: true,
+  atom: true,
+
+  addAttributes() {
+    return {
+      note: { default: '' }, // описание источника
+      url:  { default: '' }, // необязательная ссылка
+    }
+  },
+
+  parseHTML() {
+    return [{
+      tag: 'sup[data-footnote]',
+      getAttrs: el => ({
+        note: el.getAttribute('data-note') || '',
+        url:  el.getAttribute('data-url')  || '',
+      }),
+    }]
+  },
+
+  renderHTML({ node }) {
+    return ['sup', {
+      'data-footnote': '',
+      'data-note': node.attrs.note,
+      'data-url':  node.attrs.url,
+      class: 'footnote-ref',
+      title: node.attrs.note || node.attrs.url || 'Сноска',
+    }]
+  },
+
+  addCommands() {
+    return {
+      insertFootnote: (attrs = {}) => ({ chain }) =>
+        chain().focus().insertContent({ type: 'footnote', attrs }).run(),
+    }
+  },
+})
+
+// Блок «Источники» — сам собирается из сносок документа и живёт в актуальном
+// состоянии: добавил сноску — строка появилась, удалил — исчезла.
+const SourcesList = Node.create({
+  name: 'sourcesList',
+  group: 'block',
+  atom: true,
+
+  parseHTML() { return [{ tag: 'div[data-sources-list]' }] },
+  renderHTML() { return ['div', { 'data-sources-list': '', class: 'sources-list' }] },
+
+  addCommands() {
+    return {
+      insertSourcesList: () => ({ chain }) =>
+        chain().focus().insertContent({ type: 'sourcesList' }).run(),
+    }
+  },
+
+  addNodeView() {
+    return ({ editor }) => {
+      const dom = document.createElement('div')
+      dom.className = 'sources-list'
+      dom.setAttribute('contenteditable', 'false')
+
+      const render = () => {
+        const items = collectFootnotes(editor.state.doc)
+        dom.replaceChildren()
+
+        const title = document.createElement('div')
+        title.className = 'sources-list__title'
+        title.textContent = 'Источники'
+        dom.appendChild(title)
+
+        if (!items.length) {
+          const empty = document.createElement('div')
+          empty.className = 'sources-list__empty'
+          empty.textContent = 'Сносок пока нет — добавьте их кнопкой на панели'
+          dom.appendChild(empty)
+          return
+        }
+
+        const ol = document.createElement('ol')
+        ol.className = 'sources-list__items'
+        for (const it of items) {
+          const li = document.createElement('li')
+          // Ссылку ставим только если схема безопасна
+          if (it.url && isSafeUrl(it.url, false)) {
+            const a = document.createElement('a')
+            a.href = it.url
+            a.target = '_blank'
+            a.rel = 'noopener noreferrer'
+            a.textContent = it.note || it.url
+            li.appendChild(a)
+          } else {
+            li.textContent = it.note || it.url || '—'
+          }
+          ol.appendChild(li)
+        }
+        dom.appendChild(ol)
+      }
+
+      render()
+      editor.on('update', render)
+
+      return {
+        dom,
+        ignoreMutation: () => true,
+        destroy() { editor.off('update', render) },
+      }
+    }
+  },
+})
+
 // ── Шорткаты Печатников ───────────────────────────────────────────────────────
 
 const OptimaShortcuts = Extension.create({
@@ -615,6 +735,8 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   // ── Media / Embed диалоги ─────────────────────────────────────────────────
   const [mediaDialog, setMediaDialog] = useState(false)
   const [embedDialog, setEmbedDialog] = useState(false)
+  // Сноска: null | { existing, number, pos } — pos есть только при правке
+  const [footnoteDialog, setFootnoteDialog] = useState(null)
 
   const filteredDocs = useMemo(() => {
     if (!suggestion || !docs) return []
@@ -706,6 +828,8 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       }),
       ResizableImage,
       EmbedExtension,
+      Footnote,
+      SourcesList,
       TableKit.configure({
         table: { resizable: true, HTMLAttributes: { class: 'pm-table' } },
       }),
@@ -746,13 +870,46 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   useEffect(() => {
     const onImg   = () => setMediaDialog(true)
     const onEmbed = () => setEmbedDialog(true)
+    const onFootnote = () => setFootnoteDialog({ existing: null, number: 0, pos: null })
+    const onSources  = () => editor?.commands.insertSourcesList()
+    // Правка из панели сносок
+    const onEditFootnote = (e) => {
+      const { pos, number, note, url } = e.detail || {}
+      if (pos == null) return
+      setFootnoteDialog({ pos, number, existing: { note: note || '', url: url || '' } })
+    }
     window.addEventListener('pechatniki:insert-image', onImg)
     window.addEventListener('pechatniki:insert-embed', onEmbed)
+    window.addEventListener('pechatniki:insert-footnote', onFootnote)
+    window.addEventListener('pechatniki:insert-sources', onSources)
+    window.addEventListener('pechatniki:edit-footnote', onEditFootnote)
     return () => {
       window.removeEventListener('pechatniki:insert-image', onImg)
       window.removeEventListener('pechatniki:insert-embed', onEmbed)
+      window.removeEventListener('pechatniki:insert-footnote', onFootnote)
+      window.removeEventListener('pechatniki:insert-sources', onSources)
+      window.removeEventListener('pechatniki:edit-footnote', onEditFootnote)
     }
-  }, [])
+  }, [editor])
+
+  // ── Сноска: вставка / правка / удаление ──────────────────────────────────
+  const handleFootnoteConfirm = useCallback((attrs) => {
+    if (!editor) return
+    if (footnoteDialog?.pos != null) {
+      // Правка существующей — меняем атрибуты ноды на её позиции
+      editor.view.dispatch(
+        editor.view.state.tr.setNodeMarkup(footnoteDialog.pos, undefined, attrs)
+      )
+    } else {
+      editor.commands.insertFootnote(attrs)
+    }
+  }, [editor, footnoteDialog])
+
+  const handleFootnoteDelete = useCallback(() => {
+    if (!editor || footnoteDialog?.pos == null) return
+    const { pos } = footnoteDialog
+    editor.view.dispatch(editor.view.state.tr.delete(pos, pos + 1))
+  }, [editor, footnoteDialog])
 
   const handleInsertImage = useCallback(({ src }) => {
     editor?.chain().focus().insertContent({ type: 'image', attrs: { src } }).run()
@@ -830,8 +987,22 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   // ── Клик по doc-link → открыть документ ─────────────────────────────────
   const handleWrapClick = useCallback((e) => {
     const el = e.target.closest('[data-doc-id]')
-    if (el) { e.preventDefault(); onDocSelect?.(el.dataset.docId, true) }
-  }, [onDocSelect])
+    if (el) { e.preventDefault(); onDocSelect?.(el.dataset.docId, true); return }
+
+    // Клик по сноске — правим её источник
+    const fn = e.target.closest('sup[data-footnote]')
+    if (fn && editor) {
+      e.preventDefault()
+      const pos = editor.view.posAtDOM(fn, 0)
+      const all = collectFootnotes(editor.state.doc)
+      const idx = all.findIndex(it => it.pos === pos)
+      setFootnoteDialog({
+        pos,
+        number: idx >= 0 ? idx + 1 : all.length + 1,
+        existing: { note: fn.dataset.note || '', url: fn.dataset.url || '' },
+      })
+    }
+  }, [onDocSelect, editor])
 
   // ── Typewriter scroll в Дзен ─────────────────────────────────────────────
   useEffect(() => {
@@ -883,6 +1054,17 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
         <EmbedDialog
           onConfirm={handleInsertEmbed}
           onClose={() => setEmbedDialog(false)}
+        />
+      )}
+
+      {footnoteDialog && (
+        <FootnoteDialog
+          existing={footnoteDialog.existing}
+          number={footnoteDialog.number}
+          sources={uniqueSources(editor, footnoteDialog.pos)}
+          onConfirm={handleFootnoteConfirm}
+          onDelete={footnoteDialog.pos != null ? handleFootnoteDelete : undefined}
+          onClose={() => setFootnoteDialog(null)}
         />
       )}
     </div>

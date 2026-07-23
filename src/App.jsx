@@ -11,6 +11,7 @@ import BufferPanel from './components/BufferPanel'
 import ShareDialog from './components/ShareDialog'
 import ShortcutsDialog from './components/ShortcutsDialog'
 import KbExportDialog from './components/KbExportDialog'
+import FootnotesPanel from './components/FootnotesPanel'
 import OverflowMenu from './components/OverflowMenu'
 import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter, IconEmbedGeneric } from './components/icons'
 import Typograf from 'typograf'
@@ -190,6 +191,7 @@ export default function App() {
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showFootnotes, setShowFootnotes] = useState(false)
   const navHistoryRef = useRef([]) // стек id документов для кнопки «Назад»
   const [stopPhrases] = useState(() => loadStopPhrases())
   const [editor,     setEditor]     = useState(null)
@@ -862,7 +864,7 @@ export default function App() {
   // ── Рендер ────────────────────────────────────────────────────────────────
   // Интерфейс не тает, пока открыта любая панель или диалог
   const uiBusy = showDocs || showTOC || showBuffer || showTypograf || showPreview ||
-    showShare || showShortcuts || showKbExport || isEditingName ||
+    showShare || showShortcuts || showKbExport || showFootnotes || isEditingName ||
     !!linkDialog || spellErrors.length > 0
   const uiFaded = useTypingFade(editor, !zenMode && !isMobile && !uiBusy)
 
@@ -960,6 +962,14 @@ export default function App() {
                   label: 'Деёизация (ё→е)',
                   title: 'Заменить ё на е во всем тексте',
                   onClick: handleDeyo,
+                },
+                {
+                  key: 'footnotes',
+                  icon: <IconFootnoteList />,
+                  label: 'Сноски и источники',
+                  title: 'Список использованных сносок',
+                  active: showFootnotes,
+                  onClick: () => setShowFootnotes(v => !v),
                 },
                 ...(isMobile ? [
                   {
@@ -1061,6 +1071,17 @@ export default function App() {
 
         {showTOC && !zenMode && !showPreview && (
           <TOC editor={editor} onClose={() => setShowTOC(false)} />
+        )}
+
+        {showFootnotes && !zenMode && !showPreview && (
+          <FootnotesPanel
+            editor={editor}
+            onEdit={(item, number) => window.dispatchEvent(new CustomEvent('pechatniki:edit-footnote', {
+              detail: { pos: item.pos, number, note: item.note, url: item.url },
+            }))}
+            onInsertSources={() => window.dispatchEvent(new CustomEvent('pechatniki:insert-sources'))}
+            onClose={() => setShowFootnotes(false)}
+          />
         )}
 
         <div style={{ display: showPreview ? 'none' : 'contents' }}>
@@ -1195,6 +1216,9 @@ function IconMoon() {
 }
 function IconShare() {
   return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11.5" cy="3" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><circle cx="3.5" cy="7.5" r="1.5"/><line x1="5" y1="7.5" x2="10" y2="3.8"/><line x1="5" y1="7.5" x2="10" y2="11.2"/></svg>
+}
+function IconFootnoteList() {
+  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5h6M2 8h6M2 11.5h4"/><text x="10" y="7" fontSize="7" fontWeight="700" fill="currentColor" stroke="none" fontFamily="system-ui, sans-serif">1</text></svg>
 }
 function IconImg() {
   return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><circle cx="5.5" cy="6" r="1.5"/><path d="M1 11l4-4 3 3 2-2 5 5"/></svg>

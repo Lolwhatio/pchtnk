@@ -341,6 +341,7 @@ export default function Toolbar({ editor }) {
     window.dispatchEvent(new CustomEvent('pechatniki:link-dialog', { detail: { currentUrl } }))
   }, [editor])
 
+  const handleInsertFootnote = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-footnote'))
   const handleInsertImage = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image'))
   const handleInsertEmbed = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed'))
 
@@ -371,6 +372,7 @@ export default function Toolbar({ editor }) {
         {btn(handleInsertEmbed, 'Встроить (YouTube, Google Slides…)', <IconEmbed />, false)}
         <TableControl editor={editor} />
         <EmojiPicker editor={editor} />
+        {btn(handleInsertFootnote, 'Сноска — надстрочный номер с источником', <IconFootnote />, editor.isActive('footnote'))}
 
         <span className="toolbar-sep" />
 
@@ -402,6 +404,14 @@ export default function Toolbar({ editor }) {
   )
 }
 
+function IconFootnote() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4.5h6M2 8h6M2 11.5h4"/>
+      <text x="10" y="7" fontSize="7" fontWeight="700" fill="currentColor" stroke="none" fontFamily="system-ui, sans-serif">1</text>
+    </svg>
+  )
+}
 function IconTable() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">

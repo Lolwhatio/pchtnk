@@ -81,6 +81,25 @@ function nodeToHtml(node, ctx) {
       }
       return `<figure class="kb-img">${img}</figure>\n`
     }
+    case 'footnote': {
+      ctx.fnIndex = (ctx.fnIndex || 0) + 1
+      const n = ctx.fnIndex
+      const title = node.attrs?.note || node.attrs?.url || ''
+      return `<sup class="fn-ref" id="fnref-${esc(ctx.docId)}-${n}"><a href="#fn-${esc(ctx.docId)}-${n}" title="${esc(title)}">${n}</a></sup>`
+    }
+    case 'sourcesList': {
+      const items = ctx.footnotes || []
+      if (!items.length) return ''
+      const rows = items.map((it, i) => {
+        const n = i + 1
+        const label = esc(it.note || it.url || '—')
+        const body = it.url
+          ? `<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
+          : label
+        return `<li id="fn-${esc(ctx.docId)}-${n}">${body} <a class="fn-back" href="#fnref-${esc(ctx.docId)}-${n}" title="Вернуться к тексту">↩</a></li>`
+      }).join('\n')
+      return `<section class="sources"><h2 class="sources-title">Источники</h2>\n<ol class="sources-items">\n${rows}\n</ol>\n</section>\n`
+    }
     case 'docLink': {
       const { id, label } = node.attrs || {}
       const linked = id && ctx.docsById[id]
@@ -112,10 +131,24 @@ function inlinesToHtml(nodes, ctx) {
   }).join('')
 }
 
+// Сноски: номера позиционные, поэтому на каждый документ собираем список
+// заранее, а во время обхода ведём счётчик.
+function collectFootnotesJson(nodes, acc = []) {
+  for (const n of nodes || []) {
+    if (n.type === 'footnote') acc.push({ note: n.attrs?.note || '', url: n.attrs?.url || '' })
+    if (n.content) collectFootnotesJson(n.content, acc)
+  }
+  return acc
+}
+
 function docToHtml(doc, ctx) {
   if (!doc.content) return ''
   if (typeof doc.content === 'string') return doc.content // legacy HTML string
-  return nodesToHtml(doc.content.content || [], ctx)
+  const content = doc.content.content || []
+  ctx.footnotes = collectFootnotesJson(content)
+  ctx.fnIndex = 0
+  ctx.docId = doc.id
+  return nodesToHtml(content, ctx)
 }
 
 // ── CSS ───────────────────────────────────────────────────────────────────────
@@ -240,6 +273,18 @@ ul,ol{padding-left:1.5em;margin:.5em 0 .75em}
 li{margin:.2em 0}
 li::marker{color:var(--accent-dim)}
 hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+/* Сноски */
+.fn-ref{font-family:var(--font-ui);font-size:.62em;font-weight:600;vertical-align:super;line-height:1}
+.fn-ref a{color:var(--accent);text-decoration:none;background:var(--bg-active);border-radius:3px;padding:1px 3px}
+.fn-ref a:hover{background:var(--bg-hover)}
+.sources{margin:2.5em 0 1em;padding:18px 20px;border:1px solid var(--border);border-radius:8px;background:var(--bg-panel)}
+.sources-title{font-family:var(--font-ui);font-size:11px!important;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text-muted);margin:0 0 10px}
+.sources-items{margin:0;padding-left:1.4em;font-family:var(--font-ui);font-size:13.5px;line-height:1.6;color:var(--text-secondary)}
+.sources-items li{margin:.3em 0}
+.sources-items li::marker{color:var(--accent);font-variant-numeric:tabular-nums}
+.fn-back{color:var(--text-muted);text-decoration:none;margin-left:4px}
+.fn-back:hover{color:var(--accent)}
 .kb-img{margin:1.5em 0;border-radius:8px}
 .kb-img img{display:block;max-width:100%;height:auto;border-radius:8px}
 strong{font-weight:700;color:var(--text-primary)}

@@ -7,8 +7,9 @@ marked.setOptions({ breaks: true, gfm: true })
 // иначе текст вроде `<img src=x onerror="...">` выполнится при рендере в Preview/экспорте.
 const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
   'blockquote', 'pre', 'code', 'strong', 'em', 's', 'br', 'hr', 'a', 'img',
-  'table', 'thead', 'tbody', 'tr', 'td', 'th']
-const ALLOWED_ATTR = ['href', 'src', 'alt', 'title', 'colspan', 'rowspan']
+  'table', 'thead', 'tbody', 'tr', 'td', 'th', 'sup']
+const ALLOWED_ATTR = ['href', 'src', 'alt', 'title', 'colspan', 'rowspan',
+  'data-footnote', 'data-note', 'data-url']
 
 export function markdownToHtml(md) {
   const html = marked.parse(md)
@@ -21,13 +22,28 @@ export function sanitizeHtml(html) {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR })
 }
 
+// Сноски нумеруются позиционно, поэтому перед обходом собираем их список,
+// а во время обхода ведём счётчик — так номер в тексте и в списке совпадают.
+let fnList = []
+let fnIndex = 0
+
+function collectFootnotesJson(nodes, acc = []) {
+  for (const n of nodes || []) {
+    if (n.type === 'footnote') acc.push({ note: n.attrs?.note || '', url: n.attrs?.url || '' })
+    if (n.content) collectFootnotesJson(n.content, acc)
+  }
+  return acc
+}
+
 export function editorToMarkdown(editor) {
-  const json = editor.getJSON()
-  return nodesToMd(json.content || [])
+  return jsonToMarkdown(editor.getJSON())
 }
 
 export function jsonToMarkdown(json) {
-  return nodesToMd((json || {}).content || [])
+  const content = (json || {}).content || []
+  fnList = collectFootnotesJson(content)
+  fnIndex = 0
+  return nodesToMd(content)
 }
 
 function nodesToMd(nodes) {
@@ -64,6 +80,16 @@ function nodeToMd(node) {
       return `[[${node.attrs?.label || ''}]]`
     case 'table':
       return tableToMd(node)
+    case 'sourcesList': {
+      if (!fnList.length) return ''
+      const rows = fnList.map((it, i) => {
+        const body = it.url
+          ? (it.note ? `[${it.note}](${it.url})` : it.url)
+          : (it.note || '—')
+        return `${i + 1}. ${body}`
+      })
+      return `**Источники**\n\n${rows.join('\n')}\n\n`
+    }
     case 'horizontalRule':
       return `---\n\n`
     case 'hardBreak':
@@ -99,6 +125,7 @@ function tableToMd(node) {
 
 function inlinesToText(nodes = []) {
   return nodes.map(n => {
+    if (n.type === 'footnote') { fnIndex += 1; return `[^${fnIndex}]` }
     let text = n.text || nodesToMd(n.content || [])
     const marks = n.marks || []
     for (const m of marks) {
