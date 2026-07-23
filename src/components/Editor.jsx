@@ -13,7 +13,7 @@ import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
 import FootnoteDialog from './FootnoteDialog'
 import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
-import { collectFootnotes, uniqueSources } from '../utils/footnotes'
+import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
 import './Editor.css'
 
@@ -510,6 +510,25 @@ const EmbedExtension = Node.create({
   },
 })
 
+// ── Нумерация сносок: один источник — один номер ──────────────────────────────
+// Номер рисуется декорацией data-fn-num, а не CSS-счётчиком, чтобы повторные
+// ссылки на тот же источник несли тот же номер.
+
+const footnoteNumberKey = new PluginKey('footnoteNumber')
+const FootnoteNumberPlugin = new Plugin({
+  key: footnoteNumberKey,
+  props: {
+    decorations(state) {
+      const { refs } = numberFootnotes(state.doc)
+      if (!refs.length) return DecorationSet.empty
+      const decos = refs.map(r =>
+        Decoration.node(r.pos, r.pos + 1, { 'data-fn-num': String(r.number) })
+      )
+      return DecorationSet.create(state.doc, decos)
+    },
+  },
+})
+
 // ── Дзен: подсветка активного блока ──────────────────────────────────────────
 
 const zenFocusKey = new PluginKey('zenFocus')
@@ -635,7 +654,7 @@ const SourcesList = Node.create({
       dom.setAttribute('contenteditable', 'false')
 
       const render = () => {
-        const items = collectFootnotes(editor.state.doc)
+        const items = numberFootnotes(editor.state.doc).sources
         dom.replaceChildren()
 
         const title = document.createElement('div')
@@ -706,7 +725,7 @@ const OptimaShortcuts = Extension.create({
     }
   },
   addProseMirrorPlugins() {
-    return [ZenFocusPlugin]
+    return [ZenFocusPlugin, FootnoteNumberPlugin]
   }
 })
 
@@ -896,10 +915,16 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   const handleFootnoteConfirm = useCallback((attrs) => {
     if (!editor) return
     if (footnoteDialog?.pos != null) {
-      // Правка существующей — меняем атрибуты ноды на её позиции
-      editor.view.dispatch(
-        editor.view.state.tr.setNodeMarkup(footnoteDialog.pos, undefined, attrs)
-      )
+      // Правка источника обновляет ВСЕ его вхождения (один источник — одна запись)
+      const oldKey = sourceKey(footnoteDialog.existing?.note || '', footnoteDialog.existing?.url || '')
+      let tr = editor.state.tr
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'footnote' &&
+            sourceKey(node.attrs.note || '', node.attrs.url || '') === oldKey) {
+          tr = tr.setNodeMarkup(pos, undefined, attrs)
+        }
+      })
+      editor.view.dispatch(tr)
     } else {
       editor.commands.insertFootnote(attrs)
     }

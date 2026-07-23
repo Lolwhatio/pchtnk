@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { numberFootnotesJson, sourceKey } from './footnotes'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -22,18 +23,10 @@ export function sanitizeHtml(html) {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR })
 }
 
-// Сноски нумеруются позиционно, поэтому перед обходом собираем их список,
-// а во время обхода ведём счётчик — так номер в тексте и в списке совпадают.
-let fnList = []
-let fnIndex = 0
-
-function collectFootnotesJson(nodes, acc = []) {
-  for (const n of nodes || []) {
-    if (n.type === 'footnote') acc.push({ note: n.attrs?.note || '', url: n.attrs?.url || '' })
-    if (n.content) collectFootnotesJson(n.content, acc)
-  }
-  return acc
-}
+// Академическая нумерация: один источник — один номер. Перед обходом
+// строим карту «источник → номер», в тексте по ней проставляем [^N].
+let fnSources = []  // уникальные источники по порядку
+let fnMap = new Map()  // ключ источника → номер
 
 export function editorToMarkdown(editor) {
   return jsonToMarkdown(editor.getJSON())
@@ -41,8 +34,9 @@ export function editorToMarkdown(editor) {
 
 export function jsonToMarkdown(json) {
   const content = (json || {}).content || []
-  fnList = collectFootnotesJson(content)
-  fnIndex = 0
+  const { sources, map } = numberFootnotesJson(content)
+  fnSources = sources
+  fnMap = map
   return nodesToMd(content)
 }
 
@@ -81,12 +75,12 @@ function nodeToMd(node) {
     case 'table':
       return tableToMd(node)
     case 'sourcesList': {
-      if (!fnList.length) return ''
-      const rows = fnList.map((it, i) => {
+      if (!fnSources.length) return ''
+      const rows = fnSources.map((it) => {
         const body = it.url
           ? (it.note ? `[${it.note}](${it.url})` : it.url)
           : (it.note || '—')
-        return `${i + 1}. ${body}`
+        return `${it.number}. ${body}`
       })
       return `**Источники**\n\n${rows.join('\n')}\n\n`
     }
@@ -125,7 +119,10 @@ function tableToMd(node) {
 
 function inlinesToText(nodes = []) {
   return nodes.map(n => {
-    if (n.type === 'footnote') { fnIndex += 1; return `[^${fnIndex}]` }
+    if (n.type === 'footnote') {
+      const num = fnMap.get(sourceKey(n.attrs?.note, n.attrs?.url)) || '?'
+      return `[^${num}]`
+    }
     let text = n.text || nodesToMd(n.content || [])
     const marks = n.marks || []
     for (const m of marks) {

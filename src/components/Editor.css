@@ -483,12 +483,9 @@
 
 /* ── Сноски ──────────────────────────────────────── */
 
-/* Номер рисует счётчик, а не документ — вставка сноски
-   в середину текста автоматически перенумеровывает остальные */
-.editor-content .ProseMirror { counter-reset: footnote; }
-
+/* Номер приходит декорацией data-fn-num: один источник — один номер,
+   повторная ссылка на тот же источник несёт тот же номер */
 .editor-content .ProseMirror .footnote-ref {
-  counter-increment: footnote;
   font-family: var(--font-ui);
   font-size: 0.62em;
   font-weight: 600;
@@ -503,7 +500,7 @@
   user-select: none;
   transition: background var(--transition);
 }
-.editor-content .ProseMirror .footnote-ref::after { content: counter(footnote); }
+.editor-content .ProseMirror .footnote-ref::after { content: attr(data-fn-num); }
 .editor-content .ProseMirror .footnote-ref:hover { background: var(--bg-hover); }
 .editor-content .ProseMirror .footnote-ref.ProseMirror-selectednode {
   outline: 1px solid var(--accent);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconClose } from './icons'
-import { collectFootnotes } from '../utils/footnotes'
+import { numberFootnotes } from '../utils/footnotes'
 import './TOC.css'
 import './FootnotesPanel.css'
 
@@ -10,7 +10,7 @@ export default function FootnotesPanel({ editor, onEdit, onInsertSources, onClos
 
   useEffect(() => {
     if (!editor) return
-    const extract = () => setItems(collectFootnotes(editor.state.doc))
+    const extract = () => setItems(numberFootnotes(editor.state.doc).sources)
     editor.on('update', extract)
     extract()
     return () => editor.off('update', extract)
@@ -29,14 +29,14 @@ export default function FootnotesPanel({ editor, onEdit, onInsertSources, onClos
         {items.length === 0 && (
           <p className="toc-empty">Сносок пока нет</p>
         )}
-        {items.map((it, i) => (
-          <div className="fn-item" key={`${it.pos}-${i}`}>
+        {items.map((it) => (
+          <div className="fn-item" key={`${it.number}-${it.pos}`}>
             <button
               className="fn-item__main"
               onClick={() => jumpTo(it.pos)}
-              title="Перейти к сноске в тексте"
+              title="Перейти к первому упоминанию"
             >
-              <span className="fn-item__num">{i + 1}</span>
+              <span className="fn-item__num">{it.number}</span>
               <span className="fn-item__text">
                 {it.note || it.url || 'Без описания'}
                 {it.note && it.url && <span className="fn-item__url">{it.url}</span>}
@@ -44,8 +44,8 @@ export default function FootnotesPanel({ editor, onEdit, onInsertSources, onClos
             </button>
             <button
               className="fn-item__edit"
-              onClick={() => onEdit(it, i + 1)}
-              title="Изменить источник"
+              onClick={() => onEdit(it, it.number)}
+              title="Изменить источник (обновит все ссылки)"
             >
               <IconPencil />
             </button>

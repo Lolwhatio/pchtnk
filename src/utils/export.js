@@ -1,3 +1,5 @@
+import { numberFootnotesJson, sourceKey } from './footnotes'
+
 // ── HTML escape ───────────────────────────────────────────────────────────────
 
 function esc(s) {
@@ -82,21 +84,24 @@ function nodeToHtml(node, ctx) {
       return `<figure class="kb-img">${img}</figure>\n`
     }
     case 'footnote': {
-      ctx.fnIndex = (ctx.fnIndex || 0) + 1
-      const n = ctx.fnIndex
+      // Один источник — один номер; повтор ведёт к той же записи.
+      const key = sourceKey(node.attrs?.note, node.attrs?.url)
+      const n = ctx.fnMap.get(key) || '?'
+      const occ = (ctx.fnOcc.get(key) || 0) + 1  // отдельный id на каждое вхождение
+      ctx.fnOcc.set(key, occ)
       const title = node.attrs?.note || node.attrs?.url || ''
-      return `<sup class="fn-ref" id="fnref-${esc(ctx.docId)}-${n}"><a href="#fn-${esc(ctx.docId)}-${n}" title="${esc(title)}">${n}</a></sup>`
+      return `<sup class="fn-ref" id="fnref-${esc(ctx.docId)}-${n}-${occ}"><a href="#fn-${esc(ctx.docId)}-${n}" title="${esc(title)}">${n}</a></sup>`
     }
     case 'sourcesList': {
       const items = ctx.footnotes || []
       if (!items.length) return ''
-      const rows = items.map((it, i) => {
-        const n = i + 1
+      const rows = items.map((it) => {
+        const n = it.number
         const label = esc(it.note || it.url || '—')
         const body = it.url
           ? `<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
           : label
-        return `<li id="fn-${esc(ctx.docId)}-${n}">${body} <a class="fn-back" href="#fnref-${esc(ctx.docId)}-${n}" title="Вернуться к тексту">↩</a></li>`
+        return `<li id="fn-${esc(ctx.docId)}-${n}">${body} <a class="fn-back" href="#fnref-${esc(ctx.docId)}-${n}-1" title="Вернуться к тексту">↩</a></li>`
       }).join('\n')
       return `<section class="sources"><h2 class="sources-title">Источники</h2>\n<ol class="sources-items">\n${rows}\n</ol>\n</section>\n`
     }
@@ -131,22 +136,15 @@ function inlinesToHtml(nodes, ctx) {
   }).join('')
 }
 
-// Сноски: номера позиционные, поэтому на каждый документ собираем список
-// заранее, а во время обхода ведём счётчик.
-function collectFootnotesJson(nodes, acc = []) {
-  for (const n of nodes || []) {
-    if (n.type === 'footnote') acc.push({ note: n.attrs?.note || '', url: n.attrs?.url || '' })
-    if (n.content) collectFootnotesJson(n.content, acc)
-  }
-  return acc
-}
-
 function docToHtml(doc, ctx) {
   if (!doc.content) return ''
   if (typeof doc.content === 'string') return doc.content // legacy HTML string
   const content = doc.content.content || []
-  ctx.footnotes = collectFootnotesJson(content)
-  ctx.fnIndex = 0
+  // Академическая нумерация: один источник — один номер
+  const { sources, map } = numberFootnotesJson(content)
+  ctx.footnotes = sources   // уникальные источники для блока «Источники»
+  ctx.fnMap = map           // ключ источника → номер
+  ctx.fnOcc = new Map()     // счётчик вхождений на источник (для уникальных id)
   ctx.docId = doc.id
   return nodesToHtml(content, ctx)
 }
