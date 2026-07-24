@@ -268,7 +268,7 @@ export default function DocsPanel({
         <button
           className="docs-panel__footer-btn"
           onClick={onExport}
-          data-tip="Скачает вообще все записи: каждый документ в Markdown плюс архив для точного восстановления через «Импорт»"
+          data-tip="Скачает вообще все записи: каждый документ в Markdown плюс архив для точного восстановления через «Открыть»"
         >Бэкап</button>
         <button
           className="docs-panel__footer-btn docs-panel__footer-btn--kb"
@@ -278,8 +278,8 @@ export default function DocsPanel({
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
-          data-tip="Загрузит ZIP-бэкап, базу знаний (HTML), Word (.docx), Markdown или текст. Можно выбрать несколько файлов"
-        >Импорт</button>
+          data-tip="Откроет ZIP-бэкап, базу знаний (HTML), Word (.docx), Markdown или текст. Можно выбрать несколько файлов"
+        >Открыть</button>
       </div>
     </div>
   )

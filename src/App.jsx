@@ -570,12 +570,12 @@ export default function App() {
         const fresh = imported.filter(d => !existingIds.has(d.id))
         if (fresh.length > 0) {
           flushDocs([...docsRef.current, ...fresh])
-          alert(`Импортировано: ${fresh.length} документ(ов)`)
+          alert(`Загружено: ${fresh.length} документ(ов)`)
         } else {
           alert('Все документы уже есть в истории')
         }
       } catch (err) {
-        alert('Ошибка при импорте: ' + err.message)
+        alert('Ошибка при открытии: ' + err.message)
       }
     }
     input.click()
