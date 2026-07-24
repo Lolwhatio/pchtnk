@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import Editor from './components/Editor'
 import Toolbar, { MobileHeaderTools } from './components/Toolbar'
 import Preview from './components/Preview'
@@ -12,6 +12,7 @@ import ShareDialog from './components/ShareDialog'
 import ShortcutsDialog from './components/ShortcutsDialog'
 import KbExportDialog from './components/KbExportDialog'
 import FootnotesPanel from './components/FootnotesPanel'
+import RecentDocs from './components/RecentDocs'
 import OverflowMenu from './components/OverflowMenu'
 import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter, IconEmbedGeneric } from './components/icons'
 import Typograf from 'typograf'
@@ -195,6 +196,7 @@ export default function App() {
   const navHistoryRef = useRef([]) // стек id документов для кнопки «Назад»
   const [stopPhrases] = useState(() => loadStopPhrases())
   const [editor,     setEditor]     = useState(null)
+  const [editorEmpty, setEditorEmpty] = useState(true)
   const [fileHandle, setFileHandle] = useState(null)
   const [isDirty,    setIsDirty]    = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
@@ -868,6 +870,27 @@ export default function App() {
     !!linkDialog || spellErrors.length > 0
   const uiFaded = useTypingFade(editor, !zenMode && !isMobile && !uiBusy)
 
+  // Пустой ли текущий документ — для лаунчера недавних
+  useEffect(() => {
+    if (!editor) return
+    const update = () => setEditorEmpty(editor.isEmpty)
+    editor.on('update', update)
+    editor.on('create', update)
+    update()
+    return () => { editor.off('update', update); editor.off('create', update) }
+  }, [editor])
+
+  // Недавние документы для лаунчера: не текущий, с осмысленным названием
+  const recentDocs = useMemo(() => (
+    [...docs]
+      .filter(d => d.id !== currentDocId && d.title && d.title !== 'Без названия')
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 6)
+  ), [docs, currentDocId])
+
+  // Лаунчер держим в DOM (для плавного затухания), а видимостью правит editorEmpty
+  const mountRecent = !zenMode && !showPreview && !showDocs && recentDocs.length > 0
+
   return (
     <div className={`app${zenMode ? ' app--zen' : ''}${uiFaded ? ' app--faded' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
       {!zenMode && !showPreview && (
@@ -1127,6 +1150,14 @@ export default function App() {
       {/* Нижний тулбар только на десктопе — на телефоне его закрывает клавиатура,
           инструменты редактуры живут в шапке */}
       {!showPreview && !isMobile && <Toolbar editor={editor} />}
+
+      {mountRecent && (
+        <RecentDocs
+          docs={recentDocs}
+          visible={editorEmpty}
+          onSelect={(id) => handleSelectDoc(id)}
+        />
+      )}
 
       {zenMode && (
         <button className="zen-exit" onClick={() => setZenMode(false)} title="Выйти из Дзен (Esc)">✕</button>

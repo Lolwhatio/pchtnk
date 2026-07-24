@@ -858,7 +858,7 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
           if (doc.childCount !== 1) return ''
           const first = doc.firstChild
           if (!first || first.type.name !== 'paragraph' || first.textContent !== '') return ''
-          return 'Привет! Начни писать здесь…'
+          return 'Начните писать здесь…'
         },
         showOnlyCurrent: false,
       }),
