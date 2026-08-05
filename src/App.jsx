@@ -33,6 +33,8 @@ const CUR_KEY      = 'pechatniki-current-id'
 const PROJECTS_KEY = 'pechatniki-projects'
 const genId        = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
 
+const emptyDoc = () => ({ type: 'doc', content: [{ type: 'paragraph' }] })
+
 function loadDocs()           { try { return JSON.parse(localStorage.getItem(DOCS_KEY)     || '[]') } catch { return [] } }
 function storeDocs(docs)      { try { localStorage.setItem(DOCS_KEY,     JSON.stringify(docs))      } catch { /* ignore */ } }
 function loadProjects()       { try { return JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]') } catch { return [] } }
@@ -100,17 +102,25 @@ function migrateManualTitles(docs) {
 function bootstrap() {
   const all = migrateManualTitles(loadDocs())
   if (all.length > 0) {
-    const curId = localStorage.getItem(CUR_KEY)
-    const cur   = all.find(d => d.id === curId) || [...all].sort((a, b) => b.updatedAt - a.updatedAt)[0]
-    return { docs: all, currentId: cur.id, content: cur.content, title: cur.title || '' }
+    // Блокнот всегда под рукой: каждое открытие начинается с чистого листа,
+    // а прежние тексты ждут ссылкой внизу (RecentDocs). Новый документ живёт
+    // только в редакторе и попадает в историю с первым символом —
+    // иначе каждый запуск оставлял бы после себя пустышку.
+    return { docs: all, currentId: genId(), content: emptyDoc(), title: '' }
   }
   // Мигрируем старый черновик, если был
   let draft = null
   try { const s = localStorage.getItem('pechatniki-draft'); if (s) draft = JSON.parse(s) } catch { /* ignored */ }
 
+  if (draft) {
+    const doc = { id: genId(), title: titleFromJson(draft) || 'Без названия', content: draft, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
+    storeDocs([doc])
+    return { docs: [doc], currentId: genId(), content: emptyDoc(), title: '' }
+  }
+
   // Совсем первый запуск — показываем приветственный документ
-  const content = draft ?? markdownToHtml(WELCOME_MD)
-  const title   = draft ? (titleFromJson(draft) || 'Без названия') : 'Добро пожаловать в Печатники'
+  const content = markdownToHtml(WELCOME_MD)
+  const title   = 'Добро пожаловать в Печатники'
   const id      = genId()
   const doc     = { id, title, content, createdAt: Date.now(), updatedAt: Date.now() }
   storeDocs([doc])
@@ -344,18 +354,41 @@ export default function App() {
     return () => editor.off('update', updateTitle)
   }, [editor])
 
+  // Стартовый чистый лист ещё не значится в истории — заводим его там
+  // в тот момент, когда в нём появился текст или ему дали имя.
+  const isScratch = useCallback(
+    () => !docsRef.current.some(d => d.id === curIdRef.current),
+    []
+  )
+
+  const materializeCurrent = useCallback((extra = {}) => {
+    const now = Date.now()
+    flushDocs([{
+      id:          curIdRef.current,
+      title:       nameRef.current || 'Без названия',
+      content:     editor ? editor.getJSON() : emptyDoc(),
+      createdAt:   now,
+      updatedAt:   now,
+      manualTitle: false,
+      ...extra,
+    }, ...docsRef.current])
+    localStorage.setItem(CUR_KEY, curIdRef.current)
+  }, [editor, flushDocs])
+
   // Завершение ручного переименования: если название реально изменили —
   // закрепляем его (авто-название для этого документа выключается)
   const commitNameEdit = useCallback(() => {
     setIsEditingName(false)
-    if (nameRef.current.trim() !== nameEditStartRef.current.trim()) {
-      flushDocs(docsRef.current.map(d =>
-        d.id === curIdRef.current
-          ? { ...d, title: nameRef.current.trim() || 'Без названия', manualTitle: true, updatedAt: Date.now() }
-          : d
-      ))
-    }
-  }, [flushDocs])
+    if (nameRef.current.trim() === nameEditStartRef.current.trim()) return
+    const title = nameRef.current.trim() || 'Без названия'
+    // Имя дали ещё пустому холсту — это уже намерение завести документ
+    if (isScratch()) { materializeCurrent({ title, manualTitle: true }); return }
+    flushDocs(docsRef.current.map(d =>
+      d.id === curIdRef.current
+        ? { ...d, title, manualTitle: true, updatedAt: Date.now() }
+        : d
+    ))
+  }, [flushDocs, isScratch, materializeCurrent])
 
   // ── Фокус на инпут имени ──────────────────────────────────────────────────
   useEffect(() => {
@@ -365,31 +398,34 @@ export default function App() {
     }
   }, [isEditingName])
 
+  // ── Запись текущего документа ────────────────────────────────────────────
+  // Нетронутый стартовый холст не сохраняем — иначе каждое открытие
+  // приложения оставляло бы пустышку в списке недавних.
+  const persistCurrent = useCallback(() => {
+    if (!editor || !curIdRef.current) return
+    if (isScratch()) {
+      if (editor.isEmpty) return
+      materializeCurrent()
+      return
+    }
+    flushDocs(docsRef.current.map(d =>
+      d.id === curIdRef.current
+        ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
+        : d
+    ))
+  }, [editor, flushDocs, isScratch, materializeCurrent])
+
   // ── Сохранить текущий документ (дебаунс 600 мс) ──────────────────────────
   const scheduleSave = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
-      if (!editor || !curIdRef.current) return
-      const updated = docsRef.current.map(d =>
-        d.id === curIdRef.current
-          ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
-          : d
-      )
-      flushDocs(updated)
-    }, 600)
-  }, [editor, flushDocs])
+    timerRef.current = setTimeout(persistCurrent, 600)
+  }, [persistCurrent])
 
   // ── Немедленное сохранение перед переключением ───────────────────────────
   const saveNow = useCallback(() => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
-    if (!editor || !curIdRef.current) return
-    const updated = docsRef.current.map(d =>
-      d.id === curIdRef.current
-        ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
-        : d
-    )
-    flushDocs(updated)
-  }, [editor, flushDocs])
+    persistCurrent()
+  }, [persistCurrent])
 
   const handleNewInProject = useCallback((projectId) => {
     saveNow?.()
