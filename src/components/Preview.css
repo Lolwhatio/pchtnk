@@ -134,6 +134,29 @@
 
 .preview-content hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
 
+/* Таблицы — те же рамки, что и в редакторе, иначе предпросмотр
+   и всё, что из него экспортируется, теряет структуру */
+.preview-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2em 0;
+  table-layout: fixed;
+}
+.preview-content th,
+.preview-content td {
+  border: 1px solid var(--border-light);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.preview-content th {
+  background: var(--bg-active);
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+.preview-content td > *:last-child,
+.preview-content th > *:last-child { margin-bottom: 0; }
+
 /* ── Предпросмотр PDF ─────────────────────────────── */
 
 .pdf-preview {

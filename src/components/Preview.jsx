@@ -43,6 +43,10 @@ const PRINT_STYLES = `
   strong{font-weight:700}
   em{font-style:italic}
   s{text-decoration:line-through;opacity:.6}
+  table{border-collapse:collapse;width:100%;margin:1.5em 0;table-layout:fixed}
+  th,td{border:1px solid #c0d4b8;padding:.5em .7em;text-align:left;vertical-align:top}
+  th{background:#e8f0e4;font-family:system-ui,sans-serif;font-size:.9em;font-weight:600}
+  td>*:last-child,th>*:last-child{margin-bottom:0}
   span[data-doc-id]{
     font-style:italic;color:#3a7828;
     background:rgba(98,160,48,.08);padding:0 .25em;border-radius:3px;
@@ -76,6 +80,14 @@ const PDF_INLINE_STYLE = `
   strong{font-weight:700}
   em{font-style:italic}
   s{text-decoration:line-through;opacity:.6}
+  /* Рамки задаём с !important — их сносит общее правило * выше */
+  table{border-collapse:collapse;width:100%;margin:1.4em 0;table-layout:fixed}
+  th,td{border:1px solid #9db894 !important;padding:.45em .65em;
+        text-align:left;vertical-align:top}
+  th{background:#e8f0e4 !important;font-family:system-ui,sans-serif;
+     font-size:.9em;font-weight:600}
+  td>*:last-child,th>*:last-child{margin-bottom:0}
+  tr{page-break-inside:avoid}
 `
 
 export default function Preview({ editor, fileName, typograf, typografEnabled, onTypografToggle, onClose }) {

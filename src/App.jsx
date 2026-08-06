@@ -550,9 +550,9 @@ export default function App() {
   const [showKbExport, setShowKbExport] = useState(false)
 
   const handleKbConfirm = useCallback(({ docs: selectedDocs, title }) => {
-    exportKnowledgeBase(selectedDocs, title)
+    exportKnowledgeBase(selectedDocs, title, typografEnabled ? tp : null)
     setShowKbExport(false)
-  }, [])
+  }, [typografEnabled])
 
   // ── Импорт из ZIP-бэкапа ──────────────────────────────────────────────────
   async function importFromZip(file) {
