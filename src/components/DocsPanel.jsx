@@ -268,17 +268,17 @@ export default function DocsPanel({
         <button
           className="docs-panel__footer-btn"
           onClick={onExport}
-          data-tip="Скачает вообще все записи: каждый документ в Markdown плюс архив для точного восстановления через «Открыть»"
+          data-tip="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
         >Бэкап</button>
         <button
           className="docs-panel__footer-btn docs-panel__footer-btn--kb"
           onClick={onExportKb}
-          data-tip="Соберет выбранные проекты в один HTML-файл: открывается двойным кликом, внутри оглавление и ссылки между документами"
+          data-tip="Выбранные проекты — в один HTML-файл с оглавлением"
         >База знаний</button>
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
-          data-tip="Откроет ZIP-бэкап, базу знаний (HTML), Word (.docx), Markdown или текст. Можно выбрать несколько файлов"
+          data-tip="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
         >Открыть</button>
       </div>
     </div>

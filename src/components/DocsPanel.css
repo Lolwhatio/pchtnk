@@ -341,6 +341,9 @@
   padding: 7px 10px;
   font-size: 11px;
   line-height: 1.45;
+  /* кнопка задаёт nowrap — без сброса подсказка идёт одной строкой и обрезается */
+  white-space: normal;
+  text-align: left;
   font-family: var(--font-ui);
   color: var(--text-primary);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
