@@ -13,6 +13,7 @@ import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
 import FootnoteDialog from './FootnoteDialog'
 import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
+import { createHangingWordsPlugin } from '../hooks/useHangingWords'
 import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
 import './Editor.css'
@@ -745,6 +746,7 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
 
   // eslint-disable-next-line react-hooks/refs
   const stopWordsPlugin = useMemo(() => createStopWordsPlugin(phrasesRef), []) // phrasesRef is stable, plugin reads .current lazily
+  const hangingWordsPlugin = useMemo(() => createHangingWordsPlugin(), [])
 
   // ── suggestion state ──────────────────────────────────────────────────────
   const [suggestion, setSuggestion] = useState(null)
@@ -867,6 +869,10 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       Extension.create({
         name: 'stopWords',
         addProseMirrorPlugins: () => [stopWordsPlugin],
+      }),
+      Extension.create({
+        name: 'hangingWords',
+        addProseMirrorPlugins: () => [hangingWordsPlugin],
       }),
     ],
     content:   initialContent ?? getInitialContent(),
