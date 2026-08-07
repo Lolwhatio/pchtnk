@@ -32,5 +32,8 @@ release/
 # Local Netlify folder
 .netlify
 
+# Local tooling config
+.claude/
+
 # Netlify CLI artifacts
 deno.lock
