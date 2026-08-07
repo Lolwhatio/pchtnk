@@ -59,7 +59,8 @@ function nodeToHtml(node, ctx) {
         }).join('')
         return `<tr>${cells}</tr>`
       }).join('\n')
-      return `<table>\n${rows}\n</table>\n`
+      // Обёртка со скроллом — широкая таблица на узком экране не рвёт вёрстку
+      return `<div class="table-scroll"><table>\n${rows}\n</table></div>\n`
     }
     case 'image': {
       const { src, alt, width, cropX, cropY, cropW, cropH } = node.attrs || {}
@@ -134,6 +135,13 @@ function inlinesToHtml(nodes, ctx) {
     }
     return text
   }).join('')
+}
+
+// Типографика applied к готовому HTML — так же, как в предпросмотре.
+// Typograf прячет теги за служебными метками, поэтому атрибуты, data-URI
+// картинок и id сносок он не трогает: правит только текст между тегами.
+function typografy(html, ctx) {
+  return ctx.typograf ? ctx.typograf.execute(html) : html
 }
 
 function docToHtml(doc, ctx) {
@@ -288,9 +296,15 @@ hr{border:none;border-top:1px solid var(--border);margin:2em 0}
 strong{font-weight:700;color:var(--text-primary)}
 em{font-style:italic}
 s{color:var(--text-muted);text-decoration:line-through}
-table{border-collapse:collapse;width:100%;margin:1em 0}
-th,td{border:1px solid var(--border-light);padding:.5em .8em;text-align:left}
+/* Таблицы: fixed — чтобы длинная ячейка не раздувала колонку;
+   у последнего блока в ячейке гасим нижний отступ абзаца */
+.table-scroll{overflow-x:auto;margin:1.4em 0}
+table{border-collapse:collapse;width:100%;table-layout:fixed;margin:1.4em 0}
+.table-scroll table{margin:0;min-width:520px}
+th,td{border:1px solid var(--border-light);padding:.55em .8em;
+      text-align:left;vertical-align:top}
 th{background:var(--bg-panel);font-family:var(--font-ui);font-size:.875em;font-weight:600}
+td>*:last-child,th>*:last-child{margin-bottom:0}
 
 /* ── Page header ─────────── */
 .page-header{margin-bottom:2.2em;padding-bottom:1.3em;border-bottom:1px solid var(--border)}
@@ -351,24 +365,30 @@ kbRoute();
 
 // ── Сборка единого файла ──────────────────────────────────────────────────────
 
-function buildSidebar(docs, hrefFor) {
+// Заголовки типографим до экранирования: Typograf работает по тексту,
+// а esc() потом безопасно закроет «&», «<» и кавычки.
+function title(doc, ctx) {
+  return esc(typografy(doc.title || 'Без названия', ctx))
+}
+
+function buildSidebar(docs, hrefFor, ctx) {
   const items = docs.map(doc =>
-    `      <li><a href="${esc(hrefFor(doc))}">${esc(doc.title || 'Без названия')}</a></li>`
+    `      <li><a href="${esc(hrefFor(doc))}">${title(doc, ctx)}</a></li>`
   ).join('\n')
   return `    <li><a href="#">Главная</a></li>\n${items}`
 }
 
-function buildHomePage(docs, hrefFor, kbTitle) {
+function buildHomePage(docs, hrefFor, kbTitle, ctx) {
   const fmt = (ts) => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
   const cards = docs.map(doc => `
     <a href="${esc(hrefFor(doc))}" class="card">
-      <div class="card-title">${esc(doc.title || 'Без названия')}</div>
+      <div class="card-title">${title(doc, ctx)}</div>
       <div class="card-date">${fmt(doc.updatedAt || doc.createdAt || Date.now())}</div>
     </a>`).join('')
   return `
   <article class="article page" id="home">
     <header class="page-header">
-      <h1>${esc(kbTitle)}</h1>
+      <h1>${esc(typografy(kbTitle, ctx))}</h1>
       <p class="subtitle">${docs.length}&nbsp;${pluralDocs(docs.length)}</p>
     </header>
     <div class="card-grid">${cards}
@@ -380,9 +400,9 @@ function buildDocPage(doc, ctx) {
   return `
   <article class="article page" id="d-${esc(doc.id)}">
     <header class="page-header">
-      <h1>${esc(doc.title || 'Без названия')}</h1>
+      <h1>${title(doc, ctx)}</h1>
     </header>
-    ${docToHtml(doc, ctx)}
+    ${typografy(docToHtml(doc, ctx), ctx)}
     <footer class="page-footer">
       <a href="#">← К содержанию</a>
     </footer>
@@ -394,13 +414,15 @@ function buildDocPage(doc, ctx) {
 // кликом, внутри главная с карточками, боковое меню и все документы
 // с рабочими ссылками между ними.
 
-export function exportKnowledgeBase(docs, kbTitle = 'База знаний') {
+// `typograf` — экземпляр Typograf с настройками пользователя или null,
+// если типографику отключили. Прогоняется по тем же правилам, что и предпросмотр.
+export function exportKnowledgeBase(docs, kbTitle = 'База знаний', typograf = null) {
   if (!docs?.length) return
 
   const hrefFor  = (doc) => `#d-${doc.id}`
   const docsById = Object.fromEntries(docs.map(d => [d.id, d]))
   const sorted   = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
-  const ctx      = { docsById, hrefFor }
+  const ctx      = { docsById, hrefFor, typograf }
 
   const html = `<!DOCTYPE html>
 <html lang="ru">
@@ -412,15 +434,15 @@ export function exportKnowledgeBase(docs, kbTitle = 'База знаний') {
 </head>
 <body>
 <aside class="sidebar">
-  <a class="sidebar-brand" href="#">${esc(kbTitle)}</a>
+  <a class="sidebar-brand" href="#">${esc(typografy(kbTitle, ctx))}</a>
   <nav>
     <ul class="nav-list">
-${buildSidebar(sorted, hrefFor)}
+${buildSidebar(sorted, hrefFor, ctx)}
     </ul>
   </nav>
 </aside>
 <main class="main">
-${buildHomePage(sorted, hrefFor, kbTitle)}
+${buildHomePage(sorted, hrefFor, kbTitle, ctx)}
 ${sorted.map(doc => buildDocPage(doc, ctx)).join('\n')}
 </main>
 <script>${KB_JS}</script>

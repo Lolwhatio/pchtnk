@@ -11,9 +11,20 @@
   background: rgba(80, 200, 120, 0.32);
 }
 
+/* ── Висячие предлоги ────────────────────────────────────────────────────── */
+
+/* pre, а не nowrap: перенос запрещён, но пробелы внутри пары остаются
+   такими, как их набрали (nowrap схлопнул бы двойной пробел) */
+.nowrap-pair {
+  white-space: pre;
+}
+
 .editor-wrap {
   flex: 1;
   overflow-y: auto;
+  /* Резервируем место под скроллбар всегда — чтобы ширина колонки не
+     скакала при появлении полосы и совпадала между обычным и Дзеном */
+  scrollbar-gutter: stable;
   display: flex;
   justify-content: center;
   padding: 60px 24px;
@@ -61,6 +72,10 @@
 /* ProseMirror root */
 .editor-content .ProseMirror {
   outline: none;
+  /* ProseMirror по умолчанию ставит break-spaces: лишний пробел на переносе
+     уезжает в начало следующей строки и выглядит как случайный отступ.
+     С pre-wrap такой пробел «повисает» в конце строки, как и положено. */
+  white-space: pre-wrap;
   font-family: var(--font-editor);
   font-size: var(--font-size);
   line-height: var(--line-height);
@@ -211,9 +226,11 @@
   margin: 2em 0;
 }
 
-/* Дзен — чуть шире колонка */
+/* Дзен использует ту же ширину колонки, что и обычный режим, — иначе
+   строки переносятся в других местах и, например, тире может уехать
+   в начало строки, хотя в обычном отображении всё в порядке. */
 .editor-wrap--zen .editor-content {
-  max-width: 720px;
+  max-width: var(--editor-width);
 }
 
 /* ── Внутренняя ссылка на документ ─────────────── */
