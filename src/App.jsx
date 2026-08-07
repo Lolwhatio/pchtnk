@@ -206,7 +206,8 @@ export default function App() {
   const navHistoryRef = useRef([]) // стек id документов для кнопки «Назад»
   const [stopPhrases] = useState(() => loadStopPhrases())
   const [editor,     setEditor]     = useState(null)
-  const [editorEmpty, setEditorEmpty] = useState(true)
+  // В этой сессии уже печатали — лаунчер недавних отработал своё
+  const [hasTyped, setHasTyped] = useState(false)
   const [fileHandle, setFileHandle] = useState(null)
   const [isDirty,    setIsDirty]    = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
@@ -906,15 +907,17 @@ export default function App() {
     !!linkDialog || spellErrors.length > 0
   const uiFaded = useTypingFade(editor, !zenMode && !isMobile && !uiBusy)
 
-  // Пустой ли текущий документ — для лаунчера недавних
+  // Лаунчер недавних — приветствие в начале сессии, а не подсказка: он ждёт на
+  // чистом листе, но с первым же символом уходит насовсем. Стёрли всё обратно,
+  // завели новый документ — лист остаётся чистым. Снова только при запуске.
   useEffect(() => {
     if (!editor) return
-    const update = () => setEditorEmpty(editor.isEmpty)
+    const update = () => { if (!editor.isEmpty) setHasTyped(true) }
     editor.on('update', update)
-    editor.on('create', update)
-    update()
-    return () => { editor.off('update', update); editor.off('create', update) }
+    return () => { editor.off('update', update) }
   }, [editor])
+
+  const recentVisible = !hasTyped && (editor?.isEmpty ?? true)
 
   // Недавние документы для лаунчера: не текущий, с осмысленным названием
   const recentDocs = useMemo(() => (
@@ -924,7 +927,7 @@ export default function App() {
       .slice(0, 6)
   ), [docs, currentDocId])
 
-  // Лаунчер держим в DOM (для плавного затухания), а видимостью правит editorEmpty
+  // Лаунчер держим в DOM (для плавного затухания), а видимостью правит recentVisible
   const mountRecent = !zenMode && !showPreview && !showDocs && recentDocs.length > 0
 
   return (
@@ -1190,7 +1193,7 @@ export default function App() {
       {mountRecent && (
         <RecentDocs
           docs={recentDocs}
-          visible={editorEmpty}
+          visible={recentVisible}
           onSelect={(id) => handleSelectDoc(id)}
         />
       )}
