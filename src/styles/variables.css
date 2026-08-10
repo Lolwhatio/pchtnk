@@ -1,27 +1,40 @@
-/* Люблинско-Дмитровская линия — тёмный лес */
+/* Люблинско-Дмитровская линия — тёмный лес
+ *
+ * Значения подобраны так, чтобы проходили все проверки npm run check:contrast
+ * в обеих темах. Правя цвет, прогоняйте скрипт: пороги связаны между собой
+ * (например, подложка «включено» должна и отличаться от панели, и оставлять
+ * акцентному значку не меньше 3:1). */
+
 :root {
   --bg-primary:   #0f1810;
   --bg-secondary: #131d14;
   --bg-panel:     #0c1510;
-  --bg-hover:     #182618;
-  --bg-active:    #1e3020;
+  --bg-hover:     #213423;
+  --bg-active:    #2a432c;
 
   --accent:       #62a030;
   --accent-hover: #73bb38;
-  --accent-dim:   #38601a;
+  --accent-dim:   #41701e;
 
   --text-primary:  #cce0cc;
   --text-secondary:#6d9470;
-  --text-muted:    #374f38;
+  --text-muted:    #618b63;
   --text-inverse:  #0f1810;
 
-  --border:       #1a2e1c;
-  --border-light: #243828;
+  --border:       #1f3822;
+  --border-light: #2e4a33;
 
   --selection-bg: rgba(98, 160, 48, 0.22);
 
   --font-editor: 'Georgia', 'Times New Roman', serif;
   --font-ui:     -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Шкала кеглей интерфейса. Ничего мельче 12px: в приложении сидят часами. */
+  --fs-xs: 12px;  /* подписи, значения в панелях  */
+  --fs-sm: 13px;  /* пункты меню, кнопки, поля    */
+  --fs-md: 15px;  /* заголовки панелей, имя файла */
+  --fs-lg: 17px;  /* заголовки диалогов           */
+  --fs-xl: 22px;  /* крупные числа                */
 
   --editor-width: 680px;
   --line-height:  1.75;
@@ -30,20 +43,26 @@
   --transition: 0.15s ease;
 }
 
+/* Светлая тема обязана переопределять акцентную триаду: без этого она
+ * наследует зелёный тёмной темы, и ссылки в тексте дают 2,93:1. */
 [data-theme="light"] {
   --bg-primary:   #f2f7ee;
   --bg-secondary: #e8f0e2;
   --bg-panel:     #ddebd5;
-  --bg-hover:     #d0e3c6;
-  --bg-active:    #c0d8b4;
+  --bg-hover:     #b7d2a9;
+  --bg-active:    #accc9c;
+
+  --accent:       #487623;
+  --accent-hover: #3a5e1c;
+  --accent-dim:   #5c9d2b;
 
   --text-primary:  #111d12;
   --text-secondary:#2e5232;
-  --text-muted:    #6a9a6e;
+  --text-muted:    #4c704f;
   --text-inverse:  #f2f7ee;
 
-  --border:       #b8d4aa;
-  --border-light: #cce2bc;
+  --border:       #a9cb98;
+  --border-light: #c2dcb4;
 
   --selection-bg: rgba(98, 160, 48, 0.28);
 }

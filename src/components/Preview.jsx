@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import html2pdf from 'html2pdf.js'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
+import { IconSettings } from './icons'
 import './Preview.css'
 
 const PRINT_STYLES = `
@@ -236,8 +237,4 @@ function download(content, filename, type) {
   a.click()
   document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
-function IconSettings() {
-  return <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 1.5a3 3 0 0 0-2.2 5L2 12.8a.85.85 0 0 0 1.2 1.2L9.5 7.7a3 3 0 0 0 4.1-4.1L11.8 5.4 10.6 4.2l1.8-1.8a3 3 0 0 0-1.9-.9z"/></svg>
 }

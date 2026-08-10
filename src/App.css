@@ -54,6 +54,12 @@
   cursor: text;
 }
 
+/* ── Иконочная кнопка ──────────────────────────────────────────────────────
+   Один класс на шапку, тулбар и панели. Три состояния: покой, наведение,
+   включено. Включённое состояние передаётся через aria-pressed (кнопки-
+   переключатели) или aria-expanded (кнопки, раскрывающие меню), а не классом —
+   так состояние видит и скринридер. */
+
 .btn-icon {
   display: flex;
   align-items: center;
@@ -61,12 +67,55 @@
   width: 28px;
   height: 28px;
   border-radius: 5px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-family: var(--font-ui);
+  line-height: 1;
+  position: relative;
   transition: color var(--transition), background var(--transition);
 }
-.btn-icon:hover { color: var(--text-primary); background: var(--bg-hover); }
-.btn-icon.active { color: var(--accent); }
+.btn-icon:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.btn-icon[aria-pressed="true"],
+.btn-icon[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--bg-active);
+}
+
+/* Третий канал состояния. Подложка «включено» отличается от подложки
+   наведения всего на 1,08:1 в светлой теме — одной заливкой состояние
+   не передать, поэтому нужна полоса, не зависящая от контраста фона. */
+.btn-icon[aria-pressed="true"]::after,
+.btn-icon[aria-expanded="true"]::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.btn-icon:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+.btn-icon:disabled:hover { background: none; }
+
 .btn-icon svg, .btn-icon img { pointer-events: none; }
+
+/* Кнопка с текстом вместо значка («Заголовок») */
+.btn-icon--label {
+  width: auto;
+  padding: 0 6px 0 8px;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
 
 .btn-back {
   display: flex;

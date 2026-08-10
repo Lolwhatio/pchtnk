@@ -14,7 +14,11 @@ import KbExportDialog from './components/KbExportDialog'
 import FootnotesPanel from './components/FootnotesPanel'
 import RecentDocs from './components/RecentDocs'
 import OverflowMenu from './components/OverflowMenu'
-import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter, IconEmbedGeneric } from './components/icons'
+import {
+  IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
+  IconDocs, IconTOC, IconZen, IconSettings, IconTools, IconExport, IconShare,
+  IconSun, IconMoon, IconDrafts, IconBack, IconFootnote, IconImage,
+} from './components/icons'
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
@@ -937,18 +941,22 @@ export default function App() {
           <div className="header-left">
             {/* ≡ — история документов */}
             <button
-              className={`btn-icon${showDocs ? ' active' : ''}`}
+              className="btn-icon"
               onClick={() => setShowDocs(s => !s)}
               title="Документы"
+              aria-label="Документы"
+              aria-pressed={showDocs}
             >
-              <IconMenu />
+              <IconDocs />
             </button>
             {/* § — оглавление (на мобильном — в меню инструментов) */}
             {!isMobile && (
               <button
-                className={`btn-icon${showTOC ? ' active' : ''}`}
+                className="btn-icon"
                 onClick={() => setShowTOC(t => !t)}
                 title="Оглавление"
+                aria-label="Оглавление"
+                aria-pressed={showTOC}
               >
                 <IconTOC />
               </button>
@@ -999,20 +1007,20 @@ export default function App() {
             {/* Мобильный: инструменты редактуры прямо в шапке —
                 нижний тулбар закрывается клавиатурой */}
             {isMobile && <MobileHeaderTools editor={editor} />}
-            <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)"><IconTypograf /></button>
+            <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)" aria-label="Применить типограф"><IconTypograf /></button>
             {!isMobile && (
               <>
-                <button className={`btn-icon${showBuffer ? ' active' : ''}`} onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков"><IconTray /></button>
-                <button className={`btn-icon${zenMode ? ' active' : ''}`} onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)"><IconZen /></button>
+                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков" aria-label="Буфер черновиков" aria-pressed={showBuffer}><IconDrafts /></button>
+                <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
               </>
             )}
             <OverflowMenu
-              icon={<IconWrench />}
+              icon={<IconTools />}
               title="Инструменты"
               items={[
                 {
                   key: 'spell',
-                  icon: <IconSpellcheck size={14} />,
+                  icon: <IconSpellcheck />,
                   label: 'Яндекс.Спеллер',
                   title: isolationMode ? 'Отключено в режиме самоизоляции' : 'Проверить орфографию (⌘⇧Y)',
                   disabled: isolationMode,
@@ -1020,14 +1028,14 @@ export default function App() {
                 },
                 {
                   key: 'deyo',
-                  icon: <IconSwapLetter size={14} />,
+                  icon: <IconSwapLetter />,
                   label: 'Деёизация (ё→е)',
                   title: 'Заменить ё на е во всем тексте',
                   onClick: handleDeyo,
                 },
                 {
                   key: 'footnotes',
-                  icon: <IconFootnoteList />,
+                  icon: <IconFootnote />,
                   label: 'Сноски и источники',
                   title: 'Список использованных сносок',
                   active: showFootnotes,
@@ -1036,13 +1044,13 @@ export default function App() {
                 ...(isMobile ? [
                   {
                     key: 'image',
-                    icon: <IconImg />,
+                    icon: <IconImage />,
                     label: 'Изображение',
                     onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image')),
                   },
                   {
                     key: 'embed',
-                    icon: <IconEmbedGeneric size={14} />,
+                    icon: <IconEmbedGeneric />,
                     label: 'Встроить (YouTube, Slides…)',
                     onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed')),
                   },
@@ -1055,7 +1063,7 @@ export default function App() {
                   },
                   {
                     key: 'buffer',
-                    icon: <IconTray size={14} />,
+                    icon: <IconDrafts />,
                     label: 'Буфер черновиков',
                     active: showBuffer,
                     onClick: () => setShowBuffer(b => !b),
@@ -1080,7 +1088,7 @@ export default function App() {
                   },
                   {
                     key: 'settings',
-                    icon: <IconGear />,
+                    icon: <IconSettings />,
                     label: 'Настройки',
                     active: showTypograf,
                     onClick: () => setShowTypograf(t => !t),
@@ -1088,7 +1096,7 @@ export default function App() {
                 ] : [
                   {
                     key: 'shortcuts',
-                    icon: <IconKeyboard size={14} />,
+                    icon: <IconKeyboard />,
                     label: 'Горячие клавиши',
                     title: 'Список горячих клавиш (⌘/)',
                     onClick: () => setShowShortcuts(true),
@@ -1098,12 +1106,17 @@ export default function App() {
             />
             {!isMobile && (
               <>
-                <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой"><IconShare /></button>
-                <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт"><IconExport /></button>
-                <button className="btn-icon" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
+                <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
+                <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
+                <button
+                  className="btn-icon"
+                  onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                  title="Сменить тему"
+                  aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+                >
                   {theme === 'dark' ? <IconSun /> : <IconMoon />}
                 </button>
-                <button className={`btn-icon${showTypograf ? ' active' : ''}`} onClick={() => setShowTypograf(t => !t)} title="Настройки"><IconGear /></button>
+                <button className="btn-icon" onClick={() => setShowTypograf(t => !t)} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
               </>
             )}
           </div>
@@ -1247,49 +1260,3 @@ export default function App() {
   )
 }
 
-function IconBack() {
-  return <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2L4 6.5L8 11"/></svg>
-}
-function IconMenu() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect y="2" width="15" height="1.5" rx="0.75"/><rect y="6.75" width="15" height="1.5" rx="0.75"/><rect y="11.5" width="15" height="1.5" rx="0.75"/></svg>
-}
-function IconTOC() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><line x1="5" y1="3.5" x2="13" y2="3.5"/><line x1="3" y1="7.5" x2="13" y2="7.5"/><line x1="5" y1="11.5" x2="13" y2="11.5"/><circle cx="1.5" cy="3.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="1.5" cy="7.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="1.5" cy="11.5" r="0.75" fill="currentColor" stroke="none"/></svg>
-}
-function IconExport() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1v9M5 7l3 3 3-3"/><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
-}
-function IconZen() {
-  // Энсо — незамкнутый круг, символ дзена
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M10.1 2.2A6.2 6.2 0 1 1 5.9 2.2"/></svg>
-}
-function IconWrench() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 1.5a3 3 0 0 0-2.2 5L2 12.8a.85.85 0 0 0 1.2 1.2L9.5 7.7a3 3 0 0 0 4.1-4.1L11.8 5.4 10.6 4.2l1.8-1.8a3 3 0 0 0-1.9-.9z"/></svg>
-}
-function IconGear() {
-  const teeth = [0, 45, 90, 135, 180, 225, 270, 315]
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <circle cx="8" cy="8" r="2.1" />
-      <circle cx="8" cy="8" r="4.2" />
-      {teeth.map(a => (
-        <rect key={a} x="7.25" y="0.6" width="1.5" height="2.1" rx="0.5" fill="currentColor" stroke="none" transform={`rotate(${a} 8 8)`} />
-      ))}
-    </svg>
-  )
-}
-function IconSun() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3" y1="3" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="13" y2="13"/><line x1="13" y1="3" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3" y2="13"/></svg>
-}
-function IconMoon() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 10.5A6 6 0 0 1 5.5 2.5a6.5 6.5 0 1 0 8 8z"/></svg>
-}
-function IconShare() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11.5" cy="3" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><circle cx="3.5" cy="7.5" r="1.5"/><line x1="5" y1="7.5" x2="10" y2="3.8"/><line x1="5" y1="7.5" x2="10" y2="11.2"/></svg>
-}
-function IconFootnoteList() {
-  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5h6M2 8h6M2 11.5h4"/><text x="10" y="7" fontSize="7" fontWeight="700" fill="currentColor" stroke="none" fontFamily="system-ui, sans-serif">1</text></svg>
-}
-function IconImg() {
-  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><circle cx="5.5" cy="6" r="1.5"/><path d="M1 11l4-4 3 3 2-2 5 5"/></svg>
-}

@@ -31,34 +31,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: var(--font-ui);
-  transition: color var(--transition), background var(--transition);
-  line-height: 1;
-}
-.toolbar-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
-.toolbar-btn.active { color: var(--accent); background: var(--bg-active); }
-
-.toolbar-btn b,
-.toolbar-btn i,
-.toolbar-btn s {
-  font-family: var(--font-editor);
-  font-size: 14px;
-}
-
-.toolbar-h {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
+/* Кнопки тулбара используют общий .btn-icon из App.css */
 
 .toolbar-sep {
   width: 1px;
@@ -132,15 +105,6 @@
 /* ── Заголовок: dropdown вместо 4 отдельных кнопок H1-H4 ─────────────────── */
 
 .toolbar-heading-wrap { position: relative; }
-
-.toolbar-btn--label {
-  width: auto;
-  padding: 0 6px 0 8px;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
 
 .toolbar-heading-caret {
   display: flex;

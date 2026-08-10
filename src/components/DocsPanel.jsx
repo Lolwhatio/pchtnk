@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { IconTrash, IconChevronRight } from './icons'
+import {
+  IconTrash, IconChevronRight, IconPlus, IconClose, IconPencil,
+  IconFolderPlus, IconFolderIn,
+} from './icons'
 import './DocsPanel.css'
 
 function formatDate(ts) {
@@ -47,7 +50,7 @@ function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelet
             title="Переместить в проект"
             onClick={() => setShowMover(v => !v)}
           >
-            <IconFolder />
+            <IconFolderIn />
           </button>
           {showMover && (
             <div className="docs-panel__mover">
@@ -202,7 +205,7 @@ export default function DocsPanel({
       <div className="docs-panel__header">
         <span className="docs-panel__title">Документы</span>
         <button className="docs-panel__btn" onClick={() => onNew()} title="Новый документ"><IconPlus /></button>
-        <button className="docs-panel__btn" onClick={() => onCreateProject()} title="Новый проект"><IconFolder /></button>
+        <button className="docs-panel__btn" onClick={() => onCreateProject()} title="Новый проект" aria-label="Новый проект"><IconFolderPlus /></button>
         <button className="docs-panel__btn" onClick={onClose} title="Закрыть"><IconClose /></button>
       </div>
 
@@ -283,17 +286,4 @@ export default function DocsPanel({
       </div>
     </div>
   )
-}
-
-function IconPlus() {
-  return <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="6.5" y1="1" x2="6.5" y2="12"/><line x1="1" y1="6.5" x2="12" y2="6.5"/></svg>
-}
-function IconClose() {
-  return <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="1" y1="1" x2="10" y2="10"/><line x1="10" y1="1" x2="1" y2="10"/></svg>
-}
-function IconPencil() {
-  return <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 1.5a1.2 1.2 0 0 1 1.7 1.7L4 9.4l-2.3.6.6-2.3z"/></svg>
-}
-function IconFolder() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3.5A1 1 0 0 1 2 2.5h2.5l1 1.5H10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5Z"/></svg>
 }

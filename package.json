@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "check:icons": "node scripts/check-icons.mjs",
     "preview": "vite preview",
     "electron:dev": "vite build && electron electron/main.js",
     "electron:build": "ELECTRON=1 vite build && electron-builder --mac --arm64"

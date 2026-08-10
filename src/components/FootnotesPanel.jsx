@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconClose } from './icons'
+import { IconClose, IconPencil } from './icons'
 import { numberFootnotes } from '../utils/footnotes'
 import './TOC.css'
 import './FootnotesPanel.css'
@@ -60,8 +60,4 @@ export default function FootnotesPanel({ editor, onEdit, onInsertSources, onClos
       </div>
     </div>
   )
-}
-
-function IconPencil() {
-  return <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 1.5a1.2 1.2 0 0 1 1.7 1.7L4 9.4l-2.3.6.6-2.3z"/></svg>
 }
