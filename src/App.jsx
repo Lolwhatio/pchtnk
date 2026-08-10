@@ -227,6 +227,11 @@ export default function App() {
   const [fadeEnabled, setFadeEnabled] = useState(
     () => JSON.parse(localStorage.getItem('pechatniki-typing-fade') ?? 'true')
   )
+  // Ширина колонки — вкусовая настройка: типографский оптимум в 66–75 знаков
+  // на широком мониторе многим тесен
+  const [editorWidth, setEditorWidth] = useState(
+    () => localStorage.getItem('pechatniki-editor-width') || '720'
+  )
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
@@ -848,6 +853,15 @@ export default function App() {
     })
   }
 
+  const handleEditorWidth = useCallback((px) => {
+    setEditorWidth(px)
+    localStorage.setItem('pechatniki-editor-width', px)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--editor-width', `${editorWidth}px`)
+  }, [editorWidth])
+
   const handleApplyTypograf = useCallback(() => {
     if (!editor) return
     const { from } = editor.state.selection
@@ -1306,6 +1320,8 @@ export default function App() {
             onIsolationToggle={handleIsolationToggle}
             fadeEnabled={fadeEnabled}
             onFadeToggle={handleFadeToggle}
+            editorWidth={editorWidth}
+            onEditorWidth={handleEditorWidth}
             onClose={() => setShowTypograf(false)}
           />
         )}
