@@ -330,17 +330,17 @@ export default function DocsPanel({
         <button
           className="docs-panel__footer-btn"
           onClick={onExport}
-          data-tip="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
+          title="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
         >Скачать всё</button>
         <button
           className="docs-panel__footer-btn docs-panel__footer-btn--kb"
           onClick={onExportKb}
-          data-tip="Выбранные проекты — в один HTML-файл с оглавлением"
+          title="Выбранные проекты — в один HTML-файл с оглавлением"
         >Собрать базу</button>
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
-          data-tip="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
+          title="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
         >Загрузить файлы</button>
       </div>
     </div>

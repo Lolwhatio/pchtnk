@@ -26,6 +26,33 @@ button {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* ── Подсказки ────────────────────────────────────────────────────────────
+   Одна система на всё приложение, см. hooks/useTooltips.js.
+   На тач-устройствах вызывается длинным нажатием — там, где раньше
+   узнать назначение иконки было нельзя никак. */
+.tooltip {
+  position: fixed;
+  z-index: 300;
+  max-width: 260px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--bg-active);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tooltip--on { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip { transition: none; }
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

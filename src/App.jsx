@@ -24,6 +24,7 @@ import {
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
+import { useTooltips } from './hooks/useTooltips'
 import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdown'
 import { exportKnowledgeBase } from './utils/export'
 import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
@@ -213,6 +214,7 @@ function useTypingFade(editor, enabled) {
 
 export default function App() {
   const isMobile = useIsMobile()
+  useTooltips()
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [zenMode,      setZenMode]      = useState(false)
   const [showPreview,  setShowPreview]  = useState(false)
