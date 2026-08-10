@@ -1036,21 +1036,43 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   }, [onDocSelect, editor])
 
   // ── Typewriter scroll в Дзен ─────────────────────────────────────────────
+  // Подписка на update и selectionUpdate сразу означает, что при Enter
+  // центрирование срабатывает дважды: первый раз — когда декорация
+  // .zen-active ещё на прежнем абзаце. Отсюда рывок туда-обратно.
+  // Поэтому кадр всегда один: запланированный отменяем.
+  //
+  // И не центрируем блок, который уже стоит по центру: иначе каждая
+  // набранная буква дёргала полосу прокрутки на доли пикселя.
   useEffect(() => {
     if (!editor || !zenMode) return
+
+    const TOLERANCE = 24 // px: в пределах этого считаем, что строка уже по центру
+    let frame = null
+
     const centerActive = () => {
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        const wrap = wrapRef.current
-        if (!wrap) return
-        const active = wrap.querySelector('.zen-active')
-        if (!active) return
-        active.scrollIntoView({ block: 'center', behavior: 'instant' })
-      }))
+      if (frame) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => {
+          frame = null
+          const wrap = wrapRef.current
+          if (!wrap) return
+          const active = wrap.querySelector('.zen-active')
+          if (!active) return
+
+          const r = active.getBoundingClientRect()
+          const target = window.innerHeight / 2
+          if (Math.abs(r.top + r.height / 2 - target) < TOLERANCE) return
+
+          active.scrollIntoView({ block: 'center', behavior: 'instant' })
+        })
+      })
     }
+
     editor.on('selectionUpdate', centerActive)
     editor.on('update',          centerActive)
     centerActive()
     return () => {
+      if (frame) cancelAnimationFrame(frame)
       editor.off('selectionUpdate', centerActive)
       editor.off('update',          centerActive)
     }

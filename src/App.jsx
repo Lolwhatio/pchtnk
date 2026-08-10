@@ -19,7 +19,7 @@ import Notice from './components/Notice'
 import {
   IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
   IconDocs, IconTOC, IconZen, IconSettings, IconTools, IconExport, IconShare,
-  IconSun, IconMoon, IconDrafts, IconBack, IconFootnote, IconImage,
+  IconDrafts, IconBack, IconFootnote, IconImage,
 } from './components/icons'
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
@@ -369,7 +369,7 @@ export default function App() {
       setPasswordPrompt(null)
       acceptIncoming(raw)
     } catch {
-      setPasswordPrompt(p => p && { ...p, error: 'Не подошёл. Проверьте раскладку и регистр' })
+      setPasswordPrompt(p => p && { ...p, error: 'Не подошел. Проверьте раскладку и регистр' })
     }
   }, [passwordPrompt, acceptIncoming])
 
@@ -1211,8 +1211,8 @@ export default function App() {
                 {
                   key: 'deyo',
                   icon: <IconSwapLetter />,
-                  label: 'Деёизация (ё→е)',
-                  title: 'Заменить ё на е во всем тексте',
+                  label: 'Убрать точки над е',
+                  title: 'Заменить букву е с точками на обычную во всем тексте',
                   onClick: handleDeyo,
                 },
                 {
@@ -1246,7 +1246,7 @@ export default function App() {
                   {
                     key: 'buffer',
                     icon: <IconDrafts />,
-                    label: 'Буфер черновиков',
+                    label: 'Черновик',
                     active: showBuffer,
                     onClick: () => setShowBuffer(b => !b),
                   },
@@ -1261,12 +1261,6 @@ export default function App() {
                     icon: <IconExport />,
                     label: 'Экспорт',
                     onClick: () => setShowPreview(true),
-                  },
-                  {
-                    key: 'theme',
-                    icon: theme === 'dark' ? <IconSun /> : <IconMoon />,
-                    label: 'Сменить тему',
-                    onClick: () => setTheme(t => t === 'dark' ? 'light' : 'dark'),
                   },
                   {
                     key: 'settings',
@@ -1292,16 +1286,8 @@ export default function App() {
                 <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
                 <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
                 <span className="header-sep" />
-                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков" aria-label="Буфер черновиков" aria-pressed={showBuffer}><IconDrafts /></button>
+                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
                 <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
-                <button
-                  className="btn-icon"
-                  onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-                  title="Сменить тему"
-                  aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
-                >
-                  {theme === 'dark' ? <IconSun /> : <IconMoon />}
-                </button>
                 <button className="btn-icon" onClick={() => setShowTypograf(t => !t)} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
               </>
             )}
@@ -1383,6 +1369,8 @@ export default function App() {
             onFadeToggle={handleFadeToggle}
             editorWidth={editorWidth}
             onEditorWidth={handleEditorWidth}
+            theme={theme}
+            onTheme={setTheme}
             onClose={() => setShowTypograf(false)}
           />
         )}

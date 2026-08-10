@@ -58,7 +58,7 @@ export default function SelectionMenu({ editor }) {
     >
       {btn(() => editor.chain().focus().toggleBold().run(), 'Жирный (⌘B)', <IconBold />, editor.isActive('bold'))}
       {btn(() => editor.chain().focus().toggleItalic().run(), 'Курсив (⌘I)', <IconItalic />, editor.isActive('italic'))}
-      {btn(() => editor.chain().focus().toggleStrike().run(), 'Зачёркнутый (⌘⇧-)', <IconStrike />, editor.isActive('strike'))}
+      {btn(() => editor.chain().focus().toggleStrike().run(), 'Зачеркнутый (⌘⇧-)', <IconStrike />, editor.isActive('strike'))}
       {btn(handleLink, 'Ссылка (⌘K)', <IconLink />, editor.isActive('link'))}
       {btn(() => editor.chain().focus().toggleCode().run(), 'Код', <IconCode />, editor.isActive('code'))}
 

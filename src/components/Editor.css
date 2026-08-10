@@ -183,7 +183,7 @@
 .editor-content .ProseMirror p + p,
 .editor-content .ProseMirror p + blockquote,
 .editor-content .ProseMirror blockquote + p {
-  margin-top: 1.2em;
+  margin-top: 0.75em;
 }
 
 /* Внутри списков, ячеек и цитат абзацы не разъезжаются */

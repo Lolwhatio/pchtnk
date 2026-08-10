@@ -7,6 +7,7 @@ export default function Settings({
   isolationMode, onIsolationToggle,
   fadeEnabled, onFadeToggle,
   editorWidth, onEditorWidth,
+  theme, onTheme,
   onClose,
 }) {
   // Знаки в строке посчитаны для кегля 18px и средней ширины знака
@@ -24,6 +25,30 @@ export default function Settings({
       </div>
 
       <div className="settings-body">
+
+        {/* ── Вид ───────────────────────────────────── */}
+        <div className="settings-section-label">Вид</div>
+        <div className="settings-row settings-row--stack">
+          <div className="settings-row-text">
+            <span className="settings-row-name">Тема</span>
+          </div>
+          <div className="settings-seg" role="radiogroup" aria-label="Тема">
+            {[
+              { id: 'dark',  label: 'Темная' },
+              { id: 'light', label: 'Светлая' },
+            ].map(t => (
+              <button
+                key={t.id}
+                className={`settings-seg-btn${theme === t.id ? ' settings-seg-btn--on' : ''}`}
+                role="radio"
+                aria-checked={theme === t.id}
+                onClick={() => onTheme(t.id)}
+              >
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* ── Приватность ───────────────────────────── */}
         <div className="settings-section-label">Приватность</div>
