@@ -1,0 +1,64 @@
+.notice {
+  position: fixed;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 200;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 10px 10px 14px;
+
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-primary);
+
+  animation: notice-in 0.2s ease;
+}
+
+.notice--error {
+  border-color: var(--danger);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  transition: color var(--transition), background var(--transition);
+}
+.notice-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+@keyframes notice-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice { animation: none; }
+}
+
+/* На тач-устройствах цель должна быть крупнее */
+@media (pointer: coarse) {
+  .notice-close { width: 44px; height: 44px; }
+}

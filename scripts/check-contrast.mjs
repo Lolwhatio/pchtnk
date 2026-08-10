@@ -77,11 +77,13 @@ const CHECKS = [
   ['Разделитель к панели',            'border',         'bg-panel',     1.4],
   ['Граница панели к странице',       'border',         'bg-primary',   1.4],
   ['Наведение на акцентную кнопку',   'accent-hover',   'bg-primary',   4.5],
+  ['Ошибка на странице',              'danger',         'bg-primary',   4.5],
+  ['Ошибка на панели',                'danger',         'bg-panel',     4.5],
 ]
 
 // Токены, которые светлая тема обязана переопределять сама:
 // без этого она унаследует акцент тёмной темы и провалит контраст.
-const MUST_OVERRIDE_IN_LIGHT = ['accent', 'accent-hover', 'accent-dim']
+const MUST_OVERRIDE_IN_LIGHT = ['accent', 'accent-hover', 'accent-dim', 'danger']
 
 // ── Прогон ───────────────────────────────────────────────────────────────────
 

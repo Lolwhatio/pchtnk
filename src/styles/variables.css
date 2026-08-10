@@ -24,6 +24,10 @@
   --border:       #1f3822;
   --border-light: #2e4a33;
 
+  /* Ошибки и разрушающие действия. Отдельный токен, а не акцент:
+     зелёным «удалить» и «неверный пароль» не покажешь. */
+  --danger:       #d9705a;
+
   --selection-bg: rgba(98, 160, 48, 0.22);
 
   --font-editor: 'Georgia', 'Times New Roman', serif;
@@ -73,6 +77,8 @@
 
   --border:       #a9cb98;
   --border-light: #c2dcb4;
+
+  --danger:       #b23b36;
 
   --selection-bg: rgba(98, 160, 48, 0.28);
 }

@@ -68,6 +68,24 @@
 }
 .input-dialog-field:focus { border-color: var(--accent); }
 .input-dialog-field::placeholder { color: var(--text-muted); }
+.input-dialog-field--error { border-color: var(--danger); }
+
+/* Пояснение над полем: системный prompt объяснить ничего не мог,
+   и было непонятно, откуда взять пароль */
+.input-dialog-desc {
+  margin: 0 0 10px;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+}
+
+.input-dialog-error {
+  margin: 8px 0 0;
+  font-size: var(--fs-xs);
+  font-family: var(--font-ui);
+  color: var(--danger);
+}
 
 /* ── Footer ─────────────────────────────── */
 

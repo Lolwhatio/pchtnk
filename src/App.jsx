@@ -15,6 +15,7 @@ import KbExportDialog from './components/KbExportDialog'
 import FootnotesPanel from './components/FootnotesPanel'
 import RecentDocs from './components/RecentDocs'
 import OverflowMenu from './components/OverflowMenu'
+import Notice from './components/Notice'
 import {
   IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
   IconDocs, IconTOC, IconZen, IconSettings, IconTools, IconExport, IconShare,
@@ -289,12 +290,6 @@ export default function App() {
     flushProjects(projectsRef.current.map(p => p.id === id ? { ...p, title } : p))
   }, [flushProjects])
 
-  const handleDeleteProject = useCallback((id) => {
-    // Снимаем projectId с документов этого проекта
-    flushDocs(docsRef.current.map(d => d.projectId === id ? { ...d, projectId: null } : d))
-    flushProjects(projectsRef.current.filter(p => p.id !== id))
-  }, [flushProjects, flushDocs])
-
   const handleMoveDoc = useCallback((docId, projectId) => {
     flushDocs(docsRef.current.map(d => d.id === docId ? { ...d, projectId: projectId || null } : d))
   }, [flushDocs])
@@ -306,55 +301,75 @@ export default function App() {
   // ── Диалог ссылок ─────────────────────────────────────────────────────────
   const [linkDialog, setLinkDialog] = useState(null) // null | { currentUrl: string }
 
+  // ── Сообщения и пароль входящей ссылки ────────────────────────────────────
+  const [notice, setNotice] = useState(null)                 // null | { text, kind }
+  const [passwordPrompt, setPasswordPrompt] = useState(null) // null | { d, salt, error }
+
   // ── Расшифровка входящей ссылки ───────────────────────────────────────────
+  // Принять расшифрованный документ и завести его в истории
+  const acceptIncoming = useCallback((raw) => {
+    // Поддержка envelope { v:1, doc } (старые ссылки могли содержать флаг
+    // readonly — игнорируем: у получателя всегда своя редактируемая копия)
+    const isEnvelope = raw && raw.v === 1 && raw.doc
+    const doc = isEnvelope ? raw.doc : raw
+
+    const id     = genId()
+    const title  = titleFromJson(doc) || 'Входящий документ'
+    const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
+    flushDocs([newDoc, ...docsRef.current])
+    editor.commands.setContent(doc)
+    curIdRef.current = id
+    setCurrentDocId(id)
+    localStorage.setItem(CUR_KEY, id)
+    setFileName(title)
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [editor, flushDocs])
+
   useEffect(() => {
     if (!editor) return
     const params = new URLSearchParams(window.location.search)
     if (!params.get('d')) return
 
-    // Данные есть, а ключа во фрагменте нет — обычно значит, что сервис
-    // сокращения показал промежуточную страницу и потерял часть после #.
-    // Без ключа расшифровать нечего — объясняем, а не молчим.
-    if (!window.location.hash) {
-      window.alert('В ссылке не хватает ключа расшифровки — похоже, сервис сокращения его потерял. Попросите отправителя прислать полную ссылку.')
-      window.history.replaceState({}, '', window.location.pathname)
-      return
-    }
+    let cancelled = false
 
-    decodeShareUrl().then(async result => {
-      if (!result) return
-
-      let raw
-      if (result.needsPassword) {
-        const password = window.prompt('Этот документ защищен паролем. Введите пароль:')
-        if (!password) return
-        try {
-          raw = await decodeWithPassword(result.d, result.salt, password)
-        } catch {
-          window.alert('Неверный пароль.')
-          return
-        }
-      } else {
-        raw = result.doc
+    // Разбор ссылки асинхронный целиком, чтобы состояние менялось
+    // не в теле эффекта, а после первого await
+    ;(async () => {
+      // Данные есть, а ключа во фрагменте нет — обычно значит, что сервис
+      // сокращения показал промежуточную страницу и потерял часть после #.
+      // Без ключа расшифровать нечего — объясняем, а не молчим.
+      if (!window.location.hash) {
+        await Promise.resolve()
+        if (cancelled) return
+        setNotice({
+          kind: 'error',
+          text: 'В ссылке не хватает ключа расшифровки — похоже, сервис сокращения его потерял. Попросите отправителя прислать полную ссылку.',
+        })
+        window.history.replaceState({}, '', window.location.pathname)
+        return
       }
 
-      // Поддержка envelope { v:1, doc } (старые ссылки могли содержать флаг
-      // readonly — игнорируем: у получателя всегда своя редактируемая копия)
-      const isEnvelope = raw && raw.v === 1 && raw.doc
-      const doc = isEnvelope ? raw.doc : raw
+      const result = await decodeShareUrl()
+      if (cancelled || !result) return
+      // Пароль спрашиваем своим диалогом: системный prompt показывает
+      // введённое открытым текстом и не может объяснить, откуда пароль взять
+      if (result.needsPassword) setPasswordPrompt({ d: result.d, salt: result.salt, error: '' })
+      else acceptIncoming(result.doc)
+    })()
 
-      const id     = genId()
-      const title  = titleFromJson(doc) || 'Входящий документ'
-      const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
-      flushDocs([newDoc, ...docsRef.current])
-      editor.commands.setContent(doc)
-      curIdRef.current = id
-      setCurrentDocId(id)
-      localStorage.setItem(CUR_KEY, id)
-      setFileName(title)
-      window.history.replaceState({}, '', window.location.pathname)
-    })
+    return () => { cancelled = true }
   }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePasswordConfirm = useCallback(async (password) => {
+    if (!passwordPrompt) return
+    try {
+      const raw = await decodeWithPassword(passwordPrompt.d, passwordPrompt.salt, password)
+      setPasswordPrompt(null)
+      acceptIncoming(raw)
+    } catch {
+      setPasswordPrompt(p => p && { ...p, error: 'Неверный пароль. Проверьте раскладку и регистр.' })
+    }
+  }, [passwordPrompt, acceptIncoming])
 
   const handleShare = useCallback(async ({ password = '' } = {}) => {
     if (!editor) throw new Error('no editor')
@@ -557,14 +572,28 @@ export default function App() {
   // Данные держим в рефе, а не только в состоянии: восстановление меняет
   // список документов, и делать это внутри апдейтера нельзя — React в dev
   // вызывает апдейтер дважды, и документ возвращался бы дублем.
-  const [pendingDelete, setPendingDelete] = useState(null) // { doc, index }
-  const pendingRef = useRef(null)
+  const [pendingDelete, setPendingDelete] = useState(null) // { label }
+  const pendingRef = useRef(null)                          // { restore }
   const undoTimerRef = useRef(null)
 
   const purgePending = useCallback(() => {
     if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
     pendingRef.current = null
     setPendingDelete(null)
+  }, [])
+
+  // Общая отмена для документов и проектов: что именно вернуть,
+  // знает переданное замыкание
+  const scheduleUndo = useCallback((label, restore) => {
+    // Предыдущее отложенное удаление к этому моменту уже необратимо
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    pendingRef.current = { restore }
+    setPendingDelete({ label })
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null
+      pendingRef.current = null
+      setPendingDelete(null)
+    }, 7000)
   }, [])
 
   const handleDeleteDoc = useCallback((id) => {
@@ -586,30 +615,44 @@ export default function App() {
       setIsDirty(false)
     }
 
-    // Предыдущее отложенное удаление к этому моменту уже необратимо
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    pendingRef.current = { doc, index }
-    setPendingDelete({ doc, index })
-    undoTimerRef.current = setTimeout(() => {
-      undoTimerRef.current = null
-      pendingRef.current = null
-      setPendingDelete(null)
-    }, 7000)
-  }, [editor, flushDocs])
+    scheduleUndo(`Удалён «${doc.title || 'Без названия'}»`, () => {
+      // На случай двойного клика: если документ уже вернулся, второй раз не вставляем
+      if (docsRef.current.some(d => d.id === doc.id)) return
+      const next = [...docsRef.current]
+      next.splice(Math.min(index, next.length), 0, doc)
+      flushDocs(next)
+    })
+  }, [editor, flushDocs, scheduleUndo])
 
   const handleUndoDelete = useCallback(() => {
     const cur = pendingRef.current
     if (!cur) return
     pendingRef.current = null
     if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
-    // На случай двойного клика: если документ уже вернулся, второй раз не вставляем
-    if (!docsRef.current.some(d => d.id === cur.doc.id)) {
-      const next = [...docsRef.current]
-      next.splice(Math.min(cur.index, next.length), 0, cur.doc)
-      flushDocs(next)
-    }
+    cur.restore()
     setPendingDelete(null)
-  }, [flushDocs])
+  }, [])
+
+  // Удаление проекта ничего не теряет: документы просто остаются без проекта.
+  // Поэтому подтверждения нет — есть отмена, как у документов.
+  const handleDeleteProject = useCallback((id) => {
+    const index   = projectsRef.current.findIndex(p => p.id === id)
+    const project = projectsRef.current[index]
+    if (!project) return
+    const memberIds = docsRef.current.filter(d => d.projectId === id).map(d => d.id)
+
+    flushDocs(docsRef.current.map(d => d.projectId === id ? { ...d, projectId: null } : d))
+    flushProjects(projectsRef.current.filter(p => p.id !== id))
+
+    scheduleUndo(`Удалён проект «${project.title}»`, () => {
+      if (projectsRef.current.some(p => p.id === id)) return
+      const next = [...projectsRef.current]
+      next.splice(Math.min(index, next.length), 0, project)
+      flushProjects(next)
+      const back = new Set(memberIds)
+      flushDocs(docsRef.current.map(d => back.has(d.id) ? { ...d, projectId: id } : d))
+    })
+  }, [flushProjects, flushDocs, scheduleUndo])
 
   useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current) }, [])
 
@@ -696,18 +739,21 @@ export default function App() {
           }
         }
 
-        if (imported.length === 0) { alert('Не удалось прочитать файлы'); return }
+        if (imported.length === 0) {
+          setNotice({ kind: 'error', text: 'Не удалось прочитать файлы. Подойдут ZIP-бэкап, .docx, HTML, Markdown или текст.' })
+          return
+        }
 
         const existingIds = new Set(docsRef.current.map(d => d.id))
         const fresh = imported.filter(d => !existingIds.has(d.id))
         if (fresh.length > 0) {
           flushDocs([...docsRef.current, ...fresh])
-          alert(`Загружено: ${fresh.length} документ(ов)`)
+          setNotice({ kind: 'info', text: `Загружено документов: ${fresh.length}` })
         } else {
-          alert('Все документы уже есть в истории')
+          setNotice({ kind: 'info', text: 'Все документы из этих файлов уже есть в истории' })
         }
       } catch (err) {
-        alert('Ошибка при открытии: ' + err.message)
+        setNotice({ kind: 'error', text: `Не удалось открыть файл: ${err.message}` })
       }
     }
     input.click()
@@ -1081,6 +1127,18 @@ export default function App() {
                 <IconTOC />
               </button>
             )}
+            {/* Самоизоляция меняет поведение приложения — держим на виду.
+                Раньше единственным признаком был серый пункт «Яндекс.Спеллер»
+                внутри закрытого меню, и забывший о режиме решал, что спеллер сломался. */}
+            {isolationMode && !isMobile && (
+              <button
+                className="badge-isolation"
+                onClick={() => setShowTypograf(true)}
+                title="Приложение не обращается в интернет. Нажмите, чтобы открыть настройки"
+              >
+                Самоизоляция
+              </button>
+            )}
             {/* ← Назад — появляется при навигации по @-ссылкам.
                 На узком экране только значок: с подписью шапка переполняется. */}
             {navCanBack && (
@@ -1266,7 +1324,7 @@ export default function App() {
             onDeleteProject={handleDeleteProject}
             onMoveDoc={handleMoveDoc}
             onNewInProject={handleNewInProject}
-            pendingDelete={pendingDelete?.doc}
+            pendingDelete={pendingDelete}
             onUndoDelete={handleUndoDelete}
           />
         )}
@@ -1386,6 +1444,30 @@ export default function App() {
           defaultValue={linkDialog.currentUrl}
           onConfirm={handleLinkConfirm}
           onClose={() => setLinkDialog(null)}
+        />
+      )}
+
+      {passwordPrompt && (
+        <InputDialog
+          title="Документ под паролем"
+          description="Отправитель защитил заметку паролем. Спросите его, если не знаете — восстановить пароль нельзя, он нигде не хранится."
+          placeholder="Пароль"
+          type="password"
+          confirmLabel="Открыть"
+          error={passwordPrompt.error}
+          onConfirm={handlePasswordConfirm}
+          onClose={() => {
+            setPasswordPrompt(null)
+            window.history.replaceState({}, '', window.location.pathname)
+          }}
+        />
+      )}
+
+      {notice && (
+        <Notice
+          text={notice.text}
+          kind={notice.kind}
+          onClose={() => setNotice(null)}
         />
       )}
     </div>

@@ -140,6 +140,25 @@
   letter-spacing: -0.3px;
 }
 
+/* Признак режима, а не кнопка действия: оформлен как метка,
+   но нажимается и ведёт в настройки */
+.badge-isolation {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 9px;
+  border-radius: 100px;
+  border: 1px solid var(--accent-dim);
+  background: var(--bg-active);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  transition: background var(--transition);
+}
+.badge-isolation:hover { background: var(--bg-hover); }
+
 .btn-back {
   display: flex;
   align-items: center;

@@ -172,10 +172,14 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
         <button className="docs-panel__project-add" title="Новый документ в проекте" onClick={() => onNewInProject(project.id)}>
           <IconPlus />
         </button>
-        <button className="docs-panel__project-del" title="Удалить проект" onClick={() => {
-          if (docs.length === 0 || window.confirm(`Удалить проект «${project.title}»? Документы останутся без проекта.`))
-            onDeleteProject(project.id)
-        }}>
+        {/* Без подтверждения: удаление проекта ничего не теряет — документы
+            остаются без проекта, — а вернуть его можно кнопкой «Вернуть» */}
+        <button
+          className="docs-panel__project-del"
+          title="Удалить проект"
+          aria-label={`Удалить проект «${project.title}»`}
+          onClick={() => onDeleteProject(project.id)}
+        >
           <IconClose />
         </button>
       </div>
@@ -317,9 +321,7 @@ export default function DocsPanel({
 
       {pendingDelete && (
         <div className="docs-panel__undo" role="status">
-          <span className="docs-panel__undo-text">
-            Удалён «{pendingDelete.title || 'Без названия'}»
-          </span>
+          <span className="docs-panel__undo-text">{pendingDelete.label}</span>
           <button className="docs-panel__undo-btn" onClick={onUndoDelete}>Вернуть</button>
         </div>
       )}
