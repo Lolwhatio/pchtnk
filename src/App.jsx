@@ -157,27 +157,47 @@ function useIsMobile() {
 }
 
 // ── Авто-затухание интерфейса ────────────────────────────────────────────────
-// Печатаешь — шапка и тулбар тают, двинул мышь — возвращаются.
-// Работает фоном всегда, а не только внутри Дзена.
+// Печатаешь — шапка и тулбар тают, двинул мышь или потянулся к клавиатурной
+// навигации — возвращаются. Работает фоном всегда, а не только внутри Дзена.
+//
+// Гасим строго от набора с клавиатуры, а не от изменения документа: иначе
+// нажатие «Жирный» в тулбаре гасит тот самый тулбар, по которому кликнули.
+function isTypingKey(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return false
+  return e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete'
+}
+
 function useTypingFade(editor, enabled) {
   const [faded, setFaded] = useState(false)
   const fadedRef = useRef(false)
 
   useEffect(() => {
     if (!editor || !enabled) return
-    const fade = () => {
+
+    const dom = editor.view.dom
+    const fade = (e) => {
+      if (!isTypingKey(e)) return
       if (!fadedRef.current) { fadedRef.current = true; setFaded(true) }
     }
     const reveal = () => {
       if (fadedRef.current) { fadedRef.current = false; setFaded(false) }
     }
-    editor.on('update', fade)
+    // Возврат с клавиатуры: без этого выйти из затухания можно было только мышью
+    const revealOnKey = (e) => {
+      if (!isTypingKey(e)) reveal()
+    }
+
+    dom.addEventListener('keydown', fade)
+    window.addEventListener('keydown', revealOnKey)
     window.addEventListener('mousemove', reveal, { passive: true })
     window.addEventListener('touchstart', reveal, { passive: true })
+    window.addEventListener('focusin', reveal)
     return () => {
-      editor.off('update', fade)
+      dom.removeEventListener('keydown', fade)
+      window.removeEventListener('keydown', revealOnKey)
       window.removeEventListener('mousemove', reveal)
       window.removeEventListener('touchstart', reveal)
+      window.removeEventListener('focusin', reveal)
       // Сбрасываем при отписке, иначе затухание «залипнет» при возврате
       fadedRef.current = false
       setFaded(false)
@@ -202,6 +222,9 @@ export default function App() {
   )
   const [isolationMode, setIsolationMode] = useState(
     () => JSON.parse(localStorage.getItem('pechatniki-isolation') ?? 'false')
+  )
+  const [fadeEnabled, setFadeEnabled] = useState(
+    () => JSON.parse(localStorage.getItem('pechatniki-typing-fade') ?? 'true')
   )
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
@@ -403,6 +426,19 @@ export default function App() {
     }
   }, [isEditingName])
 
+  // ── Индикатор сохранения ──────────────────────────────────────────────────
+  // Документ уходит в localStorage сам, поэтому тревожная звёздочка не нужна:
+  // после автосейва коротко показываем «Сохранено» и гасим. Звёздочка остаётся
+  // только для файла на диске — и только если файл вообще открывали.
+  const [savedFlash, setSavedFlash] = useState(false)
+  const savedTimerRef = useRef(null)
+  const flashSaved = useCallback(() => {
+    setSavedFlash(true)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSavedFlash(false), 1600)
+  }, [])
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current) }, [])
+
   // ── Запись текущего документа ────────────────────────────────────────────
   // Нетронутый стартовый холст не сохраняем — иначе каждое открытие
   // приложения оставляло бы пустышку в списке недавних.
@@ -411,6 +447,7 @@ export default function App() {
     if (isScratch()) {
       if (editor.isEmpty) return
       materializeCurrent()
+      flashSaved()
       return
     }
     flushDocs(docsRef.current.map(d =>
@@ -418,7 +455,8 @@ export default function App() {
         ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
         : d
     ))
-  }, [editor, flushDocs, isScratch, materializeCurrent])
+    flashSaved()
+  }, [editor, flushDocs, isScratch, materializeCurrent, flashSaved])
 
   // ── Сохранить текущий документ (дебаунс 600 мс) ──────────────────────────
   const scheduleSave = useCallback(() => {
@@ -623,10 +661,11 @@ export default function App() {
   }, [flushDocs])
 
   // ── Файловые операции ─────────────────────────────────────────────────────
+  // Предупреждать здесь не о чем: handleNewDoc начинается с saveNow(),
+  // текущий документ уходит в localStorage до того, как заводится новый.
   const handleNew = useCallback(() => {
-    if (isDirty && !confirm('Несохраненные изменения будут потеряны. Продолжить?')) return
     handleNewDoc()
-  }, [isDirty, handleNewDoc])
+  }, [handleNewDoc])
 
   const handleOpenFallback = useCallback(() => {
     const input = document.createElement('input')
@@ -749,6 +788,14 @@ export default function App() {
     setIsolationMode(v => {
       const next = !v
       localStorage.setItem('pechatniki-isolation', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const handleFadeToggle = () => {
+    setFadeEnabled(v => {
+      const next = !v
+      localStorage.setItem('pechatniki-typing-fade', JSON.stringify(next))
       return next
     })
   }
@@ -892,12 +939,16 @@ export default function App() {
         }
         return
       }
-      if (e.shiftKey && e.key === 'D') { e.preventDefault(); setZenMode(z => !z);   return }
-      if (e.shiftKey && e.key === 'T') { e.preventDefault(); handleApplyTypograf(); return }
-      if (e.shiftKey && e.key === 'N') { e.preventDefault(); handleNew();           return }
-      if (e.shiftKey && e.key === 'S') { e.preventDefault(); handleSave();          return }
-      if (e.shiftKey && e.key === 'Y') { e.preventDefault(); if (!isolationMode) checkSpelling(); return }
-      if (e.key === '/' || e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s); return }
+      // Сравниваем физическую клавишу, а не букву: e.key в русской раскладке
+      // отдаёт кириллицу ('В' вместо 'D'), и сочетания переставали работать
+      // ровно тогда, когда пользователь пишет по-русски.
+      if (e.shiftKey && e.code === 'KeyD') { e.preventDefault(); setZenMode(z => !z);   return }
+      if (e.shiftKey && e.code === 'KeyT') { e.preventDefault(); handleApplyTypograf(); return }
+      if (e.shiftKey && e.code === 'KeyN') { e.preventDefault(); handleNew();           return }
+      if (e.shiftKey && e.code === 'KeyY') { e.preventDefault(); if (!isolationMode) checkSpelling(); return }
+      // ⌘S тоже перехватываем: иначе браузер открывает «Сохранить страницу как…»
+      if (e.code === 'KeyS') { e.preventDefault(); handleSave(); return }
+      if (e.code === 'Slash') { e.preventDefault(); setShowShortcuts(s => !s); return }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -909,7 +960,7 @@ export default function App() {
   const uiBusy = showDocs || showTOC || showBuffer || showTypograf || showPreview ||
     showShare || showShortcuts || showKbExport || showFootnotes || isEditingName ||
     !!linkDialog || spellErrors.length > 0
-  const uiFaded = useTypingFade(editor, !zenMode && !isMobile && !uiBusy)
+  const uiFaded = useTypingFade(editor, fadeEnabled && !zenMode && !isMobile && !uiBusy)
 
   // Лаунчер недавних — приветствие в начале сессии, а не подсказка: он ждёт на
   // чистом листе, но с первым же символом уходит насовсем. Стёрли всё обратно,
@@ -999,7 +1050,9 @@ export default function App() {
               onClick={() => { nameEditStartRef.current = fileName; setIsEditingName(true) }}
               title="Нажмите, чтобы переименовать"
             >
-              {fileName}{isDirty ? '  *' : ''}
+              {fileName}
+              {fileHandle && isDirty && <span className="file-flag" title="Есть изменения, не выгруженные в файл"> *</span>}
+              <span className={`file-saved${savedFlash ? ' file-saved--on' : ''}`}>Сохранено</span>
             </span>
           )}
 
@@ -1190,6 +1243,8 @@ export default function App() {
             onToggle={handleTypografToggle}
             isolationMode={isolationMode}
             onIsolationToggle={handleIsolationToggle}
+            fadeEnabled={fadeEnabled}
+            onFadeToggle={handleFadeToggle}
             onClose={() => setShowTypograf(false)}
           />
         )}

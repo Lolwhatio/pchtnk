@@ -40,6 +40,24 @@
   padding: 0 12px;
   cursor: text;
 }
+.file-flag {
+  color: var(--accent);
+}
+
+/* «Сохранено» держим в потоке всегда — иначе имя файла дёргается,
+   когда подпись появляется и исчезает */
+.file-saved {
+  margin-left: 10px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.file-saved--on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .file-saved { transition: none; }
+}
+
 .file-name--editing {
   flex: 1;
   background: transparent;
@@ -147,14 +165,22 @@
 .app--zen .app-header { display: none; }
 
 /* ── Авто-затухание при наборе ─────────────────────────────────────────────
-   Печатаешь — панели тают, двинул мышь — возвращаются. */
+   Печатаешь — панели тают, двинул мышь или нажал служебную клавишу —
+   возвращаются.
+
+   visibility и pointer-events обязательны: без них погашенные панели
+   продолжают принимать клики и получать фокус по Tab, то есть в невидимую
+   кнопку попасть легче, чем в видимую. */
 .app-header,
 .toolbar {
-  transition: opacity 0.45s ease;
+  transition: opacity 0.45s ease, visibility 0s;
 }
 .app--faded .app-header,
 .app--faded .toolbar {
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.45s ease, visibility 0s linear 0.45s;
 }
 @media (prefers-reduced-motion: reduce) {
   .app-header, .toolbar { transition: none; }

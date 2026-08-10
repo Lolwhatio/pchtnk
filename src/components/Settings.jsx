@@ -5,6 +5,7 @@ import './Settings.css'
 export default function Settings({
   typograf, typografEnabled, onToggle,
   isolationMode, onIsolationToggle,
+  fadeEnabled, onFadeToggle,
   onClose,
 }) {
   return (
@@ -28,6 +29,29 @@ export default function Settings({
           <button
             className={`settings-toggle${isolationMode ? ' settings-toggle--on' : ''}`}
             onClick={onIsolationToggle}
+            role="switch"
+            aria-checked={isolationMode}
+            aria-label="Режим самоизоляции"
+          >
+            <span className="settings-toggle-knob" />
+          </button>
+        </div>
+
+        {/* ── Письмо ────────────────────────────────── */}
+        <div className="settings-section-label">Письмо</div>
+        <div className="settings-row">
+          <div className="settings-row-text">
+            <span className="settings-row-name">Прятать панели при наборе</span>
+            <span className="settings-row-desc">
+              Шапка и нижняя панель тают, пока вы печатаете, и возвращаются от движения мыши или Tab
+            </span>
+          </div>
+          <button
+            className={`settings-toggle${fadeEnabled ? ' settings-toggle--on' : ''}`}
+            onClick={onFadeToggle}
+            role="switch"
+            aria-checked={fadeEnabled}
+            aria-label="Прятать панели при наборе"
           >
             <span className="settings-toggle-knob" />
           </button>
