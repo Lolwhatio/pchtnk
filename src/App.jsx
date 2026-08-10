@@ -369,7 +369,7 @@ export default function App() {
       setPasswordPrompt(null)
       acceptIncoming(raw)
     } catch {
-      setPasswordPrompt(p => p && { ...p, error: 'Неверный пароль. Проверьте раскладку и регистр.' })
+      setPasswordPrompt(p => p && { ...p, error: 'Не подошёл. Проверьте раскладку и регистр' })
     }
   }, [passwordPrompt, acceptIncoming])
 
@@ -749,10 +749,11 @@ export default function App() {
         const existingIds = new Set(docsRef.current.map(d => d.id))
         const fresh = imported.filter(d => !existingIds.has(d.id))
         if (fresh.length > 0) {
+          // Без уведомления: документы появляются в списке, который открыт
+          // рядом, — сообщать об этом значит подтверждать очевидное
           flushDocs([...docsRef.current, ...fresh])
-          setNotice({ kind: 'info', text: `Загружено документов: ${fresh.length}` })
         } else {
-          setNotice({ kind: 'info', text: 'Все документы из этих файлов уже есть в истории' })
+          setNotice({ kind: 'info', text: 'Эти документы уже есть в истории' })
         }
       } catch (err) {
         setNotice({ kind: 'error', text: `Не удалось открыть файл: ${err.message}` })
@@ -1452,7 +1453,7 @@ export default function App() {
       {passwordPrompt && (
         <InputDialog
           title="Документ под паролем"
-          description="Отправитель защитил заметку паролем. Спросите его, если не знаете — восстановить пароль нельзя, он нигде не хранится."
+          description="Пароль знает только отправитель — у нас он не хранится."
           placeholder="Пароль"
           type="password"
           confirmLabel="Открыть"
