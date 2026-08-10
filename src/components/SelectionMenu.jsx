@@ -11,12 +11,15 @@ const HEADING_LEVELS = [1, 2, 3]
 export default function SelectionMenu({ editor }) {
   const [, forceUpdate] = useState(0)
 
+  // Только selectionUpdate и update. На transaction подписываться нельзя:
+  // BubbleMenu сам шлёт транзакции при пересчёте позиции, перерисовка
+  // вызывает следующую, и React уходит в бесконечный цикл.
   useEffect(() => {
     if (!editor) return
     const update = () => forceUpdate(n => n + 1)
     editor.on('selectionUpdate', update)
-    editor.on('transaction', update)
-    return () => { editor.off('selectionUpdate', update); editor.off('transaction', update) }
+    editor.on('update', update)
+    return () => { editor.off('selectionUpdate', update); editor.off('update', update) }
   }, [editor])
 
   if (!editor) return null
