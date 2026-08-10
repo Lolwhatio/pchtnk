@@ -192,3 +192,16 @@
   border: none;
   background: #525659; /* нейтральный фон читалки PDF */
 }
+
+/* Подтверждение скачивания. Раньше MD и HTML качали молча, и было
+   непонятно, сработала кнопка или нет. */
+.preview-done {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-active);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  text-align: center;
+  flex-shrink: 0;
+}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import html2pdf from 'html2pdf.js'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
@@ -102,7 +102,7 @@ const PDF_INLINE_STYLE = `
 export default function Preview({ editor, fileName, typograf, typografEnabled, onTypografToggle, onClose }) {
   const [showTypograf, setShowTypograf] = useState(false)
   const [building, setBuilding] = useState(false)
-  const [pdfUrl, setPdfUrl] = useState(null)   // blob-URL готового PDF для предпросмотра
+  const [done, setDone] = useState(null)       // что скачали — подтверждение под шапкой
 
   const html = useMemo(() => {
     if (!editor) return ''
@@ -111,11 +111,18 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
     return typografEnabled && typograf ? typograf.execute(rendered) : rendered
   }, [editor, typografEnabled, typograf])
 
-  // Отзываем blob-URL при закрытии предпросмотра и при размонтировании
-  useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl) }, [pdfUrl])
+  // Все три кнопки экспорта ведут себя одинаково: собирают файл и скачивают,
+  // а затем показывают, что именно скачалось. Раньше MD и HTML качали молча,
+  // а PDF открывал ещё один предпросмотр поверх этого же экрана.
+  const doneTimer = useRef(null)
+  const flashDone = (name) => {
+    setDone(name)
+    if (doneTimer.current) clearTimeout(doneTimer.current)
+    doneTimer.current = setTimeout(() => setDone(null), 3000)
+  }
+  useEffect(() => () => { if (doneTimer.current) clearTimeout(doneTimer.current) }, [])
 
-  // Собираем PDF в blob и показываем предпросмотром (не качаем сразу)
-  const handlePreviewPDF = async () => {
+  const handleExportPDF = async () => {
     setBuilding(true)
     try {
       const wrapper = document.createElement('div')
@@ -135,34 +142,26 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
         pagebreak: { mode: ['avoid-all', 'css'] },
       }).from(wrapper).outputPdf('blob')
 
-      setPdfUrl(URL.createObjectURL(blob))
+      const url = URL.createObjectURL(blob)
+      const a = Object.assign(document.createElement('a'), { href: url, download: fileName + '.pdf' })
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      flashDone(fileName + '.pdf')
     } finally {
       setBuilding(false)
     }
   }
 
-  // Скачиваем уже собранный PDF
-  const handleDownloadPDF = () => {
-    if (!pdfUrl) return
-    const a = document.createElement('a')
-    a.href = pdfUrl
-    a.download = fileName + '.pdf'
-    document.body.appendChild(a); a.click(); document.body.removeChild(a)
-  }
-
-  const closePdfPreview = () => {
-    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
-    setPdfUrl(null)
-  }
-
   const handleExportHTML = () => {
     const full = `<!DOCTYPE html>\n<html lang="ru">\n<head>\n<meta charset="UTF-8">\n<title>${fileName}</title>\n<style>\n${PRINT_STYLES}\n</style>\n</head>\n<body>\n${html}\n</body>\n</html>`
     download(full, fileName + '.html', 'text/html')
+    flashDone(fileName + '.html')
   }
 
   const handleExportMarkdown = () => {
     const md = editorToMarkdown(editor)
     download(md, fileName + '.md', 'text/markdown')
+    flashDone(fileName + '.md')
   }
 
   return (
@@ -187,9 +186,9 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
           </button>
           <button
             className="preview-btn preview-btn--primary"
-            onClick={handlePreviewPDF}
+            onClick={handleExportPDF}
             disabled={building}
-            title="Посмотреть и скачать PDF"
+            title="Скачать PDF"
           >
             {building ? 'Собираем…' : 'PDF'}
           </button>
@@ -202,6 +201,10 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
           </button>
         </div>
       </div>
+
+      {done && (
+        <div className="preview-done" role="status">Скачан файл {done}</div>
+      )}
 
       <div className="preview-body">
         <div
@@ -219,18 +222,6 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
         />
       )}
 
-      {pdfUrl && (
-        <div className="pdf-preview">
-          <div className="pdf-preview__bar">
-            <button className="preview-btn" onClick={closePdfPreview}>← Назад</button>
-            <span className="pdf-preview__title">Предпросмотр PDF</span>
-            <button className="preview-btn preview-btn--primary" onClick={handleDownloadPDF}>
-              Скачать PDF
-            </button>
-          </div>
-          <iframe className="pdf-preview__frame" src={pdfUrl} title="Предпросмотр PDF" />
-        </div>
-      )}
     </div>
   )
 }

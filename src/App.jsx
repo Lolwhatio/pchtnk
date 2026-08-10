@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import Editor from './components/Editor'
-import Toolbar, { MobileHeaderTools } from './components/Toolbar'
+import Toolbar from './components/Toolbar'
+import SelectionMenu from './components/SelectionMenu'
 import Preview from './components/Preview'
 import TOC from './components/TOC'
 import Settings from './components/Settings'
@@ -545,10 +546,31 @@ export default function App() {
   }, [editor, saveNow, flushDocs])
 
   // ── Удалить документ ─────────────────────────────────────────────────────
+  // Мягко: документ уходит из списка, но семь секунд его можно вернуть.
+  // Раньше корзина стирала сразу и безвозвратно — при том, что удаление
+  // проекта, которое ничего не теряет, подтверждение спрашивало.
+  // Данные держим в рефе, а не только в состоянии: восстановление меняет
+  // список документов, и делать это внутри апдейтера нельзя — React в dev
+  // вызывает апдейтер дважды, и документ возвращался бы дублем.
+  const [pendingDelete, setPendingDelete] = useState(null) // { doc, index }
+  const pendingRef = useRef(null)
+  const undoTimerRef = useRef(null)
+
+  const purgePending = useCallback(() => {
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
+    pendingRef.current = null
+    setPendingDelete(null)
+  }, [])
+
   const handleDeleteDoc = useCallback((id) => {
     if (docsRef.current.length <= 1) return
+    const index = docsRef.current.findIndex(d => d.id === id)
+    const doc   = docsRef.current[index]
+    if (!doc) return
+
     const newDocs = docsRef.current.filter(d => d.id !== id)
     flushDocs(newDocs)
+
     if (id === curIdRef.current) {
       const latest = [...newDocs].sort((a, b) => b.updatedAt - a.updatedAt)[0]
       editor?.commands.setContent(latest.content)
@@ -558,7 +580,33 @@ export default function App() {
       setFileName(latest.title || 'Без названия')
       setIsDirty(false)
     }
+
+    // Предыдущее отложенное удаление к этому моменту уже необратимо
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    pendingRef.current = { doc, index }
+    setPendingDelete({ doc, index })
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null
+      pendingRef.current = null
+      setPendingDelete(null)
+    }, 7000)
   }, [editor, flushDocs])
+
+  const handleUndoDelete = useCallback(() => {
+    const cur = pendingRef.current
+    if (!cur) return
+    pendingRef.current = null
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
+    // На случай двойного клика: если документ уже вернулся, второй раз не вставляем
+    if (!docsRef.current.some(d => d.id === cur.doc.id)) {
+      const next = [...docsRef.current]
+      next.splice(Math.min(cur.index, next.length), 0, cur.doc)
+      flushDocs(next)
+    }
+    setPendingDelete(null)
+  }, [flushDocs])
+
+  useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current) }, [])
 
   // ── Экспорт всех документов в ZIP ────────────────────────────────────────
   const handleExportDocs = useCallback(async () => {
@@ -932,10 +980,16 @@ export default function App() {
       const mod = e.metaKey || e.ctrlKey
       if (!mod) {
         if (e.key === 'Escape') {
-          if (zenMode) setZenMode(false)
+          // Слои закрываются сверху вниз: сначала то, что лежит поверх текста,
+          // потом режимы. Диалоги закрывают себя сами через useDismiss.
+          if (showPreview)        setShowPreview(false)
           else if (showShortcuts) setShowShortcuts(false)
-          else if (showDocs) setShowDocs(false)
-          else if (showTOC)  setShowTOC(false)
+          else if (showTypograf)  setShowTypograf(false)
+          else if (showFootnotes) setShowFootnotes(false)
+          else if (showBuffer)    setShowBuffer(false)
+          else if (showDocs)      setShowDocs(false)
+          else if (showTOC)       setShowTOC(false)
+          else if (zenMode)       setZenMode(false)
         }
         return
       }
@@ -953,6 +1007,7 @@ export default function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [editor, fileHandle, isDirty, zenMode, showDocs, showTOC, showShortcuts, isolationMode,
+      showPreview, showTypograf, showFootnotes, showBuffer,
       checkSpelling, handleNew, handleOpen, handleSave, handleSaveAs, handleApplyTypograf])
 
   // ── Рендер ────────────────────────────────────────────────────────────────
@@ -1012,22 +1067,24 @@ export default function App() {
                 <IconTOC />
               </button>
             )}
-            {/* ← Назад — появляется при навигации по @-ссылкам */}
+            {/* ← Назад — появляется при навигации по @-ссылкам.
+                На узком экране только значок: с подписью шапка переполняется. */}
             {navCanBack && (
               <button
                 className="btn-back"
                 onClick={handleNavBack}
                 title="Назад"
+                aria-label="Назад"
               >
-                <IconBack /> Назад
+                <IconBack />
+                {!isMobile && <span className="btn-back__label">Назад</span>}
               </button>
             )}
           </div>
 
-          {/* На мобильном имя файла не влезает — редактируется в панели документов */}
-          {isMobile ? (
-            <span className="header-spacer" />
-          ) : isEditingName ? (
+          {/* Имя файла помещается и на телефоне: инструменты редактуры
+              уехали во всплывающее меню и шапку больше не распирают */}
+          {isEditingName ? (
             <input
               ref={nameInputRef}
               className="file-name file-name--editing"
@@ -1057,16 +1114,10 @@ export default function App() {
           )}
 
           <div className="header-right">
-            {/* Мобильный: инструменты редактуры прямо в шапке —
-                нижний тулбар закрывается клавиатурой */}
-            {isMobile && <MobileHeaderTools editor={editor} />}
+            {/* Обработка текста. Форматирование живёт во всплывающем меню
+                над выделением, поэтому в шапке его нет — и на телефоне
+                она больше не переполняется. */}
             <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)" aria-label="Применить типограф"><IconTypograf /></button>
-            {!isMobile && (
-              <>
-                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков" aria-label="Буфер черновиков" aria-pressed={showBuffer}><IconDrafts /></button>
-                <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
-              </>
-            )}
             <OverflowMenu
               icon={<IconTools />}
               title="Инструменты"
@@ -1076,6 +1127,9 @@ export default function App() {
                   icon: <IconSpellcheck />,
                   label: 'Яндекс.Спеллер',
                   title: isolationMode ? 'Отключено в режиме самоизоляции' : 'Проверить орфографию (⌘⇧Y)',
+                  // Причина недоступности видна сразу, а не только при наведении:
+                  // иначе серый пункт выглядит сломанным
+                  hint: isolationMode ? 'самоизоляция' : undefined,
                   disabled: isolationMode,
                   onClick: checkSpelling,
                 },
@@ -1159,8 +1213,12 @@ export default function App() {
             />
             {!isMobile && (
               <>
+                <span className="header-sep" />
                 <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
                 <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
+                <span className="header-sep" />
+                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков" aria-label="Буфер черновиков" aria-pressed={showBuffer}><IconDrafts /></button>
+                <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
                 <button
                   className="btn-icon"
                   onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
@@ -1188,12 +1246,14 @@ export default function App() {
             onExport={handleExportDocs}
             onExportKb={() => setShowKbExport(true)}
             onImport={handleImportDocs}
-            onClose={() => setShowDocs(false)}
+            onClose={() => { purgePending(); setShowDocs(false) }}
             onCreateProject={handleCreateProject}
             onRenameProject={handleRenameProject}
             onDeleteProject={handleDeleteProject}
             onMoveDoc={handleMoveDoc}
             onNewInProject={handleNewInProject}
+            pendingDelete={pendingDelete?.doc}
+            onUndoDelete={handleUndoDelete}
           />
         )}
 
@@ -1213,6 +1273,7 @@ export default function App() {
         )}
 
         <div style={{ display: showPreview ? 'none' : 'contents' }}>
+          <SelectionMenu editor={editor} />
           <Editor
             onReady={setEditor}
             onChange={() => { setIsDirty(true); scheduleSave() }}

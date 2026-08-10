@@ -24,9 +24,14 @@
   flex: 0 0 auto;
 }
 
-/* Распорка вместо имени файла на мобильном */
-.header-spacer {
-  flex: 1;
+/* Группы в шапке. Приём уже был в нижнем тулбаре (.toolbar-sep),
+   наверху десять кнопок стояли сплошным рядом без единого разделителя. */
+.header-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 5px;
+  flex-shrink: 0;
 }
 
 .file-name {
@@ -140,7 +145,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  height: 26px;
+  height: 28px;
   border-radius: 6px;
   background: rgba(128, 128, 128, 0.15);
   color: var(--text-secondary);
@@ -154,6 +159,16 @@
 .btn-back:hover {
   background: rgba(128, 128, 128, 0.28);
   color: var(--text-primary);
+}
+
+/* ── Тач-цели ──────────────────────────────────────────────────────────────
+   На пальце 28×28 без зазоров — гарантированные промахи: замеренные
+   координаты кнопок шли ровно через 28 пикселей. Apple рекомендует 44. */
+@media (pointer: coarse) {
+  .btn-icon { width: 44px; height: 44px; }
+  .btn-back { height: 44px; padding: 0 12px; }
+  .header-left, .header-right { gap: 2px; }
+  .app-header { height: 52px; }
 }
 
 .app-body {

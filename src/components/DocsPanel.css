@@ -234,11 +234,83 @@
   line-height: 1.4;
 }
 
+/* Второй ряд: начало текста. Без него девять строк «Без названия»
+   ничем не отличаются друг от друга. */
+.docs-panel__item-snippet {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
 .docs-panel__item-date {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 1px;
 }
+
+/* ── Поиск ──────────────────────────────────────── */
+
+.docs-panel__search {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.docs-panel__search-input {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+}
+.docs-panel__search-input::placeholder { color: var(--text-muted); }
+.docs-panel__search-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+/* ── Отмена удаления ────────────────────────────── */
+
+.docs-panel__undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.docs-panel__undo-text {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-panel__undo-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: var(--bg-active);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  transition: background var(--transition);
+}
+.docs-panel__undo-btn:hover { background: var(--bg-hover); }
 
 /* ── Кнопки действий у элемента ─────────────────── */
 

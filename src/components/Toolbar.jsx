@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { useDismiss, useMenuKeys } from '../hooks/useDismiss'
 import {
-  IconBold, IconItalic, IconStrike, IconChevronRight,
-  IconLink, IconCode, IconImage, IconEmbed, IconTable,
+  IconChevronRight, IconImage, IconEmbed, IconTable,
   IconSmiley, IconFootnote, IconListUl, IconListOl,
 } from './icons'
 import './Toolbar.css'
@@ -91,12 +91,7 @@ function EmojiPicker({ editor }) {
   const [recent, setRecent] = useState(loadRecentEmoji)
   const wrapRef = useRef(null)
 
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  useDismiss(wrapRef, open, () => setOpen(false))
 
   const insert = (emoji) => {
     editor.chain().focus().insertContent(emoji).run()
@@ -147,13 +142,10 @@ function EmojiPicker({ editor }) {
 function HeadingDropdown({ editor, direction = 'up' }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
+  const menuRef = useRef(null)
 
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  useDismiss(wrapRef, open, () => setOpen(false))
+  useMenuKeys(menuRef, open)
 
   const activeLevel = HEADING_LEVELS.find(l => editor.isActive('heading', { level: l }))
   const label = activeLevel ? `H${activeLevel}` : 'Заголовок'
@@ -171,7 +163,11 @@ function HeadingDropdown({ editor, direction = 'up' }) {
         <span className="toolbar-heading-caret"><IconChevronRight size={9} /></span>
       </button>
       {open && (
-        <div className={`toolbar-heading-menu${direction === 'down' ? ' toolbar-heading-menu--down' : ''}`}>
+        <div
+          ref={menuRef}
+          role="menu"
+          className={`toolbar-heading-menu${direction === 'down' ? ' toolbar-heading-menu--down' : ''}`}
+        >
           <button
             className={`toolbar-heading-item${!activeLevel ? ' toolbar-heading-item--active' : ''}`}
             onClick={() => { editor.chain().focus().setParagraph().run(); setOpen(false) }}
@@ -193,62 +189,14 @@ function HeadingDropdown({ editor, direction = 'up' }) {
   )
 }
 
-// Инструменты редактуры для мобильной шапки: жирный, курсив, зачеркнутый,
-// ссылка, список и заголовки. Нижний тулбар на телефоне скрыт —
-// его закрывает клавиатура.
-export function MobileHeaderTools({ editor }) {
-  const [, forceUpdate] = useState(0)
-
-  useEffect(() => {
-    if (!editor) return
-    const update = () => forceUpdate(n => n + 1)
-    editor.on('update', update)
-    editor.on('selectionUpdate', update)
-    return () => { editor.off('update', update); editor.off('selectionUpdate', update) }
-  }, [editor])
-
-  if (!editor) return null
-
-  const btn = (action, label, icon, active) => (
-    <button
-      className="btn-icon"
-      onClick={action}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-    >
-      {icon}
-    </button>
-  )
-
-  const handleLink = () => {
-    const currentUrl = editor.getAttributes('link').href || ''
-    window.dispatchEvent(new CustomEvent('pechatniki:link-dialog', { detail: { currentUrl } }))
-  }
-
-  return (
-    <>
-      {btn(() => editor.chain().focus().toggleBold().run(), 'Жирный', <IconBold />, editor.isActive('bold'))}
-      {btn(() => editor.chain().focus().toggleItalic().run(), 'Курсив', <IconItalic />, editor.isActive('italic'))}
-      {btn(() => editor.chain().focus().toggleStrike().run(), 'Зачеркнутый', <IconStrike />, editor.isActive('strike'))}
-      {btn(handleLink, 'Ссылка', <IconLink />, editor.isActive('link'))}
-      {btn(() => editor.chain().focus().toggleBulletList().run(), 'Список', <IconListUl />, editor.isActive('bulletList'))}
-      <HeadingDropdown editor={editor} direction="down" />
-    </>
-  )
-}
-
 // Таблица: вне таблицы — вставка 3×3, внутри — меню операций
 function TableControl({ editor }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
+  const menuRef = useRef(null)
 
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  useDismiss(wrapRef, open, () => setOpen(false))
+  useMenuKeys(menuRef, open)
 
   const inTable = editor.isActive('table')
 
@@ -293,7 +241,7 @@ function TableControl({ editor }) {
         <IconTable />
       </button>
       {open && (
-        <div className="toolbar-heading-menu">
+        <div className="toolbar-heading-menu" ref={menuRef} role="menu">
           {items.map((it, i) => it.sep
             ? <div key={i} className="toolbar-menu-sep" />
             : (
@@ -347,12 +295,6 @@ export default function Toolbar({ editor }) {
     return () => { editor.off('update', update); editor.off('selectionUpdate', update) }
   }, [editor])
 
-  const handleLink = useCallback(() => {
-    if (!editor) return
-    const currentUrl = editor.getAttributes('link').href || ''
-    window.dispatchEvent(new CustomEvent('pechatniki:link-dialog', { detail: { currentUrl } }))
-  }, [editor])
-
   const handleInsertFootnote = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-footnote'))
   const handleInsertImage = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image'))
   const handleInsertEmbed = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed'))
@@ -371,17 +313,11 @@ export default function Toolbar({ editor }) {
     </button>
   )
 
+  // Форматирование живёт во всплывающем меню над выделением (SelectionMenu).
+  // Здесь остаётся то, что вставляют, а не то, чем размечают уже набранное.
   return (
     <div className="toolbar">
       <div className="toolbar-left">
-        {btn(() => editor.chain().focus().toggleBold().run(), 'Жирный (⌘B)', <IconBold />, editor.isActive('bold'))}
-        {btn(() => editor.chain().focus().toggleItalic().run(), 'Курсив (⌘I)', <IconItalic />, editor.isActive('italic'))}
-        {btn(() => editor.chain().focus().toggleStrike().run(), 'Зачеркнутый (⌘⇧-)', <IconStrike />, editor.isActive('strike'))}
-        {btn(handleLink, 'Ссылка (⌘K)', <IconLink />, editor.isActive('link'))}
-        {btn(() => editor.chain().focus().toggleCode().run(), 'Код', <IconCode />, editor.isActive('code'))}
-
-        <span className="toolbar-sep" />
-
         {btn(handleInsertImage, 'Изображение', <IconImage />, false)}
         {btn(handleInsertEmbed, 'Встроить (YouTube, Google Slides…)', <IconEmbed />, false)}
         <TableControl editor={editor} />
