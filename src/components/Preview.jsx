@@ -9,20 +9,25 @@ const PRINT_STYLES = `
   *,*::before,*::after{box-sizing:border-box}
   body{
     font-family:Georgia,'Times New Roman',serif;
-    font-size:17px;line-height:1.75;
-    max-width:680px;margin:56px auto;
+    font-size:18px;line-height:1.6;
+    max-width:600px;margin:56px auto;
     color:#1a2a1c;background:#fff;
     padding:0 32px;
     -webkit-font-smoothing:antialiased;
   }
-  h1{font-family:system-ui,sans-serif;font-size:2.1em;font-weight:800;
+  /* Та же шкала, что в редакторе. В экспорте меток H1–H6 нет,
+     поэтому иерархия должна держаться на самих размерах. */
+  h1{font-family:system-ui,sans-serif;font-size:2em;font-weight:800;
      line-height:1.2;margin:0 0 .5em;color:#0f1c10}
-  h2{font-family:system-ui,sans-serif;font-size:1.45em;font-weight:700;
+  h2{font-family:system-ui,sans-serif;font-size:1.6em;font-weight:700;
      margin:2em 0 .5em;color:#182818}
-  h3{font-family:system-ui,sans-serif;font-size:1.18em;font-weight:600;
+  h3{font-family:system-ui,sans-serif;font-size:1.32em;font-weight:600;
      margin:1.6em 0 .4em}
-  h4,h5,h6{font-family:system-ui,sans-serif;font-weight:600;margin:1.3em 0 .3em}
-  p{margin:0 0 .85em}
+  h4{font-family:system-ui,sans-serif;font-size:1.15em;font-weight:600;margin:1.3em 0 .3em}
+  h5{font-family:system-ui,sans-serif;font-size:1em;font-weight:600;margin:1.3em 0 .3em}
+  h6{font-family:system-ui,sans-serif;font-size:.9em;font-weight:600;margin:1.3em 0 .3em;
+     text-transform:uppercase;letter-spacing:.06em;color:#3a5a3c}
+  p{margin:0 0 1.2em}
   a{color:#3a7828;text-decoration:underline}
   blockquote{
     border-left:3px solid #62a030;
@@ -58,15 +63,18 @@ const PRINT_STYLES = `
 const PDF_INLINE_STYLE = `
   *,*::before,*::after{box-sizing:border-box}
   *{color:#1a2a1c !important;background:transparent !important;box-shadow:none !important}
-  body{font-family:Georgia,serif;font-size:16px;line-height:1.75}
+  body{font-family:Georgia,serif;font-size:16px;line-height:1.6}
   h1{font-family:system-ui,sans-serif;font-size:2em;font-weight:800;
      line-height:1.2;margin:0 0 .5em;color:#0f1c10 !important}
-  h2{font-family:system-ui,sans-serif;font-size:1.4em;font-weight:700;
+  h2{font-family:system-ui,sans-serif;font-size:1.6em;font-weight:700;
      margin:1.8em 0 .45em}
-  h3{font-family:system-ui,sans-serif;font-size:1.15em;font-weight:600;
+  h3{font-family:system-ui,sans-serif;font-size:1.32em;font-weight:600;
      margin:1.4em 0 .35em}
-  h4,h5,h6{font-family:system-ui,sans-serif;font-weight:600;margin:1.2em 0 .3em}
-  p{margin:0 0 .8em}
+  h4{font-family:system-ui,sans-serif;font-size:1.15em;font-weight:600;margin:1.2em 0 .3em}
+  h5{font-family:system-ui,sans-serif;font-size:1em;font-weight:600;margin:1.2em 0 .3em}
+  h6{font-family:system-ui,sans-serif;font-size:.9em;font-weight:600;margin:1.2em 0 .3em;
+     text-transform:uppercase;letter-spacing:.06em}
+  p{margin:0 0 1.2em}
   a{color:#2d5a1b !important;text-decoration:underline}
   blockquote{border-left:3px solid #62a030 !important;margin:1.4em 0;
              padding:.5em 0 .5em 1.3em;font-style:italic}

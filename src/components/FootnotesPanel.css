@@ -17,7 +17,7 @@
   text-align: left;
   padding: 7px 4px 7px 12px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   color: var(--text-primary);
 }
@@ -30,7 +30,7 @@
   border-radius: 100px;
   background: var(--bg-active);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
@@ -49,7 +49,7 @@
 }
 
 .fn-item__url {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -85,7 +85,7 @@
   background: var(--bg-active);
   color: var(--text-secondary);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   transition: background var(--transition), color var(--transition);
 }
 .fn-panel__btn:hover { background: var(--bg-hover); color: var(--text-primary); }

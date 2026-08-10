@@ -18,7 +18,7 @@
 .media-tab {
   flex: 1;
   padding: 9px 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: var(--font-ui);
   color: var(--text-muted);
   background: none;
@@ -62,7 +62,7 @@
   object-fit: contain;
 }
 .media-preview-error {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: #bf6060;
   padding: 16px;
   text-align: center;
@@ -92,11 +92,11 @@
   align-items: center;
   gap: 6px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 20px;
 }
 .media-drop-icon { font-size: 22px; margin-bottom: 2px; }
-.media-drop-sub  { font-size: 11px; color: var(--text-muted); opacity: .6; }
+.media-drop-sub  { font-size: var(--fs-xs); color: var(--text-muted); opacity: .6; }
 
 .media-drop-img {
   max-width: 100%;

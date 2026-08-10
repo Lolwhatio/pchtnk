@@ -21,7 +21,7 @@
   .file-name,
   .file-name--editing {
     padding: 0 6px;
-    font-size: 12px;
+    font-size: var(--fs-xs);
     min-width: 0;
   }
   .btn-back {
@@ -29,11 +29,10 @@
   }
 
   /* ── Редактор ── */
+  /* Отступы 10px вместо 14: при 375px это добавляет к строке два знака,
+     а на 320px решает, рвутся слова или нет */
   .editor-wrap {
-    padding: 20px 14px calc(32px + env(safe-area-inset-bottom, 0px));
-  }
-  .editor-content {
-    padding-left: 0; /* место под метки H1–H6 не нужно */
+    padding: 20px 10px calc(32px + env(safe-area-inset-bottom, 0px));
   }
   .editor-content .ProseMirror h1::before,
   .editor-content .ProseMirror h2::before,

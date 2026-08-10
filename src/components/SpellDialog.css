@@ -26,7 +26,7 @@
 }
 
 .spell-title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.06em;
@@ -35,7 +35,7 @@
 }
 
 .spell-counter {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -44,7 +44,7 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 2px 5px;
   border-radius: 4px;
   line-height: 1;
@@ -72,7 +72,7 @@
 }
 
 .spell-arrow {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -97,7 +97,7 @@
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: var(--font-ui);
   padding: 3px 9px;
   cursor: pointer;
@@ -128,7 +128,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: var(--font-ui);
   padding: 5px 11px;
   cursor: pointer;
@@ -152,7 +152,7 @@
 
 .spell-btn kbd {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   opacity: 0.55;
   border: 1px solid currentColor;
   border-radius: 3px;

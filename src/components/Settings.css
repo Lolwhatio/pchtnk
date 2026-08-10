@@ -23,7 +23,7 @@
 }
 
 .settings-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -46,7 +46,7 @@
 }
 
 .settings-section-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--accent);
   padding: 14px 16px 4px;
@@ -71,12 +71,12 @@
 }
 
 .settings-row-name {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 
 .settings-row-desc {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -126,7 +126,7 @@
 }
 
 .settings-api-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -134,7 +134,7 @@
 }
 
 .settings-api-badge {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--accent);
   background: var(--bg-active);
   padding: 1px 6px;
@@ -153,7 +153,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: 'SF Mono', 'Menlo', monospace;
   color: var(--text-primary);
   outline: none;
@@ -185,7 +185,7 @@
 }
 
 .settings-api-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -193,7 +193,7 @@
 /* ── Заглушка изоляции ───────────────────────────── */
 
 .settings-isolation-note {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   padding: 4px 16px 10px;
   line-height: 1.5;
@@ -242,14 +242,14 @@
 }
 
 .settings-provider-name {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-primary);
   flex: 1;
 }
 
 .settings-provider-free {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #4caf7d;
   background: rgba(76, 175, 80, 0.12);
@@ -273,7 +273,7 @@
   border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.6;
   outline: none;
   padding: 8px 10px;

@@ -29,7 +29,7 @@
 }
 
 .input-dialog-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -39,7 +39,7 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 2px 5px;
   border-radius: 4px;
   line-height: 1;
@@ -59,7 +59,7 @@
   border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-family: var(--font-ui);
   color: var(--text-primary);
   outline: none;
@@ -83,7 +83,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: var(--font-ui);
   padding: 6px 14px;
   cursor: pointer;

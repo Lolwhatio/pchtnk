@@ -26,7 +26,7 @@
 }
 
 .kb-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-ui);
@@ -50,7 +50,7 @@
 }
 
 .kb-desc {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-secondary);
   margin: 0;
@@ -75,7 +75,7 @@
   gap: 8px;
   padding: 6px 8px;
   border-radius: 5px;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   color: var(--text-primary);
   cursor: pointer;
   transition: background var(--transition);
@@ -99,7 +99,7 @@
 }
 
 .kb-group-count {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   background: var(--bg-active);
   border-radius: 8px;
@@ -116,7 +116,7 @@
 }
 
 .kb-name-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -126,7 +126,7 @@
   border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-family: var(--font-ui);
   color: var(--text-primary);
   outline: none;
@@ -136,7 +136,7 @@
 .kb-name-input::placeholder { color: var(--text-muted); }
 
 .kb-name-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   color: var(--text-muted);
   margin: 0;
@@ -149,7 +149,7 @@
   color: var(--text-inverse);
   border-radius: 7px;
   padding: 9px 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   font-family: var(--font-ui);
   transition: background var(--transition), opacity var(--transition);
