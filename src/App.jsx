@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import Editor from './components/Editor'
 import Toolbar from './components/Toolbar'
-import SelectionMenu from './components/SelectionMenu'
 import Preview from './components/Preview'
 import TOC from './components/TOC'
 import Settings from './components/Settings'
@@ -1334,7 +1333,6 @@ export default function App() {
         )}
 
         <div style={{ display: showPreview ? 'none' : 'contents' }}>
-          <SelectionMenu editor={editor} />
           <Editor
             onReady={setEditor}
             onChange={() => { setIsDirty(true); scheduleSave() }}

@@ -42,12 +42,22 @@ if (strayStrokes.length) {
   problems.push(`толщины, отличные от ${STROKE}: ${strayStrokes.join(', ')}`)
 }
 
-// ── 3. Никаких текстовых глифов ──────────────────────────────────────────────
-// «B» шрифтом Georgia и ««»» сидели на базовой линии текста, а не в оптическом
-// центре кнопки, и весили иначе, чем соседние векторные значки.
+// ── 3. Текстовые глифы — только по списку исключений ─────────────────────────
+// Глиф сидит на базовой линии текста, а не в оптическом центре кнопки,
+// и весит иначе, чем соседние векторные значки. Одно исключение оправдано:
+// типографу нужен настоящий типографский знак, а нарисованные шевроны
+// выходят угловатыми и похожими на «Код».
 
-if (/<text[\s>]/.test(src)) problems.push('в наборе есть <text> — текстовым глифам здесь не место')
-if (/fontFamily/.test(src)) problems.push('в наборе есть fontFamily — значит, где-то остался текст')
+const GLYPH_ALLOWED = ['IconTypograf']
+
+const glyphIcons = [...src.matchAll(/export function (Icon\w+)[\s\S]*?\n\}/g)]
+  .filter(m => /fontFamily|<text[\s>]/.test(m[0]))
+  .map(m => m[1])
+
+const unexpectedGlyphs = glyphIcons.filter(n => !GLYPH_ALLOWED.includes(n))
+if (unexpectedGlyphs.length) {
+  problems.push(`текстовые глифы вне списка исключений: ${unexpectedGlyphs.join(', ')}`)
+}
 
 // ── 4. Иконки объявлены только в общем модуле ────────────────────────────────
 
@@ -84,7 +94,7 @@ console.log(`\nПиктограммы · ${icons.length} шт · ${relative(ROOT
 console.log('─'.repeat(60))
 console.log(`  сетка              ${GRID}`)
 console.log(`  толщина обводки    ${STROKE}`)
-console.log(`  текстовых глифов   нет`)
+console.log(`  текстовых глифов   ${glyphIcons.length ? glyphIcons.join(', ') + ' (по списку исключений)' : 'нет'}`)
 console.log(`  локальных иконок   ${strays.length}`)
 console.log('─'.repeat(60))
 

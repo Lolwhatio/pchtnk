@@ -3,6 +3,7 @@ import { useDismiss, useMenuKeys } from '../hooks/useDismiss'
 import {
   IconChevronRight, IconImage, IconEmbed, IconTable,
   IconSmiley, IconFootnote, IconListUl, IconListOl,
+  IconBold, IconItalic, IconStrike, IconLink, IconCode,
 } from './icons'
 import './Toolbar.css'
 
@@ -313,11 +314,25 @@ export default function Toolbar({ editor }) {
     </button>
   )
 
-  // Форматирование живёт во всплывающем меню над выделением (SelectionMenu).
-  // Здесь остаётся то, что вставляют, а не то, чем размечают уже набранное.
+  const handleLink = () => {
+    const currentUrl = editor.getAttributes('link').href || ''
+    window.dispatchEvent(new CustomEvent('pechatniki:link-dialog', { detail: { currentUrl } }))
+  }
+
+  // Всё форматирование здесь, а не во всплывающем меню над выделением:
+  // выделять фрагмент приходится и просто по ходу правки, и меню,
+  // возникающее на каждое выделение, мешает работать.
   return (
     <div className="toolbar">
       <div className="toolbar-left">
+        {btn(() => editor.chain().focus().toggleBold().run(), 'Жирный (⌘B)', <IconBold />, editor.isActive('bold'))}
+        {btn(() => editor.chain().focus().toggleItalic().run(), 'Курсив (⌘I)', <IconItalic />, editor.isActive('italic'))}
+        {btn(() => editor.chain().focus().toggleStrike().run(), 'Зачеркнутый (⌘⇧-)', <IconStrike />, editor.isActive('strike'))}
+        {btn(handleLink, 'Ссылка (⌘K)', <IconLink />, editor.isActive('link'))}
+        {btn(() => editor.chain().focus().toggleCode().run(), 'Код', <IconCode />, editor.isActive('code'))}
+
+        <span className="toolbar-sep" />
+
         {btn(handleInsertImage, 'Изображение', <IconImage />, false)}
         {btn(handleInsertEmbed, 'Встроить (YouTube, Google Slides…)', <IconEmbed />, false)}
         <TableControl editor={editor} />
