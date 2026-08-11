@@ -394,27 +394,21 @@
 
 .docs-panel__footer {
   display: flex;
+  flex-direction: column;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-  position: relative; /* якорь для тултипов кнопок */
 }
 
-/* min-width: 0 обязателен: без него флекс-элемент не даёт себя сжать
-   меньше содержимого, и подписи вылезали за кнопки */
 .docs-panel__footer-btn {
-  flex: 1 1 0;
-  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  height: 38px;
-  padding: 0 8px;
-  font-size: var(--fs-xs);
+  height: 34px;
+  padding: 0 14px;
+  font-size: var(--fs-sm);
+  text-align: left;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   transition: color var(--transition), background var(--transition);
 }
 .docs-panel__footer-btn:hover {
@@ -422,7 +416,7 @@
   background: var(--bg-hover);
 }
 .docs-panel__footer-btn:not(:last-child) {
-  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .docs-panel__footer-btn--kb {
   color: var(--accent);

@@ -326,17 +326,19 @@ export default function DocsPanel({
         </div>
       )}
 
+      {/* Столбцом, а не строкой: подписи вроде «Скачать проект» в треть
+          ширины панели не помещались и обрезались */}
       <div className="docs-panel__footer">
+        <button
+          className="docs-panel__footer-btn docs-panel__footer-btn--kb"
+          onClick={onExportKb}
+          title="Выбранные проекты — в один HTML-файл с оглавлением"
+        >Скачать проект</button>
         <button
           className="docs-panel__footer-btn"
           onClick={onExport}
           title="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
         >Бэкап</button>
-        <button
-          className="docs-panel__footer-btn docs-panel__footer-btn--kb"
-          onClick={onExportKb}
-          title="Выбранные проекты — в один HTML-файл с оглавлением"
-        >База</button>
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
