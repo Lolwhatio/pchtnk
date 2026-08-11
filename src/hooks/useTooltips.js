@@ -38,9 +38,12 @@ export function useTooltips() {
       const t = tip.getBoundingClientRect()
       // Под элементом, а если не влезает — над ним
       const below = r.bottom + GAP + t.height <= window.innerHeight
-      const top = below ? r.bottom + GAP : r.top - GAP - t.height
+      let top = below ? r.bottom + GAP : r.top - GAP - t.height
       let left = r.left + r.width / 2 - t.width / 2
+      // Прижимаем к краям окна по обеим осям: у кнопок под самым верхом
+      // или у нижнего края подсказка иначе уезжает за пределы экрана
       left = Math.max(8, Math.min(left, window.innerWidth - t.width - 8))
+      top = Math.max(8, Math.min(top, window.innerHeight - t.height - 8))
 
       tip.style.top = `${Math.round(top)}px`
       tip.style.left = `${Math.round(left)}px`
@@ -56,9 +59,14 @@ export function useTooltips() {
       el = null
     }
 
-    const show = (host) => {
+    // checkHover — только для мыши: на тач-устройствах :hover не бывает
+    const show = (host, checkHover = true) => {
       const text = host.getAttribute('title')
       if (!text) return
+      if (!host.isConnected) return
+      // За время задержки курсор мог уйти на другую кнопку или за окно —
+      // иначе подсказка всплывала уже не там, где находится указатель
+      if (checkHover && !host.matches(':hover')) return
       hide()
       el = host
       stashed = text
@@ -89,7 +97,7 @@ export function useTooltips() {
       const host = hostOf(e.target)
       if (!host) return
       clearTimeout(pressTimer)
-      pressTimer = setTimeout(() => show(host), LONG_PRESS)
+      pressTimer = setTimeout(() => show(host, false), LONG_PRESS)
     }
 
     document.addEventListener('pointerover', onOver)
