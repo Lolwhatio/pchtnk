@@ -625,8 +625,15 @@ const Footnote = Node.create({
 
   addCommands() {
     return {
-      insertFootnote: (attrs = {}) => ({ chain }) =>
-        chain().focus().insertContent({ type: 'footnote', attrs }).run(),
+      // Схлопываем выделение к его концу: insertContent при непустом
+      // выделении заменяет выделенное, и сноска, поставленная на слово,
+      // это слово стирала. Знак должен вставать после слова, а не вместо него.
+      insertFootnote: (attrs = {}) => ({ chain, state }) =>
+        chain()
+          .focus()
+          .setTextSelection(state.selection.to)
+          .insertContent({ type: 'footnote', attrs })
+          .run(),
     }
   },
 })
@@ -734,6 +741,10 @@ const OptimaShortcuts = Extension.create({
 
 export default function Editor({ onReady, onChange, zenMode, initialContent, docs, onDocSelect, stopPhrases, typograf }) {
   const wrapRef = useRef(null)
+  // editorProps собираются один раз, поэтому режим читаем через реф —
+  // иначе обработчик навсегда запомнит значение с первого рендера
+  const zenModeRef = useRef(zenMode)
+  useEffect(() => { zenModeRef.current = zenMode }, [zenMode])
   const phrasesRef = useRef(stopPhrases ?? [])
   const typografRef = useRef(typograf)
   const isPastingRef = useRef(false)
@@ -775,6 +786,25 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   const editor = useEditor({
     editorProps: {
       attributes: { spellcheck: 'true' },
+      // Прокрутку к курсору в Дзене берём на себя целиком.
+      //
+      // Иначе их две: ProseMirror подтягивает курсор к краю окна, а наш
+      // код следом ставит строку по центру. Причём PM прокручивает только
+      // когда курсор ушёл из зоны видимости, — отсюда и «через раз».
+      //
+      // Возвращаем true: это значит «прокрутка обработана», и PM свою
+      // не делает. Считаем по координатам курсора, а не по декорации
+      // .zen-active — на этот момент она может быть ещё на прежнем абзаце.
+      handleScrollToSelection(view) {
+        if (!zenModeRef.current) return false
+        const wrap = wrapRef.current
+        if (!wrap) return false
+        let coords
+        try { coords = view.coordsAtPos(view.state.selection.head) } catch { return false }
+        const delta = (coords.top + coords.bottom) / 2 - window.innerHeight / 2
+        if (Math.abs(delta) > 0.5) wrap.scrollTop += delta
+        return true
+      },
       // Drag & drop изображений прямо в редактор
       handleDrop(view, event) {
         const files = [...(event.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/'))
@@ -1036,24 +1066,24 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   }, [onDocSelect, editor])
 
   // ── Typewriter scroll в Дзен ─────────────────────────────────────────────
+  // Слежение за курсором целиком в handleScrollToSelection выше — там оно
+  // синхронное и единственное. Здесь остаётся только первичное
+  // центрирование при входе в режим: события редактора в этот момент
+  // не приходят, прокручивать некому.
   useEffect(() => {
     if (!editor || !zenMode) return
-    const centerActive = () => {
-      requestAnimationFrame(() => requestAnimationFrame(() => {
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        frame = null
         const wrap = wrapRef.current
         if (!wrap) return
-        const active = wrap.querySelector('.zen-active')
-        if (!active) return
-        active.scrollIntoView({ block: 'center', behavior: 'instant' })
-      }))
-    }
-    editor.on('selectionUpdate', centerActive)
-    editor.on('update',          centerActive)
-    centerActive()
-    return () => {
-      editor.off('selectionUpdate', centerActive)
-      editor.off('update',          centerActive)
-    }
+        let coords
+        try { coords = editor.view.coordsAtPos(editor.state.selection.head) } catch { return }
+        const delta = (coords.top + coords.bottom) / 2 - window.innerHeight / 2
+        if (Math.abs(delta) > 0.5) wrap.scrollTop += delta
+      })
+    })
+    return () => { if (frame) cancelAnimationFrame(frame) }
   }, [editor, zenMode])
 
   return (

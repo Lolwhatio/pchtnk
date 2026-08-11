@@ -9,7 +9,7 @@
   flex-direction: column;
   gap: 6px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -29,7 +29,7 @@
 .fn-hint {
   margin: 0;
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   color: var(--text-muted);
 }
@@ -58,7 +58,7 @@
   background: var(--bg-active);
   color: var(--text-secondary);
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   transition: background var(--transition), color var(--transition);
 }
 .fn-reuse__toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
@@ -71,7 +71,7 @@
   border-radius: 100px;
   background: var(--bg-panel);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
@@ -109,7 +109,7 @@
 .fn-reuse__item:hover { background: var(--bg-hover); }
 
 .fn-reuse__note {
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -118,7 +118,7 @@
   -webkit-box-orient: vertical;
 }
 .fn-reuse__url {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;

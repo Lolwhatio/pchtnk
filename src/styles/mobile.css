@@ -10,30 +10,32 @@
     height: 100dvh;
   }
 
-  /* ── Шапка ── */
+  /* ── Шапка ──
+     Кнопок теперь четыре, а не девять: форматирование ушло во всплывающее
+     меню над выделением. Раньше при 320px содержимое занимало 316 из 320,
+     а с кнопкой «Назад» — 359, и меню «Инструменты» уезжало за экран. */
   .app-header {
     padding: 0 4px;
   }
   .header-left,
   .header-right {
-    gap: 0;
+    gap: 2px;
   }
   .file-name,
   .file-name--editing {
     padding: 0 6px;
-    font-size: 12px;
+    font-size: var(--fs-xs);
     min-width: 0;
   }
-  .btn-back {
-    padding: 0 6px;
-  }
+  /* Крайний случай: очень узкий экран плюс кнопка «Назад».
+     Имя файла ужимается первым, кнопки не уезжают. */
+  .file-name { flex: 1 1 0; }
 
   /* ── Редактор ── */
+  /* Отступы 10px вместо 14: при 375px это добавляет к строке два знака,
+     а на 320px решает, рвутся слова или нет */
   .editor-wrap {
-    padding: 20px 14px calc(32px + env(safe-area-inset-bottom, 0px));
-  }
-  .editor-content {
-    padding-left: 0; /* место под метки H1–H6 не нужно */
+    padding: 20px 10px calc(32px + env(safe-area-inset-bottom, 0px));
   }
   .editor-content .ProseMirror h1::before,
   .editor-content .ProseMirror h2::before,

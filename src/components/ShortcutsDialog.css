@@ -20,7 +20,7 @@
 }
 
 .shortcuts-group-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -37,14 +37,14 @@
 }
 
 .shortcuts-row-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 
 .shortcuts-row-keys {
   flex-shrink: 0;
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   background: var(--bg-hover);
   border: 1px solid var(--border);

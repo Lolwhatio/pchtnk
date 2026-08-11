@@ -22,7 +22,7 @@
 
 .docs-panel__title {
   flex: 1;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -70,7 +70,7 @@
 
 .docs-panel__empty {
   padding: 24px 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   text-align: center;
 }
@@ -119,7 +119,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -132,7 +132,7 @@
 }
 
 .docs-panel__project-count {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-muted);
   background: var(--bg-hover);
@@ -149,7 +149,7 @@
   border: 1px solid var(--accent);
   border-radius: 4px;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 2px 6px;
   outline: none;
@@ -182,7 +182,7 @@
 
 .docs-panel__project-empty {
   padding: 6px 12px 6px 28px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -191,7 +191,7 @@
 
 .docs-panel__noproj-label {
   padding: 8px 12px 4px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -226,7 +226,7 @@
 }
 
 .docs-panel__item-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -234,11 +234,83 @@
   line-height: 1.4;
 }
 
+/* Второй ряд: начало текста. Без него девять строк «Без названия»
+   ничем не отличаются друг от друга. */
+.docs-panel__item-snippet {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
 .docs-panel__item-date {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 1px;
 }
+
+/* ── Поиск ──────────────────────────────────────── */
+
+.docs-panel__search {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.docs-panel__search-input {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+}
+.docs-panel__search-input::placeholder { color: var(--text-muted); }
+.docs-panel__search-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+/* ── Отмена удаления ────────────────────────────── */
+
+.docs-panel__undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.docs-panel__undo-text {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-panel__undo-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: var(--bg-active);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  transition: background var(--transition);
+}
+.docs-panel__undo-btn:hover { background: var(--bg-hover); }
 
 /* ── Кнопки действий у элемента ─────────────────── */
 
@@ -300,7 +372,7 @@
   width: 100%;
   text-align: left;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   border-radius: 5px;
   cursor: pointer;
@@ -322,52 +394,21 @@
 
 .docs-panel__footer {
   display: flex;
+  flex-direction: column;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-  position: relative; /* якорь для тултипов кнопок */
-}
-
-/* Тултип-сноска над футером (позиционируется от футера,
-   чтобы не обрезался краями панели) */
-.docs-panel__footer-btn[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: calc(100% + 8px);
-  background: var(--bg-active);
-  border: 1px solid var(--border-light);
-  border-radius: 7px;
-  padding: 7px 10px;
-  font-size: 11px;
-  line-height: 1.45;
-  /* кнопка задаёт nowrap — без сброса подсказка идёт одной строкой и обрезается */
-  white-space: normal;
-  text-align: left;
-  font-family: var(--font-ui);
-  color: var(--text-primary);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--transition);
-  z-index: 60;
-}
-.docs-panel__footer-btn[data-tip]:hover::after {
-  opacity: 1;
-  transition-delay: 0.35s;
 }
 
 .docs-panel__footer-btn {
-  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  height: 36px;
-  padding: 0 2px;
-  font-size: 11px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: var(--fs-sm);
+  text-align: left;
   white-space: nowrap;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   transition: color var(--transition), background var(--transition);
 }
 .docs-panel__footer-btn:hover {
@@ -375,14 +416,12 @@
   background: var(--bg-hover);
 }
 .docs-panel__footer-btn:not(:last-child) {
-  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .docs-panel__footer-btn--kb {
   color: var(--accent);
-  opacity: .8;
 }
 .docs-panel__footer-btn--kb:hover {
-  opacity: 1;
   color: var(--accent);
   background: var(--bg-active);
 }

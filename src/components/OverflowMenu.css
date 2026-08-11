@@ -24,20 +24,33 @@
   gap: 9px;
   padding: 7px 9px;
   border-radius: 5px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: var(--font-ui);
   color: var(--text-primary);
   text-align: left;
   transition: background var(--transition), color var(--transition);
 }
-.overflow-menu-item:hover:not(:disabled) { background: var(--bg-hover); }
+.overflow-menu-item:hover:not(:disabled),
+.overflow-menu-item:focus-visible:not(:disabled) { background: var(--bg-hover); }
 .overflow-menu-item--active { color: var(--accent); background: var(--bg-active); }
-.overflow-menu-item:disabled { color: var(--text-muted); cursor: not-allowed; opacity: 0.5; }
+/* Без opacity: поверх --text-muted она уводила подпись ниже порога.
+   Приглушённого цвета и курсора достаточно. */
+.overflow-menu-item:disabled { color: var(--text-muted); cursor: not-allowed; }
 
 .overflow-menu-item-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 15px;
+  width: 16px;
+}
+
+.overflow-menu-item-label { flex: 1; }
+
+/* Причина недоступности — прямо в пункте, а не только в подсказке
+   при наведении: иначе серый пункт выглядит сломанным */
+.overflow-menu-item-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
 }

@@ -24,7 +24,7 @@
   overflow-y: auto;
   /* Резервируем место под скроллбар всегда — чтобы ширина колонки не
      скакала при появлении полосы и совпадала между обычным и Дзеном */
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
   display: flex;
   justify-content: center;
   padding: 60px 24px;
@@ -62,11 +62,32 @@
   caret-color: transparent;
 }
 
+/* Метки уровней — только у активного блока: в Дзене обещана пустота,
+   а служебные надписи оставались в общем потоке у всех заголовков */
+.editor-wrap--zen .ProseMirror > *:not(.zen-active)::before {
+  opacity: 0;
+}
+
+/* Центрируем сам текст, а не коробку вместе с полем под метки H1–H6.
+   Раньше max-width стоял на .editor-content вместе с padding-left: 44px:
+   центрировалась коробка, а видит человек текст в её правых 636 пикселях,
+   и колонка стояла на 19 пикселей правее центра окна. */
 .editor-content {
   width: 100%;
   max-width: var(--editor-width);
-  /* Левый отступ — место для меток заголовков */
-  padding-left: 44px;
+}
+
+/* Метки уровней уходят в поле отрицательным отступом и не участвуют
+   в центровке. На узких окнах их прячем, иначе они обрезаются. */
+@media (max-width: 820px) {
+  .editor-content .ProseMirror h1::before,
+  .editor-content .ProseMirror h2::before,
+  .editor-content .ProseMirror h3::before,
+  .editor-content .ProseMirror h4::before,
+  .editor-content .ProseMirror h5::before,
+  .editor-content .ProseMirror h6::before {
+    display: none;
+  }
 }
 
 /* ProseMirror root */
@@ -106,12 +127,21 @@
   margin: 1.4em 0 0.4em;
   position: relative;
 }
+/* Шкала с рабочим шагом на нижних уровнях. Было 2 / 1.5 / 1.25 / 1.1 / 1 / 1em:
+   шаг падал с 1,33× до 1,0×, H5 и H6 описаны одним правилом и не различались
+   вовсе, а H4 отличался от текста на 10%. Метки H1–H6 в поле маскировали это
+   в редакторе, но при экспорте в PDF и HTML их нет. */
 .editor-content .ProseMirror h1 { font-size: 2em; }
-.editor-content .ProseMirror h2 { font-size: 1.5em; }
-.editor-content .ProseMirror h3 { font-size: 1.25em; }
-.editor-content .ProseMirror h4 { font-size: 1.1em; }
-.editor-content .ProseMirror h5,
-.editor-content .ProseMirror h6 { font-size: 1em; }
+.editor-content .ProseMirror h2 { font-size: 1.6em; }
+.editor-content .ProseMirror h3 { font-size: 1.32em; }
+.editor-content .ProseMirror h4 { font-size: 1.15em; }
+.editor-content .ProseMirror h5 { font-size: 1em; }
+.editor-content .ProseMirror h6 {
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
 
 .editor-content .ProseMirror h1:first-child { margin-top: 0; }
 
@@ -127,7 +157,7 @@
   padding-right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-family: var(--font-ui);
   font-weight: 700;
   font-style: normal;
@@ -150,10 +180,14 @@
 .editor-content .ProseMirror p {
   margin: 0;
 }
+/* Отбивка небольшая: абзацы идут почти равномерно, шаг от начала одного
+   до начала другого выходит около 1,95 кегля. Так набрано в редакторе,
+   который взят за образец; 0.75em давали 2,35 кегля и заметный провал
+   между абзацами. */
 .editor-content .ProseMirror p + p,
 .editor-content .ProseMirror p + blockquote,
 .editor-content .ProseMirror blockquote + p {
-  margin-top: 0.75em;
+  margin-top: 0.35em;
 }
 
 /* Внутри списков, ячеек и цитат абзацы не разъезжаются */
@@ -184,12 +218,13 @@
   font-style: italic;
 }
 
-/* Inline code */
+/* Inline code — текст, а не акцент: акцентом на bg-active он давал
+   2,08:1 в светлой теме */
 .editor-content .ProseMirror code {
   font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
   font-size: 0.875em;
-  background: var(--bg-active);
-  color: var(--accent);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: 0.1em 0.35em;
   border-radius: 3px;
 }
@@ -378,14 +413,14 @@
   gap: 7px;
   padding: 7px 12px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-secondary);
   background: var(--bg-hover);
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
-.embed-label-icon { font-size: 13px; flex-shrink: 0; }
+.embed-label-icon { font-size: var(--fs-sm); flex-shrink: 0; }
 .embed-label-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .embed-body {
@@ -536,7 +571,7 @@
 }
 
 .sources-list__title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -545,7 +580,7 @@
 }
 
 .sources-list__empty {
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -553,7 +588,7 @@
 .sources-list__items {
   margin: 0;
   padding-left: 1.3em;
-  font-size: 13.5px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
 }

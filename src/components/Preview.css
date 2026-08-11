@@ -18,7 +18,7 @@
 }
 
 .preview-close {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   padding: 4px 10px;
   border-radius: 5px;
@@ -33,7 +33,7 @@
 }
 
 .preview-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   flex: 1;
   text-align: center;
@@ -44,7 +44,7 @@
 }
 
 .preview-btn {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.3px;
   color: var(--text-secondary);
@@ -182,7 +182,7 @@
 
 .pdf-preview__title {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -191,4 +191,17 @@
   width: 100%;
   border: none;
   background: #525659; /* нейтральный фон читалки PDF */
+}
+
+/* Подтверждение скачивания. Раньше MD и HTML качали молча, и было
+   непонятно, сработала кнопка или нет. */
+.preview-done {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-active);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  text-align: center;
+  flex-shrink: 0;
 }

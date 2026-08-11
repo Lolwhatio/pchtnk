@@ -11,7 +11,7 @@
 
 .dl-popup__hint {
   padding: 6px 12px 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-family: var(--font-ui);
   border-bottom: 1px solid var(--border);
@@ -26,7 +26,7 @@
 
 .dl-popup__empty {
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -36,7 +36,7 @@
   align-items: center;
   gap: 7px;
   padding: 7px 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   text-align: left;
   transition: background var(--transition);
@@ -48,7 +48,7 @@
 }
 
 .dl-popup__arrow {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--accent);
   flex-shrink: 0;
 }

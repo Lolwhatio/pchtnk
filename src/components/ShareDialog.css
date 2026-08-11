@@ -26,7 +26,7 @@
 }
 
 .share-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-ui);
@@ -52,7 +52,7 @@
 }
 
 .share-desc {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.6;
   color: var(--text-secondary);
   font-family: var(--font-ui);
@@ -68,7 +68,7 @@
 
 .share-limits-title {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -86,7 +86,7 @@
 }
 
 .share-limits li {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   line-height: 1.5;
   font-family: var(--font-ui);
@@ -106,14 +106,14 @@
 }
 
 .share-readonly-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-ui);
 }
 
 .share-readonly-desc {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-family: var(--font-ui);
 }
@@ -150,7 +150,7 @@
 }
 
 .share-password-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   font-family: var(--font-ui);
@@ -167,7 +167,7 @@
   border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   outline: none;
   padding: 7px 10px;
   transition: border-color var(--transition);
@@ -179,7 +179,7 @@
 .share-password-input::placeholder { color: var(--text-muted); }
 
 .share-password-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-family: var(--font-ui);
   line-height: 1.5;
@@ -197,7 +197,7 @@
   color: #fff;
   cursor: pointer;
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   padding: 9px 16px;
   transition: opacity var(--transition);
@@ -207,7 +207,7 @@
 
 .share-status {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 9px 12px;
   border-radius: 7px;
   text-align: center;

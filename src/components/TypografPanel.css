@@ -37,7 +37,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -46,7 +46,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
@@ -56,7 +56,7 @@
   border-radius: 4px;
   color: var(--text-primary);
   padding: 2px 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -71,7 +71,7 @@
 }
 
 .typograf-group-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -84,7 +84,7 @@
   align-items: flex-start;
   gap: 8px;
   padding: 4px 16px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   cursor: pointer;
   transition: background var(--transition);
@@ -100,7 +100,7 @@
 
 .rule-locale {
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--accent-dim);
   margin-left: 4px;
   vertical-align: super;
@@ -116,7 +116,7 @@
 }
 
 .typograf-reset {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   padding: 4px 8px;
   border-radius: 4px;
@@ -125,6 +125,6 @@
 .typograf-reset:hover { background: var(--bg-hover); color: var(--text-secondary); }
 
 .typograf-credit {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }

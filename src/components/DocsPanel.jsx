@@ -1,6 +1,33 @@
-import { useState, useRef, useEffect } from 'react'
-import { IconTrash, IconChevronRight } from './icons'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import {
+  IconTrash, IconChevronRight, IconPlus, IconClose, IconPencil,
+  IconFolderPlus, IconFolderIn,
+} from './icons'
+import { useDismiss } from '../hooks/useDismiss'
 import './DocsPanel.css'
+
+// Первые строки текста — чтобы «Без названия» отличалось от «Без названия».
+// content бывает и JSON от TipTap, и HTML-строкой из старых версий.
+function plainText(content) {
+  if (!content) return ''
+  if (typeof content === 'string') return content.replace(/<[^>]+>/g, ' ')
+  const out = []
+  const walk = (n) => {
+    if (!n) return
+    if (n.text) out.push(n.text)
+    ;(n.content || []).forEach(walk)
+  }
+  walk(content)
+  return out.join(' ')
+}
+
+function snippetOf(doc) {
+  const t = plainText(doc.content).replace(/\s+/g, ' ').trim()
+  const title = (doc.title || '').trim()
+  // Первая строка обычно и есть название — во втором ряду она лишняя
+  const rest = title && t.startsWith(title) ? t.slice(title.length).trim() : t
+  return rest.slice(0, 70)
+}
 
 function formatDate(ts) {
   const d   = new Date(ts)
@@ -17,13 +44,9 @@ function formatDate(ts) {
 function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelete }) {
   const [showMover, setShowMover] = useState(false)
   const moverRef = useRef(null)
+  const snippet = snippetOf(doc)
 
-  useEffect(() => {
-    if (!showMover) return
-    const handler = (e) => { if (!moverRef.current?.contains(e.target)) setShowMover(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showMover])
+  useDismiss(moverRef, showMover, () => setShowMover(false))
 
   return (
     <div
@@ -36,6 +59,7 @@ function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelet
     >
       <button className="docs-panel__item-main" onClick={() => onSelect(doc.id)}>
         <div className="docs-panel__item-title">{doc.title || 'Без названия'}</div>
+        {snippet && <div className="docs-panel__item-snippet">{snippet}</div>}
         <div className="docs-panel__item-date">{formatDate(doc.updatedAt)}</div>
       </button>
 
@@ -47,7 +71,7 @@ function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelet
             title="Переместить в проект"
             onClick={() => setShowMover(v => !v)}
           >
-            <IconFolder />
+            <IconFolderIn />
           </button>
           {showMover && (
             <div className="docs-panel__mover">
@@ -148,10 +172,14 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
         <button className="docs-panel__project-add" title="Новый документ в проекте" onClick={() => onNewInProject(project.id)}>
           <IconPlus />
         </button>
-        <button className="docs-panel__project-del" title="Удалить проект" onClick={() => {
-          if (docs.length === 0 || window.confirm(`Удалить проект «${project.title}»? Документы останутся без проекта.`))
-            onDeleteProject(project.id)
-        }}>
+        {/* Без подтверждения: удаление проекта ничего не теряет — документы
+            остаются без проекта, — а вернуть его можно кнопкой «Вернуть» */}
+        <button
+          className="docs-panel__project-del"
+          title="Удалить проект"
+          aria-label={`Удалить проект «${project.title}»`}
+          onClick={() => onDeleteProject(project.id)}
+        >
           <IconClose />
         </button>
       </div>
@@ -183,8 +211,20 @@ export default function DocsPanel({
   docs, projects = [], currentId,
   onSelect, onNew, onDelete, onExport, onExportKb, onImport, onClose,
   onCreateProject, onRenameProject, onDeleteProject, onMoveDoc, onNewInProject,
+  pendingDelete, onUndoDelete,
 }) {
-  const sorted = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
+  const [query, setQuery] = useState('')
+
+  const sorted = useMemo(() => {
+    const list = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
+    const q = query.trim().toLowerCase()
+    if (!q) return list
+    // Ищем и по названию, и по тексту: половина документов называется одинаково
+    return list.filter(d =>
+      (d.title || '').toLowerCase().includes(q) ||
+      plainText(d.content).toLowerCase().includes(q)
+    )
+  }, [docs, query])
 
   // Группируем по проектам
   const byProject = {}
@@ -196,14 +236,26 @@ export default function DocsPanel({
   })
 
   const canDelete = docs.length > 1
+  const searching = query.trim().length > 0
 
   return (
     <div className="docs-panel">
       <div className="docs-panel__header">
         <span className="docs-panel__title">Документы</span>
         <button className="docs-panel__btn" onClick={() => onNew()} title="Новый документ"><IconPlus /></button>
-        <button className="docs-panel__btn" onClick={() => onCreateProject()} title="Новый проект"><IconFolder /></button>
-        <button className="docs-panel__btn" onClick={onClose} title="Закрыть"><IconClose /></button>
+        <button className="docs-panel__btn" onClick={() => onCreateProject()} title="Новый проект" aria-label="Новый проект"><IconFolderPlus /></button>
+        <button className="docs-panel__btn" onClick={onClose} title="Закрыть" aria-label="Закрыть панель документов"><IconClose /></button>
+      </div>
+
+      <div className="docs-panel__search">
+        <input
+          type="search"
+          className="docs-panel__search-input"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Поиск по названию и тексту"
+          aria-label="Поиск по документам"
+        />
       </div>
 
       <div
@@ -262,38 +314,37 @@ export default function DocsPanel({
         {docs.length === 0 && (
           <div className="docs-panel__empty">Нет документов</div>
         )}
+        {docs.length > 0 && searching && sorted.length === 0 && (
+          <div className="docs-panel__empty">Ничего не нашлось</div>
+        )}
       </div>
 
+      {pendingDelete && (
+        <div className="docs-panel__undo" role="status">
+          <span className="docs-panel__undo-text">{pendingDelete.label}</span>
+          <button className="docs-panel__undo-btn" onClick={onUndoDelete}>Вернуть</button>
+        </div>
+      )}
+
+      {/* Столбцом, а не строкой: подписи вроде «Скачать проект» в треть
+          ширины панели не помещались и обрезались */}
       <div className="docs-panel__footer">
-        <button
-          className="docs-panel__footer-btn"
-          onClick={onExport}
-          data-tip="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
-        >Бэкап</button>
         <button
           className="docs-panel__footer-btn docs-panel__footer-btn--kb"
           onClick={onExportKb}
-          data-tip="Выбранные проекты — в один HTML-файл с оглавлением"
-        >База знаний</button>
+          title="Выбранные проекты — в один HTML-файл с оглавлением"
+        >Скачать проект</button>
+        <button
+          className="docs-panel__footer-btn"
+          onClick={onExport}
+          title="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
+        >Бэкап</button>
         <button
           className="docs-panel__footer-btn"
           onClick={onImport}
-          data-tip="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
-        >Открыть</button>
+          title="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
+        >Импорт</button>
       </div>
     </div>
   )
-}
-
-function IconPlus() {
-  return <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="6.5" y1="1" x2="6.5" y2="12"/><line x1="1" y1="6.5" x2="12" y2="6.5"/></svg>
-}
-function IconClose() {
-  return <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="1" y1="1" x2="10" y2="10"/><line x1="10" y1="1" x2="1" y2="10"/></svg>
-}
-function IconPencil() {
-  return <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 1.5a1.2 1.2 0 0 1 1.7 1.7L4 9.4l-2.3.6.6-2.3z"/></svg>
-}
-function IconFolder() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1 3.5A1 1 0 0 1 2 2.5h2.5l1 1.5H10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5Z"/></svg>
 }

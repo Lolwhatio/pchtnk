@@ -60,17 +60,17 @@ export default function KbExportDialog({ docs, projects = [], onConfirm, onClose
 
   return (
     <div className="kb-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="kb-dialog" role="dialog" aria-label="Экспорт базы знаний">
+      <div className="kb-dialog" role="dialog" aria-label="Скачать проект">
         <div className="kb-header">
-          <span className="kb-title">База знаний</span>
+          <span className="kb-title">Скачать проект</span>
           <button className="kb-close" onClick={onClose}><IconClose size={12} /></button>
         </div>
 
         <div className="kb-body">
           <p className="kb-desc">
-            Соберем выбранные документы в один HTML-файл. Откройте его двойным
-            кликом — внутри главная страница, оглавление и рабочие ссылки
-            между документами.
+            Соберем документы выбранных проектов в один HTML-файл. Откройте его
+            двойным кликом — внутри главная страница, оглавление и рабочие
+            ссылки между документами.
           </p>
 
           <div className="kb-groups">

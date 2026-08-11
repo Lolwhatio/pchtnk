@@ -24,15 +24,20 @@
   flex: 0 0 auto;
 }
 
-/* Распорка вместо имени файла на мобильном */
-.header-spacer {
-  flex: 1;
+/* Группы в шапке. Приём уже был в нижнем тулбаре (.toolbar-sep),
+   наверху десять кнопок стояли сплошным рядом без единого разделителя. */
+.header-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 5px;
+  flex-shrink: 0;
 }
 
 .file-name {
   flex: 1;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -40,6 +45,24 @@
   padding: 0 12px;
   cursor: text;
 }
+.file-flag {
+  color: var(--accent);
+}
+
+/* «Сохранено» держим в потоке всегда — иначе имя файла дёргается,
+   когда подпись появляется и исчезает */
+.file-saved {
+  margin-left: 10px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.file-saved--on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .file-saved { transition: none; }
+}
+
 .file-name--editing {
   flex: 1;
   background: transparent;
@@ -48,11 +71,17 @@
   outline: none;
   min-width: 0;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   text-align: center;
   padding: 2px 8px;
   cursor: text;
 }
+
+/* ── Иконочная кнопка ──────────────────────────────────────────────────────
+   Один класс на шапку, тулбар и панели. Три состояния: покой, наведение,
+   включено. Включённое состояние передаётся через aria-pressed (кнопки-
+   переключатели) или aria-expanded (кнопки, раскрывающие меню), а не классом —
+   так состояние видит и скринридер. */
 
 .btn-icon {
   display: flex;
@@ -61,24 +90,86 @@
   width: 28px;
   height: 28px;
   border-radius: 5px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-family: var(--font-ui);
+  line-height: 1;
+  position: relative;
   transition: color var(--transition), background var(--transition);
 }
-.btn-icon:hover { color: var(--text-primary); background: var(--bg-hover); }
-.btn-icon.active { color: var(--accent); }
+.btn-icon:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.btn-icon[aria-pressed="true"],
+.btn-icon[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--bg-active);
+}
+
+/* Третий канал состояния. Подложка «включено» отличается от подложки
+   наведения всего на 1,08:1 в светлой теме — одной заливкой состояние
+   не передать, поэтому нужна полоса, не зависящая от контраста фона. */
+.btn-icon[aria-pressed="true"]::after,
+.btn-icon[aria-expanded="true"]::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.btn-icon:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+.btn-icon:disabled:hover { background: none; }
+
 .btn-icon svg, .btn-icon img { pointer-events: none; }
+
+/* Кнопка с текстом вместо значка («Заголовок») */
+.btn-icon--label {
+  width: auto;
+  padding: 0 6px 0 8px;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* Признак режима, а не кнопка действия: оформлен как метка,
+   но нажимается и ведёт в настройки */
+.badge-isolation {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 9px;
+  border-radius: 100px;
+  border: 1px solid var(--accent-dim);
+  background: var(--bg-active);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  transition: background var(--transition);
+}
+.badge-isolation:hover { background: var(--bg-hover); }
 
 .btn-back {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  height: 26px;
+  height: 28px;
   border-radius: 6px;
   background: rgba(128, 128, 128, 0.15);
   color: var(--text-secondary);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   border: 1px solid var(--border);
   cursor: pointer;
   transition: background var(--transition), color var(--transition);
@@ -87,6 +178,16 @@
 .btn-back:hover {
   background: rgba(128, 128, 128, 0.28);
   color: var(--text-primary);
+}
+
+/* ── Тач-цели ──────────────────────────────────────────────────────────────
+   На пальце 28×28 без зазоров — гарантированные промахи: замеренные
+   координаты кнопок шли ровно через 28 пикселей. Apple рекомендует 44. */
+@media (pointer: coarse) {
+  .btn-icon { width: 44px; height: 44px; }
+  .btn-back { height: 44px; padding: 0 12px; }
+  .header-left, .header-right { gap: 2px; }
+  .app-header { height: 52px; }
 }
 
 .app-body {
@@ -98,14 +199,22 @@
 .app--zen .app-header { display: none; }
 
 /* ── Авто-затухание при наборе ─────────────────────────────────────────────
-   Печатаешь — панели тают, двинул мышь — возвращаются. */
+   Печатаешь — панели тают, двинул мышь или нажал служебную клавишу —
+   возвращаются.
+
+   visibility и pointer-events обязательны: без них погашенные панели
+   продолжают принимать клики и получать фокус по Tab, то есть в невидимую
+   кнопку попасть легче, чем в видимую. */
 .app-header,
 .toolbar {
-  transition: opacity 0.45s ease;
+  transition: opacity 0.45s ease, visibility 0s;
 }
 .app--faded .app-header,
 .app--faded .toolbar {
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.45s ease, visibility 0s linear 0.45s;
 }
 @media (prefers-reduced-motion: reduce) {
   .app-header, .toolbar { transition: none; }

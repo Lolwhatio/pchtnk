@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import Editor from './components/Editor'
-import Toolbar, { MobileHeaderTools } from './components/Toolbar'
+import Toolbar from './components/Toolbar'
 import Preview from './components/Preview'
 import TOC from './components/TOC'
 import Settings from './components/Settings'
@@ -14,10 +14,16 @@ import KbExportDialog from './components/KbExportDialog'
 import FootnotesPanel from './components/FootnotesPanel'
 import RecentDocs from './components/RecentDocs'
 import OverflowMenu from './components/OverflowMenu'
-import { IconSpellcheck, IconTypograf, IconTray, IconKeyboard, IconSwapLetter, IconEmbedGeneric } from './components/icons'
+import Notice from './components/Notice'
+import {
+  IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
+  IconDocs, IconTOC, IconZen, IconSettings, IconTools, IconExport, IconShare,
+  IconDrafts, IconBack, IconFootnote, IconImage,
+} from './components/icons'
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
+import { useTooltips } from './hooks/useTooltips'
 import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdown'
 import { exportKnowledgeBase } from './utils/export'
 import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
@@ -153,27 +159,47 @@ function useIsMobile() {
 }
 
 // ── Авто-затухание интерфейса ────────────────────────────────────────────────
-// Печатаешь — шапка и тулбар тают, двинул мышь — возвращаются.
-// Работает фоном всегда, а не только внутри Дзена.
+// Печатаешь — шапка и тулбар тают, двинул мышь или потянулся к клавиатурной
+// навигации — возвращаются. Работает фоном всегда, а не только внутри Дзена.
+//
+// Гасим строго от набора с клавиатуры, а не от изменения документа: иначе
+// нажатие «Жирный» в тулбаре гасит тот самый тулбар, по которому кликнули.
+function isTypingKey(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return false
+  return e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete'
+}
+
 function useTypingFade(editor, enabled) {
   const [faded, setFaded] = useState(false)
   const fadedRef = useRef(false)
 
   useEffect(() => {
     if (!editor || !enabled) return
-    const fade = () => {
+
+    const dom = editor.view.dom
+    const fade = (e) => {
+      if (!isTypingKey(e)) return
       if (!fadedRef.current) { fadedRef.current = true; setFaded(true) }
     }
     const reveal = () => {
       if (fadedRef.current) { fadedRef.current = false; setFaded(false) }
     }
-    editor.on('update', fade)
+    // Возврат с клавиатуры: без этого выйти из затухания можно было только мышью
+    const revealOnKey = (e) => {
+      if (!isTypingKey(e)) reveal()
+    }
+
+    dom.addEventListener('keydown', fade)
+    window.addEventListener('keydown', revealOnKey)
     window.addEventListener('mousemove', reveal, { passive: true })
     window.addEventListener('touchstart', reveal, { passive: true })
+    window.addEventListener('focusin', reveal)
     return () => {
-      editor.off('update', fade)
+      dom.removeEventListener('keydown', fade)
+      window.removeEventListener('keydown', revealOnKey)
       window.removeEventListener('mousemove', reveal)
       window.removeEventListener('touchstart', reveal)
+      window.removeEventListener('focusin', reveal)
       // Сбрасываем при отписке, иначе затухание «залипнет» при возврате
       fadedRef.current = false
       setFaded(false)
@@ -187,6 +213,7 @@ function useTypingFade(editor, enabled) {
 
 export default function App() {
   const isMobile = useIsMobile()
+  useTooltips()
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
   const [zenMode,      setZenMode]      = useState(false)
   const [showPreview,  setShowPreview]  = useState(false)
@@ -198,6 +225,14 @@ export default function App() {
   )
   const [isolationMode, setIsolationMode] = useState(
     () => JSON.parse(localStorage.getItem('pechatniki-isolation') ?? 'false')
+  )
+  const [fadeEnabled, setFadeEnabled] = useState(
+    () => JSON.parse(localStorage.getItem('pechatniki-typing-fade') ?? 'true')
+  )
+  // Ширина колонки — вкусовая настройка: типографский оптимум в 66–75 знаков
+  // на широком мониторе многим тесен
+  const [editorWidth, setEditorWidth] = useState(
+    () => localStorage.getItem('pechatniki-editor-width') || '720'
   )
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
@@ -256,12 +291,6 @@ export default function App() {
     flushProjects(projectsRef.current.map(p => p.id === id ? { ...p, title } : p))
   }, [flushProjects])
 
-  const handleDeleteProject = useCallback((id) => {
-    // Снимаем projectId с документов этого проекта
-    flushDocs(docsRef.current.map(d => d.projectId === id ? { ...d, projectId: null } : d))
-    flushProjects(projectsRef.current.filter(p => p.id !== id))
-  }, [flushProjects, flushDocs])
-
   const handleMoveDoc = useCallback((docId, projectId) => {
     flushDocs(docsRef.current.map(d => d.id === docId ? { ...d, projectId: projectId || null } : d))
   }, [flushDocs])
@@ -273,55 +302,75 @@ export default function App() {
   // ── Диалог ссылок ─────────────────────────────────────────────────────────
   const [linkDialog, setLinkDialog] = useState(null) // null | { currentUrl: string }
 
+  // ── Сообщения и пароль входящей ссылки ────────────────────────────────────
+  const [notice, setNotice] = useState(null)                 // null | { text, kind }
+  const [passwordPrompt, setPasswordPrompt] = useState(null) // null | { d, salt, error }
+
   // ── Расшифровка входящей ссылки ───────────────────────────────────────────
+  // Принять расшифрованный документ и завести его в истории
+  const acceptIncoming = useCallback((raw) => {
+    // Поддержка envelope { v:1, doc } (старые ссылки могли содержать флаг
+    // readonly — игнорируем: у получателя всегда своя редактируемая копия)
+    const isEnvelope = raw && raw.v === 1 && raw.doc
+    const doc = isEnvelope ? raw.doc : raw
+
+    const id     = genId()
+    const title  = titleFromJson(doc) || 'Входящий документ'
+    const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
+    flushDocs([newDoc, ...docsRef.current])
+    editor.commands.setContent(doc)
+    curIdRef.current = id
+    setCurrentDocId(id)
+    localStorage.setItem(CUR_KEY, id)
+    setFileName(title)
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [editor, flushDocs])
+
   useEffect(() => {
     if (!editor) return
     const params = new URLSearchParams(window.location.search)
     if (!params.get('d')) return
 
-    // Данные есть, а ключа во фрагменте нет — обычно значит, что сервис
-    // сокращения показал промежуточную страницу и потерял часть после #.
-    // Без ключа расшифровать нечего — объясняем, а не молчим.
-    if (!window.location.hash) {
-      window.alert('В ссылке не хватает ключа расшифровки — похоже, сервис сокращения его потерял. Попросите отправителя прислать полную ссылку.')
-      window.history.replaceState({}, '', window.location.pathname)
-      return
-    }
+    let cancelled = false
 
-    decodeShareUrl().then(async result => {
-      if (!result) return
-
-      let raw
-      if (result.needsPassword) {
-        const password = window.prompt('Этот документ защищен паролем. Введите пароль:')
-        if (!password) return
-        try {
-          raw = await decodeWithPassword(result.d, result.salt, password)
-        } catch {
-          window.alert('Неверный пароль.')
-          return
-        }
-      } else {
-        raw = result.doc
+    // Разбор ссылки асинхронный целиком, чтобы состояние менялось
+    // не в теле эффекта, а после первого await
+    ;(async () => {
+      // Данные есть, а ключа во фрагменте нет — обычно значит, что сервис
+      // сокращения показал промежуточную страницу и потерял часть после #.
+      // Без ключа расшифровать нечего — объясняем, а не молчим.
+      if (!window.location.hash) {
+        await Promise.resolve()
+        if (cancelled) return
+        setNotice({
+          kind: 'error',
+          text: 'В ссылке не хватает ключа расшифровки — похоже, сервис сокращения его потерял. Попросите отправителя прислать полную ссылку.',
+        })
+        window.history.replaceState({}, '', window.location.pathname)
+        return
       }
 
-      // Поддержка envelope { v:1, doc } (старые ссылки могли содержать флаг
-      // readonly — игнорируем: у получателя всегда своя редактируемая копия)
-      const isEnvelope = raw && raw.v === 1 && raw.doc
-      const doc = isEnvelope ? raw.doc : raw
+      const result = await decodeShareUrl()
+      if (cancelled || !result) return
+      // Пароль спрашиваем своим диалогом: системный prompt показывает
+      // введённое открытым текстом и не может объяснить, откуда пароль взять
+      if (result.needsPassword) setPasswordPrompt({ d: result.d, salt: result.salt, error: '' })
+      else acceptIncoming(result.doc)
+    })()
 
-      const id     = genId()
-      const title  = titleFromJson(doc) || 'Входящий документ'
-      const newDoc = { id, title, content: doc, createdAt: Date.now(), updatedAt: Date.now(), manualTitle: false }
-      flushDocs([newDoc, ...docsRef.current])
-      editor.commands.setContent(doc)
-      curIdRef.current = id
-      setCurrentDocId(id)
-      localStorage.setItem(CUR_KEY, id)
-      setFileName(title)
-      window.history.replaceState({}, '', window.location.pathname)
-    })
+    return () => { cancelled = true }
   }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePasswordConfirm = useCallback(async (password) => {
+    if (!passwordPrompt) return
+    try {
+      const raw = await decodeWithPassword(passwordPrompt.d, passwordPrompt.salt, password)
+      setPasswordPrompt(null)
+      acceptIncoming(raw)
+    } catch {
+      setPasswordPrompt(p => p && { ...p, error: 'Не подошел. Проверьте раскладку и регистр' })
+    }
+  }, [passwordPrompt, acceptIncoming])
 
   const handleShare = useCallback(async ({ password = '' } = {}) => {
     if (!editor) throw new Error('no editor')
@@ -399,6 +448,19 @@ export default function App() {
     }
   }, [isEditingName])
 
+  // ── Индикатор сохранения ──────────────────────────────────────────────────
+  // Документ уходит в localStorage сам, поэтому тревожная звёздочка не нужна:
+  // после автосейва коротко показываем «Сохранено» и гасим. Звёздочка остаётся
+  // только для файла на диске — и только если файл вообще открывали.
+  const [savedFlash, setSavedFlash] = useState(false)
+  const savedTimerRef = useRef(null)
+  const flashSaved = useCallback(() => {
+    setSavedFlash(true)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSavedFlash(false), 1600)
+  }, [])
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current) }, [])
+
   // ── Запись текущего документа ────────────────────────────────────────────
   // Нетронутый стартовый холст не сохраняем — иначе каждое открытие
   // приложения оставляло бы пустышку в списке недавних.
@@ -407,6 +469,7 @@ export default function App() {
     if (isScratch()) {
       if (editor.isEmpty) return
       materializeCurrent()
+      flashSaved()
       return
     }
     flushDocs(docsRef.current.map(d =>
@@ -414,7 +477,8 @@ export default function App() {
         ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
         : d
     ))
-  }, [editor, flushDocs, isScratch, materializeCurrent])
+    flashSaved()
+  }, [editor, flushDocs, isScratch, materializeCurrent, flashSaved])
 
   // ── Сохранить текущий документ (дебаунс 600 мс) ──────────────────────────
   const scheduleSave = useCallback(() => {
@@ -503,10 +567,45 @@ export default function App() {
   }, [editor, saveNow, flushDocs])
 
   // ── Удалить документ ─────────────────────────────────────────────────────
+  // Мягко: документ уходит из списка, но семь секунд его можно вернуть.
+  // Раньше корзина стирала сразу и безвозвратно — при том, что удаление
+  // проекта, которое ничего не теряет, подтверждение спрашивало.
+  // Данные держим в рефе, а не только в состоянии: восстановление меняет
+  // список документов, и делать это внутри апдейтера нельзя — React в dev
+  // вызывает апдейтер дважды, и документ возвращался бы дублем.
+  const [pendingDelete, setPendingDelete] = useState(null) // { label }
+  const pendingRef = useRef(null)                          // { restore }
+  const undoTimerRef = useRef(null)
+
+  const purgePending = useCallback(() => {
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
+    pendingRef.current = null
+    setPendingDelete(null)
+  }, [])
+
+  // Общая отмена для документов и проектов: что именно вернуть,
+  // знает переданное замыкание
+  const scheduleUndo = useCallback((label, restore) => {
+    // Предыдущее отложенное удаление к этому моменту уже необратимо
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    pendingRef.current = { restore }
+    setPendingDelete({ label })
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null
+      pendingRef.current = null
+      setPendingDelete(null)
+    }, 7000)
+  }, [])
+
   const handleDeleteDoc = useCallback((id) => {
     if (docsRef.current.length <= 1) return
+    const index = docsRef.current.findIndex(d => d.id === id)
+    const doc   = docsRef.current[index]
+    if (!doc) return
+
     const newDocs = docsRef.current.filter(d => d.id !== id)
     flushDocs(newDocs)
+
     if (id === curIdRef.current) {
       const latest = [...newDocs].sort((a, b) => b.updatedAt - a.updatedAt)[0]
       editor?.commands.setContent(latest.content)
@@ -516,7 +615,47 @@ export default function App() {
       setFileName(latest.title || 'Без названия')
       setIsDirty(false)
     }
-  }, [editor, flushDocs])
+
+    scheduleUndo(`Удалён «${doc.title || 'Без названия'}»`, () => {
+      // На случай двойного клика: если документ уже вернулся, второй раз не вставляем
+      if (docsRef.current.some(d => d.id === doc.id)) return
+      const next = [...docsRef.current]
+      next.splice(Math.min(index, next.length), 0, doc)
+      flushDocs(next)
+    })
+  }, [editor, flushDocs, scheduleUndo])
+
+  const handleUndoDelete = useCallback(() => {
+    const cur = pendingRef.current
+    if (!cur) return
+    pendingRef.current = null
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
+    cur.restore()
+    setPendingDelete(null)
+  }, [])
+
+  // Удаление проекта ничего не теряет: документы просто остаются без проекта.
+  // Поэтому подтверждения нет — есть отмена, как у документов.
+  const handleDeleteProject = useCallback((id) => {
+    const index   = projectsRef.current.findIndex(p => p.id === id)
+    const project = projectsRef.current[index]
+    if (!project) return
+    const memberIds = docsRef.current.filter(d => d.projectId === id).map(d => d.id)
+
+    flushDocs(docsRef.current.map(d => d.projectId === id ? { ...d, projectId: null } : d))
+    flushProjects(projectsRef.current.filter(p => p.id !== id))
+
+    scheduleUndo(`Удалён проект «${project.title}»`, () => {
+      if (projectsRef.current.some(p => p.id === id)) return
+      const next = [...projectsRef.current]
+      next.splice(Math.min(index, next.length), 0, project)
+      flushProjects(next)
+      const back = new Set(memberIds)
+      flushDocs(docsRef.current.map(d => back.has(d.id) ? { ...d, projectId: id } : d))
+    })
+  }, [flushProjects, flushDocs, scheduleUndo])
+
+  useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current) }, [])
 
   // ── Экспорт всех документов в ZIP ────────────────────────────────────────
   const handleExportDocs = useCallback(async () => {
@@ -601,28 +740,33 @@ export default function App() {
           }
         }
 
-        if (imported.length === 0) { alert('Не удалось прочитать файлы'); return }
+        if (imported.length === 0) {
+          setNotice({ kind: 'error', text: 'Не удалось прочитать файлы. Подойдут ZIP-бэкап, .docx, HTML, Markdown или текст.' })
+          return
+        }
 
         const existingIds = new Set(docsRef.current.map(d => d.id))
         const fresh = imported.filter(d => !existingIds.has(d.id))
         if (fresh.length > 0) {
+          // Без уведомления: документы появляются в списке, который открыт
+          // рядом, — сообщать об этом значит подтверждать очевидное
           flushDocs([...docsRef.current, ...fresh])
-          alert(`Загружено: ${fresh.length} документ(ов)`)
         } else {
-          alert('Все документы уже есть в истории')
+          setNotice({ kind: 'info', text: 'Эти документы уже есть в истории' })
         }
       } catch (err) {
-        alert('Ошибка при открытии: ' + err.message)
+        setNotice({ kind: 'error', text: `Не удалось открыть файл: ${err.message}` })
       }
     }
     input.click()
   }, [flushDocs])
 
   // ── Файловые операции ─────────────────────────────────────────────────────
+  // Предупреждать здесь не о чем: handleNewDoc начинается с saveNow(),
+  // текущий документ уходит в localStorage до того, как заводится новый.
   const handleNew = useCallback(() => {
-    if (isDirty && !confirm('Несохраненные изменения будут потеряны. Продолжить?')) return
     handleNewDoc()
-  }, [isDirty, handleNewDoc])
+  }, [handleNewDoc])
 
   const handleOpenFallback = useCallback(() => {
     const input = document.createElement('input')
@@ -748,6 +892,23 @@ export default function App() {
       return next
     })
   }
+
+  const handleFadeToggle = () => {
+    setFadeEnabled(v => {
+      const next = !v
+      localStorage.setItem('pechatniki-typing-fade', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const handleEditorWidth = useCallback((px) => {
+    setEditorWidth(px)
+    localStorage.setItem('pechatniki-editor-width', px)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--editor-width', `${editorWidth}px`)
+  }, [editorWidth])
 
   const handleApplyTypograf = useCallback(() => {
     if (!editor) return
@@ -881,23 +1042,34 @@ export default function App() {
       const mod = e.metaKey || e.ctrlKey
       if (!mod) {
         if (e.key === 'Escape') {
-          if (zenMode) setZenMode(false)
+          // Слои закрываются сверху вниз: сначала то, что лежит поверх текста,
+          // потом режимы. Диалоги закрывают себя сами через useDismiss.
+          if (showPreview)        setShowPreview(false)
           else if (showShortcuts) setShowShortcuts(false)
-          else if (showDocs) setShowDocs(false)
-          else if (showTOC)  setShowTOC(false)
+          else if (showTypograf)  setShowTypograf(false)
+          else if (showFootnotes) setShowFootnotes(false)
+          else if (showBuffer)    setShowBuffer(false)
+          else if (showDocs)      setShowDocs(false)
+          else if (showTOC)       setShowTOC(false)
+          else if (zenMode)       setZenMode(false)
         }
         return
       }
-      if (e.shiftKey && e.key === 'D') { e.preventDefault(); setZenMode(z => !z);   return }
-      if (e.shiftKey && e.key === 'T') { e.preventDefault(); handleApplyTypograf(); return }
-      if (e.shiftKey && e.key === 'N') { e.preventDefault(); handleNew();           return }
-      if (e.shiftKey && e.key === 'S') { e.preventDefault(); handleSave();          return }
-      if (e.shiftKey && e.key === 'Y') { e.preventDefault(); if (!isolationMode) checkSpelling(); return }
-      if (e.key === '/' || e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s); return }
+      // Сравниваем физическую клавишу, а не букву: e.key в русской раскладке
+      // отдаёт кириллицу ('В' вместо 'D'), и сочетания переставали работать
+      // ровно тогда, когда пользователь пишет по-русски.
+      if (e.shiftKey && e.code === 'KeyD') { e.preventDefault(); setZenMode(z => !z);   return }
+      if (e.shiftKey && e.code === 'KeyT') { e.preventDefault(); handleApplyTypograf(); return }
+      if (e.shiftKey && e.code === 'KeyN') { e.preventDefault(); handleNew();           return }
+      if (e.shiftKey && e.code === 'KeyY') { e.preventDefault(); if (!isolationMode) checkSpelling(); return }
+      // ⌘S тоже перехватываем: иначе браузер открывает «Сохранить страницу как…»
+      if (e.code === 'KeyS') { e.preventDefault(); handleSave(); return }
+      if (e.code === 'Slash') { e.preventDefault(); setShowShortcuts(s => !s); return }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [editor, fileHandle, isDirty, zenMode, showDocs, showTOC, showShortcuts, isolationMode,
+      showPreview, showTypograf, showFootnotes, showBuffer,
       checkSpelling, handleNew, handleOpen, handleSave, handleSaveAs, handleApplyTypograf])
 
   // ── Рендер ────────────────────────────────────────────────────────────────
@@ -905,7 +1077,7 @@ export default function App() {
   const uiBusy = showDocs || showTOC || showBuffer || showTypograf || showPreview ||
     showShare || showShortcuts || showKbExport || showFootnotes || isEditingName ||
     !!linkDialog || spellErrors.length > 0
-  const uiFaded = useTypingFade(editor, !zenMode && !isMobile && !uiBusy)
+  const uiFaded = useTypingFade(editor, fadeEnabled && !zenMode && !isMobile && !uiBusy)
 
   // Лаунчер недавних — приветствие в начале сессии, а не подсказка: он ждёт на
   // чистом листе, но с первым же символом уходит насовсем. Стёрли всё обратно,
@@ -937,38 +1109,56 @@ export default function App() {
           <div className="header-left">
             {/* ≡ — история документов */}
             <button
-              className={`btn-icon${showDocs ? ' active' : ''}`}
+              className="btn-icon"
               onClick={() => setShowDocs(s => !s)}
               title="Документы"
+              aria-label="Документы"
+              aria-pressed={showDocs}
             >
-              <IconMenu />
+              <IconDocs />
             </button>
             {/* § — оглавление (на мобильном — в меню инструментов) */}
             {!isMobile && (
               <button
-                className={`btn-icon${showTOC ? ' active' : ''}`}
+                className="btn-icon"
                 onClick={() => setShowTOC(t => !t)}
                 title="Оглавление"
+                aria-label="Оглавление"
+                aria-pressed={showTOC}
               >
                 <IconTOC />
               </button>
             )}
-            {/* ← Назад — появляется при навигации по @-ссылкам */}
+            {/* Самоизоляция меняет поведение приложения — держим на виду.
+                Раньше единственным признаком был серый пункт «Яндекс.Спеллер»
+                внутри закрытого меню, и забывший о режиме решал, что спеллер сломался. */}
+            {isolationMode && !isMobile && (
+              <button
+                className="badge-isolation"
+                onClick={() => setShowTypograf(true)}
+                title="Приложение не обращается в интернет. Нажмите, чтобы открыть настройки"
+              >
+                Самоизоляция
+              </button>
+            )}
+            {/* ← Назад — появляется при навигации по @-ссылкам.
+                На узком экране только значок: с подписью шапка переполняется. */}
             {navCanBack && (
               <button
                 className="btn-back"
                 onClick={handleNavBack}
                 title="Назад"
+                aria-label="Назад"
               >
-                <IconBack /> Назад
+                <IconBack />
+                {!isMobile && <span className="btn-back__label">Назад</span>}
               </button>
             )}
           </div>
 
-          {/* На мобильном имя файла не влезает — редактируется в панели документов */}
-          {isMobile ? (
-            <span className="header-spacer" />
-          ) : isEditingName ? (
+          {/* Имя файла помещается и на телефоне: инструменты редактуры
+              уехали во всплывающее меню и шапку больше не распирают */}
+          {isEditingName ? (
             <input
               ref={nameInputRef}
               className="file-name file-name--editing"
@@ -991,43 +1181,42 @@ export default function App() {
               onClick={() => { nameEditStartRef.current = fileName; setIsEditingName(true) }}
               title="Нажмите, чтобы переименовать"
             >
-              {fileName}{isDirty ? '  *' : ''}
+              {fileName}
+              {fileHandle && isDirty && <span className="file-flag" title="Есть изменения, не выгруженные в файл"> *</span>}
+              <span className={`file-saved${savedFlash ? ' file-saved--on' : ''}`}>Сохранено</span>
             </span>
           )}
 
           <div className="header-right">
-            {/* Мобильный: инструменты редактуры прямо в шапке —
-                нижний тулбар закрывается клавиатурой */}
-            {isMobile && <MobileHeaderTools editor={editor} />}
-            <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)"><IconTypograf /></button>
-            {!isMobile && (
-              <>
-                <button className={`btn-icon${showBuffer ? ' active' : ''}`} onClick={() => setShowBuffer(b => !b)} title="Буфер черновиков"><IconTray /></button>
-                <button className={`btn-icon${zenMode ? ' active' : ''}`} onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)"><IconZen /></button>
-              </>
-            )}
+            {/* Обработка текста. Форматирование живёт во всплывающем меню
+                над выделением, поэтому в шапке его нет — и на телефоне
+                она больше не переполняется. */}
+            <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)" aria-label="Применить типограф"><IconTypograf /></button>
             <OverflowMenu
-              icon={<IconWrench />}
+              icon={<IconTools />}
               title="Инструменты"
               items={[
                 {
                   key: 'spell',
-                  icon: <IconSpellcheck size={14} />,
+                  icon: <IconSpellcheck />,
                   label: 'Яндекс.Спеллер',
                   title: isolationMode ? 'Отключено в режиме самоизоляции' : 'Проверить орфографию (⌘⇧Y)',
+                  // Причина недоступности видна сразу, а не только при наведении:
+                  // иначе серый пункт выглядит сломанным
+                  hint: isolationMode ? 'самоизоляция' : undefined,
                   disabled: isolationMode,
                   onClick: checkSpelling,
                 },
                 {
                   key: 'deyo',
-                  icon: <IconSwapLetter size={14} />,
-                  label: 'Деёизация (ё→е)',
-                  title: 'Заменить ё на е во всем тексте',
+                  icon: <IconSwapLetter />,
+                  label: 'Убрать точки над е',
+                  title: 'Заменить букву е с точками на обычную во всем тексте',
                   onClick: handleDeyo,
                 },
                 {
                   key: 'footnotes',
-                  icon: <IconFootnoteList />,
+                  icon: <IconFootnote />,
                   label: 'Сноски и источники',
                   title: 'Список использованных сносок',
                   active: showFootnotes,
@@ -1036,13 +1225,13 @@ export default function App() {
                 ...(isMobile ? [
                   {
                     key: 'image',
-                    icon: <IconImg />,
+                    icon: <IconImage />,
                     label: 'Изображение',
                     onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image')),
                   },
                   {
                     key: 'embed',
-                    icon: <IconEmbedGeneric size={14} />,
+                    icon: <IconEmbedGeneric />,
                     label: 'Встроить (YouTube, Slides…)',
                     onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed')),
                   },
@@ -1055,8 +1244,8 @@ export default function App() {
                   },
                   {
                     key: 'buffer',
-                    icon: <IconTray size={14} />,
-                    label: 'Буфер черновиков',
+                    icon: <IconDrafts />,
+                    label: 'Черновик',
                     active: showBuffer,
                     onClick: () => setShowBuffer(b => !b),
                   },
@@ -1073,14 +1262,8 @@ export default function App() {
                     onClick: () => setShowPreview(true),
                   },
                   {
-                    key: 'theme',
-                    icon: theme === 'dark' ? <IconSun /> : <IconMoon />,
-                    label: 'Сменить тему',
-                    onClick: () => setTheme(t => t === 'dark' ? 'light' : 'dark'),
-                  },
-                  {
                     key: 'settings',
-                    icon: <IconGear />,
+                    icon: <IconSettings />,
                     label: 'Настройки',
                     active: showTypograf,
                     onClick: () => setShowTypograf(t => !t),
@@ -1088,7 +1271,7 @@ export default function App() {
                 ] : [
                   {
                     key: 'shortcuts',
-                    icon: <IconKeyboard size={14} />,
+                    icon: <IconKeyboard />,
                     label: 'Горячие клавиши',
                     title: 'Список горячих клавиш (⌘/)',
                     onClick: () => setShowShortcuts(true),
@@ -1098,12 +1281,13 @@ export default function App() {
             />
             {!isMobile && (
               <>
-                <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой"><IconShare /></button>
-                <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт"><IconExport /></button>
-                <button className="btn-icon" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Сменить тему">
-                  {theme === 'dark' ? <IconSun /> : <IconMoon />}
-                </button>
-                <button className={`btn-icon${showTypograf ? ' active' : ''}`} onClick={() => setShowTypograf(t => !t)} title="Настройки"><IconGear /></button>
+                <span className="header-sep" />
+                <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
+                <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
+                <span className="header-sep" />
+                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
+                <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
+                <button className="btn-icon" onClick={() => setShowTypograf(t => !t)} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
               </>
             )}
           </div>
@@ -1122,12 +1306,14 @@ export default function App() {
             onExport={handleExportDocs}
             onExportKb={() => setShowKbExport(true)}
             onImport={handleImportDocs}
-            onClose={() => setShowDocs(false)}
+            onClose={() => { purgePending(); setShowDocs(false) }}
             onCreateProject={handleCreateProject}
             onRenameProject={handleRenameProject}
             onDeleteProject={handleDeleteProject}
             onMoveDoc={handleMoveDoc}
             onNewInProject={handleNewInProject}
+            pendingDelete={pendingDelete}
+            onUndoDelete={handleUndoDelete}
           />
         )}
 
@@ -1177,6 +1363,12 @@ export default function App() {
             onToggle={handleTypografToggle}
             isolationMode={isolationMode}
             onIsolationToggle={handleIsolationToggle}
+            fadeEnabled={fadeEnabled}
+            onFadeToggle={handleFadeToggle}
+            editorWidth={editorWidth}
+            onEditorWidth={handleEditorWidth}
+            theme={theme}
+            onTheme={setTheme}
             onClose={() => setShowTypograf(false)}
           />
         )}
@@ -1243,53 +1435,31 @@ export default function App() {
           onClose={() => setLinkDialog(null)}
         />
       )}
+
+      {passwordPrompt && (
+        <InputDialog
+          title="Документ под паролем"
+          description="Пароль знает только отправитель — у нас он не хранится."
+          placeholder="Пароль"
+          type="password"
+          confirmLabel="Открыть"
+          error={passwordPrompt.error}
+          onConfirm={handlePasswordConfirm}
+          onClose={() => {
+            setPasswordPrompt(null)
+            window.history.replaceState({}, '', window.location.pathname)
+          }}
+        />
+      )}
+
+      {notice && (
+        <Notice
+          text={notice.text}
+          kind={notice.kind}
+          onClose={() => setNotice(null)}
+        />
+      )}
     </div>
   )
 }
 
-function IconBack() {
-  return <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2L4 6.5L8 11"/></svg>
-}
-function IconMenu() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><rect y="2" width="15" height="1.5" rx="0.75"/><rect y="6.75" width="15" height="1.5" rx="0.75"/><rect y="11.5" width="15" height="1.5" rx="0.75"/></svg>
-}
-function IconTOC() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><line x1="5" y1="3.5" x2="13" y2="3.5"/><line x1="3" y1="7.5" x2="13" y2="7.5"/><line x1="5" y1="11.5" x2="13" y2="11.5"/><circle cx="1.5" cy="3.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="1.5" cy="7.5" r="0.75" fill="currentColor" stroke="none"/><circle cx="1.5" cy="11.5" r="0.75" fill="currentColor" stroke="none"/></svg>
-}
-function IconExport() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 1v9M5 7l3 3 3-3"/><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
-}
-function IconZen() {
-  // Энсо — незамкнутый круг, символ дзена
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M10.1 2.2A6.2 6.2 0 1 1 5.9 2.2"/></svg>
-}
-function IconWrench() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 1.5a3 3 0 0 0-2.2 5L2 12.8a.85.85 0 0 0 1.2 1.2L9.5 7.7a3 3 0 0 0 4.1-4.1L11.8 5.4 10.6 4.2l1.8-1.8a3 3 0 0 0-1.9-.9z"/></svg>
-}
-function IconGear() {
-  const teeth = [0, 45, 90, 135, 180, 225, 270, 315]
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <circle cx="8" cy="8" r="2.1" />
-      <circle cx="8" cy="8" r="4.2" />
-      {teeth.map(a => (
-        <rect key={a} x="7.25" y="0.6" width="1.5" height="2.1" rx="0.5" fill="currentColor" stroke="none" transform={`rotate(${a} 8 8)`} />
-      ))}
-    </svg>
-  )
-}
-function IconSun() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3" y1="3" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="13" y2="13"/><line x1="13" y1="3" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3" y2="13"/></svg>
-}
-function IconMoon() {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 10.5A6 6 0 0 1 5.5 2.5a6.5 6.5 0 1 0 8 8z"/></svg>
-}
-function IconShare() {
-  return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="11.5" cy="3" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/><circle cx="3.5" cy="7.5" r="1.5"/><line x1="5" y1="7.5" x2="10" y2="3.8"/><line x1="5" y1="7.5" x2="10" y2="11.2"/></svg>
-}
-function IconFootnoteList() {
-  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4.5h6M2 8h6M2 11.5h4"/><text x="10" y="7" fontSize="7" fontWeight="700" fill="currentColor" stroke="none" fontFamily="system-ui, sans-serif">1</text></svg>
-}
-function IconImg() {
-  return <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><circle cx="5.5" cy="6" r="1.5"/><path d="M1 11l4-4 3 3 2-2 5 5"/></svg>
-}

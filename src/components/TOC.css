@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
@@ -37,7 +37,7 @@
 }
 
 .toc-empty {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   padding: 12px 14px;
   font-style: italic;
@@ -47,7 +47,7 @@
   display: block;
   width: 100%;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   padding: 5px 14px;
   line-height: 1.4;
@@ -62,7 +62,7 @@
 
 .toc-item--h1 { padding-left: 14px; font-weight: 600; }
 .toc-item--h2 { padding-left: 22px; }
-.toc-item--h3 { padding-left: 30px; font-size: 12px; }
-.toc-item--h4 { padding-left: 38px; font-size: 12px; }
-.toc-item--h5 { padding-left: 46px; font-size: 11px; }
-.toc-item--h6 { padding-left: 54px; font-size: 11px; }
+.toc-item--h3 { padding-left: 30px; font-size: var(--fs-xs); }
+.toc-item--h4 { padding-left: 38px; font-size: var(--fs-xs); }
+.toc-item--h5 { padding-left: 46px; font-size: var(--fs-xs); }
+.toc-item--h6 { padding-left: 54px; font-size: var(--fs-xs); }
