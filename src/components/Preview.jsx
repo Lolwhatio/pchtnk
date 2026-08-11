@@ -27,7 +27,7 @@ const PRINT_STYLES = `
   h5{font-family:system-ui,sans-serif;font-size:1em;font-weight:600;margin:1.3em 0 .3em}
   h6{font-family:system-ui,sans-serif;font-size:.9em;font-weight:600;margin:1.3em 0 .3em;
      text-transform:uppercase;letter-spacing:.06em;color:#3a5a3c}
-  p{margin:0 0 1.2em}
+  p{margin:0 0 .35em}
   a{color:#3a7828;text-decoration:underline}
   blockquote{
     border-left:3px solid #62a030;
@@ -74,7 +74,7 @@ const PDF_INLINE_STYLE = `
   h5{font-family:system-ui,sans-serif;font-size:1em;font-weight:600;margin:1.2em 0 .3em}
   h6{font-family:system-ui,sans-serif;font-size:.9em;font-weight:600;margin:1.2em 0 .3em;
      text-transform:uppercase;letter-spacing:.06em}
-  p{margin:0 0 1.2em}
+  p{margin:0 0 .35em}
   a{color:#2d5a1b !important;text-decoration:underline}
   blockquote{border-left:3px solid #62a030 !important;margin:1.4em 0;
              padding:.5em 0 .5em 1.3em;font-style:italic}

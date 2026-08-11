@@ -180,10 +180,14 @@
 .editor-content .ProseMirror p {
   margin: 0;
 }
+/* Отбивка небольшая: абзацы идут почти равномерно, шаг от начала одного
+   до начала другого выходит около 1,95 кегля. Так набрано в редакторе,
+   который взят за образец; 0.75em давали 2,35 кегля и заметный провал
+   между абзацами. */
 .editor-content .ProseMirror p + p,
 .editor-content .ProseMirror p + blockquote,
 .editor-content .ProseMirror blockquote + p {
-  margin-top: 0.75em;
+  margin-top: 0.35em;
 }
 
 /* Внутри списков, ячеек и цитат абзацы не разъезжаются */
