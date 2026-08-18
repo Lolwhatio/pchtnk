@@ -41,20 +41,58 @@ function formatDate(ts) {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelete }) {
+// Кого тащим — знать нужно уже во время dragover, а dataTransfer.getData
+// до броска пуст: браузер отдаёт данные только в drop.
+let draggingId = null
+
+function DocItem({ doc, isActive, onSelect, onDelete, onMove, onReorder, reorderable, projects, canDelete }) {
   const [showMover, setShowMover] = useState(false)
+  const [dropEdge, setDropEdge] = useState(null) // null | 'before' | 'after'
   const moverRef = useRef(null)
   const snippet = snippetOf(doc)
 
   useDismiss(moverRef, showMover, () => setShowMover(false))
 
+  const edgeAt = (e) => {
+    const box = e.currentTarget.getBoundingClientRect()
+    return e.clientY < box.top + box.height / 2 ? 'before' : 'after'
+  }
+
+  // Перетаскивание внутри списка можно ловить, только пока список не отфильтрован:
+  // в результатах поиска порядок строк не совпадает с настоящим
+  const canDrop = (e) =>
+    reorderable && draggingId && draggingId !== doc.id &&
+    e.dataTransfer.types.includes('text/pechatniki-doc')
+
   return (
     <div
-      className={`docs-panel__item${isActive ? ' docs-panel__item--active' : ''}`}
+      className={`docs-panel__item${isActive ? ' docs-panel__item--active' : ''}${dropEdge ? ` docs-panel__item--drop-${dropEdge}` : ''}`}
       draggable
       onDragStart={e => {
+        draggingId = doc.id
         e.dataTransfer.setData('text/pechatniki-doc', doc.id)
         e.dataTransfer.effectAllowed = 'move'
+      }}
+      onDragEnd={() => { draggingId = null; setDropEdge(null) }}
+      // Событие не гасим: подсветка проекта под курсором тоже нужна —
+      // она показывает, куда документ переедет
+      onDragOver={e => {
+        if (!canDrop(e)) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        setDropEdge(edgeAt(e))
+      }}
+      onDragLeave={e => {
+        if (e.currentTarget.contains(e.relatedTarget)) return
+        setDropEdge(null)
+      }}
+      onDrop={e => {
+        if (!canDrop(e)) return
+        e.preventDefault()
+        e.stopPropagation() // иначе проект следом бросит документ в конец группы
+        const id = e.dataTransfer.getData('text/pechatniki-doc')
+        setDropEdge(null)
+        if (id) onReorder(id, doc.id, edgeAt(e))
       }}
     >
       <button className="docs-panel__item-main" onClick={() => onSelect(doc.id)}>
@@ -106,7 +144,7 @@ function DocItem({ doc, isActive, onSelect, onDelete, onMove, projects, canDelet
   )
 }
 
-function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDeleteProject, onRenameProject, onNewInProject, onMove, projects, canDelete }) {
+function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDeleteProject, onRenameProject, onNewInProject, onMove, onReorder, reorderable, projects, canDelete }) {
   const [collapsed, setCollapsed] = useState(false)
   const [editing, setEditing]     = useState(false)
   const [title, setTitle]         = useState(project.title)
@@ -197,6 +235,8 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
               onSelect={onSelect}
               onDelete={onDelete}
               onMove={onMove}
+              onReorder={onReorder}
+              reorderable={reorderable}
               projects={projects}
               canDelete={canDelete}
             />
@@ -210,17 +250,18 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
 export default function DocsPanel({
   docs, projects = [], currentId,
   onSelect, onNew, onDelete, onExport, onExportKb, onImport, onClose,
-  onCreateProject, onRenameProject, onDeleteProject, onMoveDoc, onNewInProject,
+  onCreateProject, onRenameProject, onDeleteProject, onMoveDoc, onReorderDoc, onNewInProject,
   pendingDelete, onUndoDelete,
 }) {
   const [query, setQuery] = useState('')
 
-  const sorted = useMemo(() => {
-    const list = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
+  // Порядок — тот, что задал пользователь перетаскиванием. Сортировка по дате
+  // правки его перебивала: открытый документ всякий раз всплывал наверх.
+  const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return list
+    if (!q) return docs
     // Ищем и по названию, и по тексту: половина документов называется одинаково
-    return list.filter(d =>
+    return docs.filter(d =>
       (d.title || '').toLowerCase().includes(q) ||
       plainText(d.content).toLowerCase().includes(q)
     )
@@ -230,7 +271,7 @@ export default function DocsPanel({
   const byProject = {}
   projects.forEach(p => { byProject[p.id] = [] })
   const noDocs = []
-  sorted.forEach(doc => {
+  visible.forEach(doc => {
     if (doc.projectId && byProject[doc.projectId]) byProject[doc.projectId].push(doc)
     else noDocs.push(doc)
   })
@@ -285,6 +326,8 @@ export default function DocsPanel({
             onRenameProject={onRenameProject}
             onNewInProject={onNewInProject}
             onMove={onMoveDoc}
+            onReorder={onReorderDoc}
+            reorderable={!searching}
             projects={projects}
             canDelete={canDelete}
           />
@@ -304,6 +347,8 @@ export default function DocsPanel({
                 onSelect={onSelect}
                 onDelete={onDelete}
                 onMove={onMoveDoc}
+                onReorder={onReorderDoc}
+                reorderable={!searching}
                 projects={projects}
                 canDelete={canDelete}
               />
@@ -314,7 +359,7 @@ export default function DocsPanel({
         {docs.length === 0 && (
           <div className="docs-panel__empty">Нет документов</div>
         )}
-        {docs.length > 0 && searching && sorted.length === 0 && (
+        {docs.length > 0 && searching && visible.length === 0 && (
           <div className="docs-panel__empty">Ничего не нашлось</div>
         )}
       </div>

@@ -64,10 +64,10 @@
 .spell-error-word {
   font-size: 15px;
   font-weight: 600;
-  color: #bf6060;
+  color: var(--danger);
   text-decoration: underline;
   text-decoration-style: wavy;
-  text-decoration-color: #bf6060;
+  text-decoration-color: var(--danger);
   text-underline-offset: 3px;
 }
 

@@ -165,8 +165,8 @@
   line-height: 1.5;
 }
 
-.toolbar-heading-item--danger { color: #d9705a; }
-.toolbar-heading-item--danger:hover { background: rgba(217, 112, 90, 0.12); }
+.toolbar-heading-item--danger { color: var(--danger); }
+.toolbar-heading-item--danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
 .toolbar-menu-sep {
   height: 1px;

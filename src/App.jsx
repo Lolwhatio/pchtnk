@@ -18,13 +18,15 @@ import Notice from './components/Notice'
 import {
   IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
   IconDocs, IconTOC, IconZen, IconSettings, IconTools, IconExport, IconShare,
-  IconDrafts, IconBack, IconFootnote, IconImage,
+  IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible, IconClose,
 } from './components/icons'
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
 import { useTooltips } from './hooks/useTooltips'
 import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdown'
+import { stripInvisibles, pluralInvisible } from './utils/invisibles'
+import { isPalette, DEFAULT_PALETTE } from './utils/palettes'
 import { exportKnowledgeBase } from './utils/export'
 import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
 import './App.css'
@@ -126,9 +128,24 @@ function migrateManualTitles(docs) {
   return out
 }
 
+// Порядок в списке стал ручным. Раньше строки сортировались по дате правки,
+// и без этой миграции список при первом же запуске перетасовался бы:
+// в самом массиве документы лежат в порядке появления. Разово раскладываем их
+// так, как пользователь привык видеть, дальше порядок меняет только он.
+const ORDER_KEY = 'pechatniki-docs-ordered'
+
+function migrateOrder(docs) {
+  if (localStorage.getItem(ORDER_KEY)) return docs
+  localStorage.setItem(ORDER_KEY, '1')
+  if (docs.length < 2) return docs
+  const out = [...docs].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+  storeDocs(out)
+  return out
+}
+
 // Синхронно читаем из localStorage при старте
 function bootstrap() {
-  const all = migrateManualTitles(loadDocs())
+  const all = migrateOrder(migrateManualTitles(loadDocs()))
   if (all.length > 0) {
     // Блокнот всегда под рукой: каждое открытие начинается с чистого листа,
     // а прежние тексты ждут ссылкой внизу (RecentDocs). Новый документ живёт
@@ -237,6 +254,13 @@ export default function App() {
   const isMobile = useIsMobile()
   useTooltips()
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
+  // Значение из хранилища проверяем: удалённая палитра оставила бы атрибут,
+  // под который нет ни одного блока, и приложение молча стало бы «лесом»
+  // при выбранной «Некрасовской» в настройках
+  const [palette, setPalette] = useState(() => {
+    const saved = localStorage.getItem('pechatniki-palette')
+    return isPalette(saved) ? saved : DEFAULT_PALETTE
+  })
   const [zenMode,      setZenMode]      = useState(false)
   const [showPreview,  setShowPreview]  = useState(false)
   const [showTOC,      setShowTOC]      = useState(false)
@@ -313,8 +337,34 @@ export default function App() {
     flushProjects(projectsRef.current.map(p => p.id === id ? { ...p, title } : p))
   }, [flushProjects])
 
+  // Порядок документов задаёт пользователь, поэтому перемещение — это ещё и
+  // выбор места: список хранит документы в том порядке, в каком их показывает.
   const handleMoveDoc = useCallback((docId, projectId) => {
-    flushDocs(docsRef.current.map(d => d.id === docId ? { ...d, projectId: projectId || null } : d))
+    const list = [...docsRef.current]
+    const from = list.findIndex(d => d.id === docId)
+    if (from < 0) return
+    const pid = projectId || null
+    if ((list[from].projectId || null) === pid) return // уже здесь — место не трогаем
+    const [moved] = list.splice(from, 1)
+    // В конец своей группы: брошенный на заголовок проекта документ иначе
+    // остался бы на прежнем месте списка и всплыл бы посреди чужой группы
+    let last = -1
+    list.forEach((d, i) => { if ((d.projectId || null) === pid) last = i })
+    list.splice(last + 1, 0, { ...moved, projectId: pid })
+    flushDocs(list)
+  }, [flushDocs])
+
+  const handleReorderDoc = useCallback((docId, targetId, place) => {
+    if (docId === targetId) return
+    const list = [...docsRef.current]
+    const from = list.findIndex(d => d.id === docId)
+    const target = list.find(d => d.id === targetId)
+    if (from < 0 || !target) return
+    const [moved] = list.splice(from, 1)
+    // Индекс цели ищем после изъятия — до него он мог съехать
+    const to = list.findIndex(d => d.id === targetId)
+    list.splice(place === 'after' ? to + 1 : to, 0, { ...moved, projectId: target.projectId || null })
+    flushDocs(list)
   }, [flushDocs])
 
   // ── Орфография (Яндекс Спеллер) ──────────────────────────────────────────
@@ -399,11 +449,19 @@ export default function App() {
     return encodeShareUrl(editor.getJSON(), window.location.href, password)
   }, [editor])
 
-  // ── Тема ──────────────────────────────────────────────────────────────────
+  // ── Тема и палитра ────────────────────────────────────────────────────────
+  // Две независимые оси: светлота (тёмная/светлая) и цвет (линия метро).
+  // Поэтому не один список из двенадцати тем, а два переключателя —
+  // выбранная линия сохраняется при переключении на светлую и обратно.
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-palette', palette)
+    localStorage.setItem('pechatniki-palette', palette)
+  }, [palette])
 
   // ── Авто-заголовок ────────────────────────────────────────────────────────
   // Название следует за первой строкой документа, пока пользователь
@@ -902,6 +960,42 @@ export default function App() {
     editor.commands.focus()
   }, [editor])
 
+  // Невидимые символы: нулевой ширины, bidi-управление, теговые. Приезжают
+  // вместе с вставкой из веба и ломают поиск по документу, счётчик знаков
+  // и переносы. Неразрывные пробелы типографа не трогаем — см. utils/invisibles.
+  const handleStripInvisibles = useCallback(() => {
+    if (!editor) return
+    const { state, view, schema } = editor
+    const edits = []
+    let removed = 0
+
+    state.doc.descendants((node, pos) => {
+      if (!node.isText) return
+      const res = stripInvisibles(node.text)
+      if (!res.removed) return
+      removed += res.removed
+      edits.push({ from: pos, to: pos + node.nodeSize, text: res.text, marks: node.marks })
+    })
+
+    if (!removed) {
+      setNotice({ kind: 'info', text: 'Невидимых символов не нашлось' })
+      return
+    }
+
+    // С конца, чтобы позиции не съезжали
+    let tr = state.tr
+    for (let i = edits.length - 1; i >= 0; i--) {
+      const { from, to, text, marks } = edits[i]
+      // Пустой текстовый узел схема не примет: если от строки ничего
+      // не осталось, узел просто удаляем
+      tr = text ? tr.replaceWith(from, to, schema.text(text, marks)) : tr.delete(from, to)
+    }
+    view.dispatch(tr)
+    editor.commands.focus()
+
+    setNotice({ kind: 'info', text: `Убрали ${removed} ${pluralInvisible(removed)}` })
+  }, [editor])
+
   const handleTypografToggle = (val) => {
     setTypografEnabled(val)
     localStorage.setItem('typograf-enabled', JSON.stringify(val))
@@ -922,6 +1016,24 @@ export default function App() {
       return next
     })
   }
+
+  // Черновик и Настройки живут в одном месте — у правого края. Открывать их
+  // разом незачем: вдвоём они съедают пол-экрана, а раньше вторая просто
+  // накрывала первую. Поэтому переключаются, а не копятся.
+  const toggleBuffer = useCallback(() => {
+    setShowTypograf(false)
+    setShowBuffer(v => !v)
+  }, [])
+
+  const toggleSettings = useCallback(() => {
+    setShowBuffer(false)
+    setShowTypograf(v => !v)
+  }, [])
+
+  const openSettings = useCallback(() => {
+    setShowBuffer(false)
+    setShowTypograf(true)
+  }, [])
 
   const handleEditorWidth = useCallback((px) => {
     setEditorWidth(px)
@@ -1157,7 +1269,7 @@ export default function App() {
             {isolationMode && !isMobile && (
               <button
                 className="badge-isolation"
-                onClick={() => setShowTypograf(true)}
+                onClick={openSettings}
                 title="Приложение не обращается в интернет. Нажмите, чтобы открыть настройки"
               >
                 Самоизоляция
@@ -1237,6 +1349,13 @@ export default function App() {
                   onClick: handleDeyo,
                 },
                 {
+                  key: 'invisibles',
+                  icon: <IconInvisible />,
+                  label: 'Убрать невидимые символы',
+                  title: 'Символы нулевой ширины и прочие невидимки — их не видно, но они ломают поиск по тексту',
+                  onClick: handleStripInvisibles,
+                },
+                {
                   key: 'footnotes',
                   icon: <IconFootnote />,
                   label: 'Сноски и источники',
@@ -1269,7 +1388,7 @@ export default function App() {
                     icon: <IconDrafts />,
                     label: 'Черновик',
                     active: showBuffer,
-                    onClick: () => setShowBuffer(b => !b),
+                    onClick: toggleBuffer,
                   },
                   {
                     key: 'share',
@@ -1288,7 +1407,7 @@ export default function App() {
                     icon: <IconSettings />,
                     label: 'Настройки',
                     active: showTypograf,
-                    onClick: () => setShowTypograf(t => !t),
+                    onClick: toggleSettings,
                   },
                 ] : [
                   {
@@ -1307,9 +1426,9 @@ export default function App() {
                 <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
                 <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
                 <span className="header-sep" />
-                <button className="btn-icon" onClick={() => setShowBuffer(b => !b)} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
+                <button className="btn-icon" onClick={toggleBuffer} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
                 <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
-                <button className="btn-icon" onClick={() => setShowTypograf(t => !t)} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
+                <button className="btn-icon" onClick={toggleSettings} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
               </>
             )}
           </div>
@@ -1333,6 +1452,7 @@ export default function App() {
             onRenameProject={handleRenameProject}
             onDeleteProject={handleDeleteProject}
             onMoveDoc={handleMoveDoc}
+            onReorderDoc={handleReorderDoc}
             onNewInProject={handleNewInProject}
             pendingDelete={pendingDelete}
             onUndoDelete={handleUndoDelete}
@@ -1391,6 +1511,8 @@ export default function App() {
             onEditorWidth={handleEditorWidth}
             theme={theme}
             onTheme={setTheme}
+            palette={palette}
+            onPalette={setPalette}
             onClose={() => setShowTypograf(false)}
           />
         )}
@@ -1412,8 +1534,18 @@ export default function App() {
         />
       )}
 
+      {/* Значок из общего набора, а не глиф «✕»: глиф сидит на базовой линии
+          текста, а не в оптическом центре кружка, и крестик выглядел
+          сползшим. То же правило проверяет npm run check:icons. */}
       {zenMode && (
-        <button className="zen-exit" onClick={() => setZenMode(false)} title="Выйти из Дзен (Esc)">✕</button>
+        <button
+          className="zen-exit"
+          onClick={() => setZenMode(false)}
+          title="Выйти из Дзен (Esc)"
+          aria-label="Выйти из режима Дзен"
+        >
+          <IconClose size={14} />
+        </button>
       )}
 
       {spellErrors.length > 0 && (

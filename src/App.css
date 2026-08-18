@@ -241,12 +241,14 @@
   border-radius: 50%;
   background: var(--bg-hover);
   color: var(--text-muted);
-  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* line-height: 0 — иначе строчный бокс значка добавляет пару пикселей снизу
+     и кружок перестаёт быть симметричным относительно крестика */
+  line-height: 0;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s, color var(--transition), background var(--transition);
   z-index: 100;
 }
 .app--zen:hover .zen-exit { opacity: 1; }

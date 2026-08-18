@@ -35,23 +35,37 @@ function ratio(a, b) {
 }
 
 // ── Разбор variables.css ─────────────────────────────────────────────────────
-// Нас интересуют два блока: :root (тёмная тема) и [data-theme="light"].
-// Светлая наследует всё, что в ней не переопределено.
+// Слои повторяют каскад: :root (тёмная по умолчанию) → [data-theme="light"]
+// → [data-theme="…"][data-palette="…"]. Палитра задаёт все токены сама,
+// но слои всё равно накладываем — так проверка не разойдётся с браузером,
+// если однажды палитра станет задавать только часть.
+
+function readBlock(body) {
+  const out = {}
+  for (const line of body.split('\n')) {
+    const d = line.match(/--([\w-]+)\s*:\s*([^;]+);/)
+    if (d && d[2].trim().startsWith('#')) out[d[1]] = d[2].trim()
+  }
+  return out
+}
 
 function parseTokens(css) {
-  const block = (re) => {
-    const m = css.match(re)
-    if (!m) return {}
-    const out = {}
-    for (const line of m[1].split('\n')) {
-      const d = line.match(/--([\w-]+)\s*:\s*([^;]+);/)
-      if (d && d[2].trim().startsWith('#')) out[d[1]] = d[2].trim()
-    }
-    return out
+  const one = (re) => { const m = css.match(re); return m ? readBlock(m[1]) : {} }
+
+  const dark = one(/:root\s*\{([\s\S]*?)\n\}/)
+  const lightOwn = one(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)
+  const light = { ...dark, ...lightOwn }
+
+  // Палитры: [data-theme="dark|light"][data-palette="id"]
+  const palettes = new Map()
+  const re = /\[data-theme="(dark|light)"\]\[data-palette="([\w-]+)"\]\s*\{([\s\S]*?)\n\}/g
+  for (const m of css.matchAll(re)) {
+    const [, theme, id, body] = m
+    if (!palettes.has(id)) palettes.set(id, {})
+    palettes.get(id)[theme] = { ...(theme === 'light' ? light : dark), ...readBlock(body) }
   }
-  const dark = block(/:root\s*\{([\s\S]*?)\}/)
-  const lightOwn = block(/\[data-theme="light"\]\s*\{([\s\S]*?)\}/)
-  return { dark, light: { ...dark, ...lightOwn }, lightOwn }
+
+  return { dark, light, lightOwn, palettes }
 }
 
 // ── Список проверок ──────────────────────────────────────────────────────────
@@ -90,7 +104,7 @@ const MUST_OVERRIDE_IN_LIGHT = ['accent', 'accent-hover', 'accent-dim', 'danger'
 // ── Прогон ───────────────────────────────────────────────────────────────────
 
 const css = readFileSync(CSS, 'utf8')
-const { dark, light, lightOwn } = parseTokens(css)
+const { dark, light, lightOwn, palettes } = parseTokens(css)
 
 const missing = MUST_OVERRIDE_IN_LIGHT.filter(t => !(t in lightOwn))
 
@@ -131,17 +145,53 @@ for (const r of rows) {
 }
 console.log('─'.repeat(78))
 
+// ── Остальные палитры ────────────────────────────────────────────────────────
+// Подробную таблицу печатать двенадцать раз незачем: у палитры те же токены
+// и те же пороги, поэтому показываем запас — худшее отношение к своему порогу.
+// Меньше единицы значит провал.
+
+let palFailed = 0
+
+if (palettes.size) {
+  console.log('\nПалитры · то же дерево проверок')
+  console.log('─'.repeat(78))
+  console.log(pad('Палитра', 24) + pad('тема', 10) + padS('худший запас', 14) + '  на чём')
+  console.log('─'.repeat(78))
+
+  for (const [id, byTheme] of palettes) {
+    for (const theme of ['dark', 'light']) {
+      const t = byTheme[theme]
+      if (!t) { console.log('✗ ' + pad(id, 22) + pad(theme, 10) + padS('нет блока', 14)); palFailed++; continue }
+
+      let worst = { margin: Infinity, label: '' }
+      for (const [label, fg, bg, min] of CHECKS) {
+        if (!t[fg] || !t[bg]) continue
+        const margin = ratio(parseHex(t[fg]), parseHex(t[bg])) / min
+        if (margin < worst.margin) worst = { margin, label }
+      }
+      const ok = worst.margin >= 1
+      if (!ok) palFailed++
+      console.log(
+        (ok ? '  ' : '✗ ') + pad(id, 22) + pad(theme, 10) +
+        padS('×' + worst.margin.toFixed(2), 14) + '  ' + worst.label
+      )
+    }
+  }
+  console.log('─'.repeat(78))
+}
+
 if (missing.length) {
   console.log(`\n✗ Светлая тема не переопределяет: ${missing.map(t => '--' + t).join(', ')}`)
   console.log('  Без этого она наследует акцент тёмной темы.')
 }
 
-const problems = failed + (missing.length ? 1 : 0)
+const problems = failed + palFailed + (missing.length ? 1 : 0)
 
 if (problems === 0) {
-  console.log(`\n✓ Все ${rows.length} проверок пройдены в обеих темах\n`)
+  const total = rows.length * (2 + palettes.size * 2)
+  console.log(`\n✓ Пройдено ${total} проверок · палитр ${palettes.size + 1} × 2 темы\n`)
   process.exit(0)
 }
 
-console.log(`\n✗ Не проходят проверок: ${failed}\n`)
+console.log(`\n✗ Не проходят проверок: ${failed + palFailed}\n`)
 process.exit(1)

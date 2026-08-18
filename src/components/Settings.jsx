@@ -1,5 +1,6 @@
 import TypografPanel from './TypografPanel'
 import { IconClose } from './icons'
+import { PALETTES } from '../utils/palettes'
 import './Settings.css'
 
 export default function Settings({
@@ -8,8 +9,10 @@ export default function Settings({
   fadeEnabled, onFadeToggle,
   editorWidth, onEditorWidth,
   theme, onTheme,
+  palette, onPalette,
   onClose,
 }) {
+  const currentLine = PALETTES.find(p => p.id === palette) || PALETTES[0]
   // Знаки в строке посчитаны для кегля 18px и средней ширины знака
   // кириллицы 9,05px — она на 12,6% шире латиницы
   const WIDTHS = [
@@ -48,6 +51,33 @@ export default function Settings({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Палитра — вторая ось к теме: каждая линия есть и в тёмной,
+            и в светлой. Кружки вместо списка названий: линия узнаётся
+            по цвету и номеру быстрее, чем читается «Калужско-Рижская». */}
+        <div className="settings-row settings-row--stack">
+          <div className="settings-row-text">
+            <span className="settings-row-name">Палитра</span>
+            <span className="settings-row-desc">Выберите цвет, который вам нравится</span>
+          </div>
+          <div className="settings-lines" role="radiogroup" aria-label="Палитра">
+            {PALETTES.map(p => (
+              <button
+                key={p.id}
+                className={`settings-line${palette === p.id ? ' settings-line--on' : ''}`}
+                role="radio"
+                aria-checked={palette === p.id}
+                title={p.name}
+                onClick={() => onPalette(p.id)}
+              >
+                <span className="settings-line-dot" style={{ background: p.dot, color: p.fg }}>
+                  {p.num}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="settings-lines-name">{currentLine.name}</div>
         </div>
 
         {/* ── Приватность ───────────────────────────── */}

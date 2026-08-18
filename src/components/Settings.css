@@ -1,16 +1,16 @@
+/* Колонка в общем ряду, как остальные боковые панели. Раньше здесь стоял
+   position: fixed с z-index: 20 — единственная панель, выпавшая из потока, —
+   и Настройки не вставали рядом с Черновиком, а накрывали его. Заодно
+   уходит привязка к top: 40px / bottom: 40px: в Дзене шапки нет,
+   на телефоне нет нижней панели, а отступы оставались. */
 .settings {
-  position: fixed;
-  right: 0;
-  top: 40px;
-  bottom: 40px;
   width: 300px;
+  flex-shrink: 0;
   background: var(--bg-panel);
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 20;
-  box-shadow: -4px 0 24px rgba(0,0,0,0.4);
 }
 
 .settings-header {
@@ -106,6 +106,46 @@
   color: var(--text-muted);
 }
 .settings-seg-btn--on .settings-seg-hint { color: var(--accent); }
+
+/* ── Палитры: знаки линий метро ─────────────────── */
+
+.settings-lines {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-line {
+  padding: 2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  line-height: 0;
+  transition: border-color var(--transition), transform var(--transition);
+}
+.settings-line:hover { transform: scale(1.08); }
+/* Обводка акцентом, а не самим цветом линии: выбранная должна читаться
+   и когда цвет линии почти сливается с фоном светлой темы */
+.settings-line--on { border-color: var(--accent); }
+
+.settings-line-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.settings-lines-name {
+  margin-top: 8px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
 
 .settings-row-text {
   flex: 1;

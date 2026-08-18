@@ -55,13 +55,57 @@
 .preview-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .preview-btn.active { color: var(--accent); background: var(--bg-active); }
 .preview-btn--icon { padding: 4px 8px; }
+/* Надпись цветом фона приложения, а не белым: с яркими палитрами
+   (жёлтая, бирюзовая) белое по акценту не читалось. Именно эту пару
+   и проверяет npm run check:contrast — «Надпись на главной кнопке». */
 .preview-btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
   padding: 4px 14px;
 }
-.preview-btn--primary:hover { background: var(--accent-dim); color: #fff; }
+.preview-btn--primary:hover { background: var(--accent-hover); color: var(--text-inverse); }
 .preview-btn--primary:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Формат: выбор, а не скачивание ─────────────── */
+
+.preview-formats {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-right: 6px;
+  border-radius: 7px;
+  background: var(--bg-secondary);
+}
+
+.preview-format {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.preview-format:hover { color: var(--text-primary); background: var(--bg-hover); }
+.preview-format--on {
+  color: var(--accent);
+  background: var(--bg-active);
+}
+
+/* ── Исходник markdown ──────────────────────────── */
+
+.preview-source {
+  width: 100%;
+  max-width: var(--editor-width);
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
+}
 
 .preview-body {
   flex: 1;
@@ -205,3 +249,46 @@
   text-align: center;
   flex-shrink: 0;
 }
+
+/* ── Страница для PDF ───────────────────────────── */
+/* Печатная версия белая независимо от темы — показываем её такой же,
+   иначе тёмный предпросмотр обещает не то, что выйдет из принтера */
+
+.preview-body--paper { background: var(--bg-secondary); }
+
+.preview-page {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  padding: 20mm;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+}
+
+.preview-content--print {
+  max-width: none;
+  color: #1a2a1c;
+}
+.preview-content--print h1,
+.preview-content--print h2,
+.preview-content--print h3,
+.preview-content--print h4,
+.preview-content--print h5,
+.preview-content--print h6 { color: #0f1c10; }
+.preview-content--print a { color: #2d5a1b; }
+.preview-content--print blockquote {
+  border-left-color: #9db894;
+  color: #3a5a3c;
+}
+.preview-content--print code,
+.preview-content--print pre {
+  background: #eef1ec;
+  color: #1a3a1c;
+  border-color: #d3dccf;
+}
+.preview-content--print li::marker { color: #6b8a63; }
+.preview-content--print th { background: #eef1ec; }
+.preview-content--print th,
+.preview-content--print td { border-color: #c6d2c0; }
+.preview-content--print hr { border-top-color: #c6d2c0; }

@@ -7,7 +7,7 @@ import { TableKit } from '@tiptap/extension-table'
 import { Extension, Node, mergeAttributes } from '@tiptap/core'
 import { Plugin, PluginKey } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
-import { DOMParser as ProseDOMParser } from 'prosemirror-model'
+import { DOMParser as ProseDOMParser, DOMSerializer } from 'prosemirror-model'
 import DocLinkPopup from './DocLinkPopup'
 import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
@@ -16,6 +16,7 @@ import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
 import { createHangingWordsPlugin } from '../hooks/useHangingWords'
 import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
+import { sliceToText, cleanClipboardDom } from '../utils/clipboard'
 import './Editor.css'
 
 // ── Markdown-детектор ─────────────────────────────────────────────────────────
@@ -710,6 +711,19 @@ const SourcesList = Node.create({
   },
 })
 
+// ── Буфер обмена ──────────────────────────────────────────────────────────────
+// Схему берём из самого фрагмента: сериализатор задаётся один раз при создании
+// редактора, когда экземпляра ещё нет.
+const clipboardSerializer = {
+  serializeFragment(fragment, options = {}) {
+    const doc = options.document || document
+    const schema = fragment.firstChild?.type.schema
+    if (!schema) return doc.createDocumentFragment()
+    const dom = DOMSerializer.fromSchema(schema).serializeFragment(fragment, options)
+    return cleanClipboardDom(dom, doc)
+  },
+}
+
 // ── Шорткаты Печатников ───────────────────────────────────────────────────────
 
 const OptimaShortcuts = Extension.create({
@@ -755,6 +769,23 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
     typografRef.current = typograf
   }, [stopPhrases, typograf])
 
+  // Ставим строку с курсором на высоту, заданную в CSS (--zen-caret).
+  // Оттуда же считаются поля сверху и снизу — одно число на всё.
+  //
+  // Синхронно, а не в requestAnimationFrame: прокрутка обязана случиться до
+  // отрисовки. Отложи её на кадр — и браузер успеет показать курсор ещё не на
+  // месте, а следующий кадр уже на месте. Курсор поедет по экрану, а именно
+  // движущийся курсор в Дзене и оставляет за собой след.
+  const centerOnCaret = useCallback((view) => {
+    const wrap = wrapRef.current
+    if (!wrap || view.isDestroyed) return
+    const ratio = parseFloat(getComputedStyle(wrap).getPropertyValue('--zen-caret')) || 0.4
+    let coords
+    try { coords = view.coordsAtPos(view.state.selection.head) } catch { return }
+    const delta = (coords.top + coords.bottom) / 2 - window.innerHeight * ratio
+    if (Math.abs(delta) > 0.5) wrap.scrollTop += delta
+  }, [])
+
   // eslint-disable-next-line react-hooks/refs
   const stopWordsPlugin = useMemo(() => createStopWordsPlugin(phrasesRef), []) // phrasesRef is stable, plugin reads .current lazily
   const hangingWordsPlugin = useMemo(() => createHangingWordsPlugin(), [])
@@ -786,6 +817,9 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
   const editor = useEditor({
     editorProps: {
       attributes: { spellcheck: 'true' },
+      // Копирование: и текст, и HTML собираем сами — см. utils/clipboard
+      clipboardTextSerializer: (slice) => sliceToText(slice),
+      clipboardSerializer,
       // Прокрутку к курсору в Дзене берём на себя целиком.
       //
       // Иначе их две: ProseMirror подтягивает курсор к краю окна, а наш
@@ -797,12 +831,8 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       // .zen-active — на этот момент она может быть ещё на прежнем абзаце.
       handleScrollToSelection(view) {
         if (!zenModeRef.current) return false
-        const wrap = wrapRef.current
-        if (!wrap) return false
-        let coords
-        try { coords = view.coordsAtPos(view.state.selection.head) } catch { return false }
-        const delta = (coords.top + coords.bottom) / 2 - window.innerHeight / 2
-        if (Math.abs(delta) > 0.5) wrap.scrollTop += delta
+        if (!wrapRef.current) return false
+        centerOnCaret(view)
         return true
       },
       // Drag & drop изображений прямо в редактор
@@ -1068,26 +1098,30 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
     }
   }, [onDocSelect, editor])
 
-  // ── Typewriter scroll в Дзен ─────────────────────────────────────────────
-  // Слежение за курсором целиком в handleScrollToSelection выше — там оно
-  // синхронное и единственное. Здесь остаётся только первичное
-  // центрирование при входе в режим: события редактора в этот момент
-  // не приходят, прокручивать некому.
+  // ── Переключение Дзена ───────────────────────────────────────────────────
+  // Слежение за курсором при наборе целиком в handleScrollToSelection выше.
+  // Здесь — только то, что нужно в момент переключения режима.
   useEffect(() => {
-    if (!editor || !zenMode) return
+    if (!editor || editor.isDestroyed) return
+
+    // Фокус: Дзен включают кнопкой в шапке, а она при входе исчезает вместе
+    // с шапкой — фокус уходил на body, и печатать было нельзя, пока не ткнёшь
+    // мышью в активную строку. view.focus(), а не editor.commands.focus():
+    // команда TipTap откладывает фокус до кадра отрисовки, и в неотрисовываемом
+    // окне он не доезжает вовсе.
+    editor.view.focus()
+
+    if (!zenMode) return
+    // Первичное центрирование ждёт кадра: вход меняет раскладку целиком
+    // (display и поля в пол-экрана), и до пересчёта координаты ещё старые
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
         frame = null
-        const wrap = wrapRef.current
-        if (!wrap) return
-        let coords
-        try { coords = editor.view.coordsAtPos(editor.state.selection.head) } catch { return }
-        const delta = (coords.top + coords.bottom) / 2 - window.innerHeight / 2
-        if (Math.abs(delta) > 0.5) wrap.scrollTop += delta
+        centerOnCaret(editor.view)
       })
     })
     return () => { if (frame) cancelAnimationFrame(frame) }
-  }, [editor, zenMode])
+  }, [editor, zenMode, centerOnCaret])
 
   return (
     <div

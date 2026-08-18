@@ -111,9 +111,14 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
     return typografEnabled && typograf ? typograf.execute(rendered) : rendered
   }, [editor, typografEnabled, typograf])
 
-  // Все три кнопки экспорта ведут себя одинаково: собирают файл и скачивают,
-  // а затем показывают, что именно скачалось. Раньше MD и HTML качали молча,
-  // а PDF открывал ещё один предпросмотр поверх этого же экрана.
+  // MD / HTML / PDF выбирают формат и показывают его в предпросмотре,
+  // скачивает отдельная кнопка. Раньше эти три кнопки выглядели как
+  // переключатель, а работали как «скачать немедленно»: файл падал в загрузки
+  // от одного клика по вкладке, и посмотреть, что именно уедет, было негде.
+  const [format, setFormat] = useState('html')
+
+  const markdown = useMemo(() => (editor ? editorToMarkdown(editor) : ''), [editor])
+
   const doneTimer = useRef(null)
   const flashDone = (name) => {
     setDone(name)
@@ -159,9 +164,21 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
   }
 
   const handleExportMarkdown = () => {
-    const md = editorToMarkdown(editor)
-    download(md, fileName + '.md', 'text/markdown')
+    download(markdown, fileName + '.md', 'text/markdown')
     flashDone(fileName + '.md')
+  }
+
+  const FORMATS = [
+    { id: 'md',   label: 'MD',   ext: '.md',   hint: 'Исходник markdown — для гита, заметок, других редакторов' },
+    { id: 'html', label: 'HTML', ext: '.html', hint: 'Готовая веб-страница со стилями' },
+    { id: 'pdf',  label: 'PDF',  ext: '.pdf',  hint: 'Постранично, для печати и отправки' },
+  ]
+  const current = FORMATS.find(f => f.id === format)
+
+  const handleDownload = () => {
+    if (format === 'md')   return handleExportMarkdown()
+    if (format === 'html') return handleExportHTML()
+    return handleExportPDF()
   }
 
   return (
@@ -170,27 +187,27 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
         <button className="preview-close" onClick={onClose}>← Назад</button>
         <span className="preview-title">{fileName}</span>
         <div className="preview-actions">
-          <button
-            className="preview-btn"
-            onClick={handleExportMarkdown}
-            title="Скачать .md"
-          >
-            MD
-          </button>
-          <button
-            className="preview-btn"
-            onClick={handleExportHTML}
-            title="Скачать .html"
-          >
-            HTML
-          </button>
+          <div className="preview-formats" role="radiogroup" aria-label="Формат">
+            {FORMATS.map(f => (
+              <button
+                key={f.id}
+                className={`preview-format${format === f.id ? ' preview-format--on' : ''}`}
+                role="radio"
+                aria-checked={format === f.id}
+                onClick={() => setFormat(f.id)}
+                title={f.hint}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <button
             className="preview-btn preview-btn--primary"
-            onClick={handleExportPDF}
+            onClick={handleDownload}
             disabled={building}
-            title="Скачать PDF"
+            title={`Сохранить ${fileName}${current.ext}`}
           >
-            {building ? 'Собираем…' : 'PDF'}
+            {building ? 'Собираем…' : `Скачать ${current.ext}`}
           </button>
           <button
             className={`preview-btn preview-btn--icon${showTypograf ? ' active' : ''}`}
@@ -206,11 +223,25 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
         <div className="preview-done" role="status">Скачан файл {done}</div>
       )}
 
-      <div className="preview-body">
-        <div
-          className="preview-content"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+      {/* Предпросмотр показывает выбранный формат: markdown — исходником,
+          PDF — на белой странице, как он и напечатается. Иначе вкладки
+          переключались бы, а на экране ничего не менялось. */}
+      <div className={`preview-body${format === 'pdf' ? ' preview-body--paper' : ''}`}>
+        {format === 'md' ? (
+          <pre className="preview-source">{markdown}</pre>
+        ) : format === 'pdf' ? (
+          <div className="preview-page">
+            <div
+              className="preview-content preview-content--print"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </div>
+        ) : (
+          <div
+            className="preview-content"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )}
       </div>
 
       {showTypograf && (

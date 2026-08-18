@@ -158,30 +158,47 @@ function docToHtml(doc, ctx) {
 }
 
 // ── CSS ───────────────────────────────────────────────────────────────────────
-// Палитра и типографика — те же, что в рабочем экране Печатников
-// (см. src/styles/variables.css): тёмный лес, Georgia для текста,
-// системный шрифт для интерфейса.
+// Типографика та же, что в рабочем экране Печатников: Georgia для текста,
+// системный шрифт для интерфейса. Цвета — выбранная палитра, см. ниже.
 
-const KB_CSS = `
+// Палитра выгрузки — та, что выбрана в приложении. Значения снимаем
+// с живого документа, а не держим второй экземпляр таблицы: копия
+// разъехалась бы с variables.css при первой же правке, да и выбранную
+// линию пришлось бы прокидывать сюда отдельным параметром.
+//
+// Заодно сюда попадает и светлая тема: сохранённый из светлой файл
+// открывается светлым.
+const KB_TOKENS = [
+  'bg-primary', 'bg-secondary', 'bg-panel', 'bg-hover', 'bg-active',
+  'accent', 'accent-hover', 'accent-dim',
+  'text-primary', 'text-secondary', 'text-muted',
+  'border', 'border-light', 'danger',
+]
+
+function paletteVars() {
+  const cs = getComputedStyle(document.documentElement)
+  const val = (t, fallback) => (cs.getPropertyValue('--' + t) || '').trim() || fallback
+  const rows = KB_TOKENS.map(t => `  --${t}:${val(t, '#000')};`).join('\n')
+  // Подсветку выделения собираем из акцента: rgba в токенах не лежит
+  const [r, g, b] = (val('accent', '#62a030').replace('#', '').match(/../g) || [])
+    .map(h => parseInt(h, 16))
+  return { rows, selection: `rgba(${r},${g},${b},.22)` }
+}
+
+const kbCss = () => {
+  const { rows, selection } = paletteVars()
+  return `
 :root{
-  --bg-primary:#0f1810;
-  --bg-panel:#0c1510;
-  --bg-hover:#182618;
-  --bg-active:#1e3020;
-  --accent:#62a030;
-  --accent-hover:#73bb38;
-  --accent-dim:#38601a;
-  --text-primary:#cce0cc;
-  --text-secondary:#6d9470;
-  --text-muted:#374f38;
-  --border:#1a2e1c;
-  --border-light:#243828;
+${rows}
   --font-editor:Georgia,'Times New Roman',serif;
   --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:17px;-webkit-font-smoothing:antialiased}
-::selection{background:rgba(98,160,48,.22)}
+::selection{background:${selection}}` + KB_CSS_REST
+}
+
+const KB_CSS_REST = `
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -237,7 +254,11 @@ body{
   flex:1;min-width:0;
   padding:56px 72px 80px;
 }
-.article{max-width:680px}
+/* По центру свободного места, а не по левому краю: .main тянется на всю
+   ширину за вычетом боковика, и колонка в 680px липла к сайдбару, оставляя
+   на широком экране пустое поле справа. В редакторе текст центрирован — здесь
+   должно быть так же. */
+.article{max-width:680px;margin:0 auto}
 
 /* Страницы: видна только одна */
 .page{display:none}
@@ -421,7 +442,9 @@ export function exportKnowledgeBase(docs, kbTitle = 'База знаний', typ
 
   const hrefFor  = (doc) => `#d-${doc.id}`
   const docsById = Object.fromEntries(docs.map(d => [d.id, d]))
-  const sorted   = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)
+  // Порядок — тот, что задан в панели документов: раз пользователь выстроил
+  // документы вручную, оглавление выгрузки должно идти так же, а не по дате
+  const ordered  = docs
   const ctx      = { docsById, hrefFor, typograf }
 
   const html = `<!DOCTYPE html>
@@ -430,20 +453,20 @@ export function exportKnowledgeBase(docs, kbTitle = 'База знаний', typ
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(kbTitle)}</title>
-<style>${KB_CSS}</style>
+<style>${kbCss()}</style>
 </head>
 <body>
 <aside class="sidebar">
   <a class="sidebar-brand" href="#">${esc(typografy(kbTitle, ctx))}</a>
   <nav>
     <ul class="nav-list">
-${buildSidebar(sorted, hrefFor, ctx)}
+${buildSidebar(ordered, hrefFor, ctx)}
     </ul>
   </nav>
 </aside>
 <main class="main">
-${buildHomePage(sorted, hrefFor, kbTitle, ctx)}
-${sorted.map(doc => buildDocPage(doc, ctx)).join('\n')}
+${buildHomePage(ordered, hrefFor, kbTitle, ctx)}
+${ordered.map(doc => buildDocPage(doc, ctx)).join('\n')}
 </main>
 <script>${KB_JS}</script>
 </body>

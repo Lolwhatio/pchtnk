@@ -36,10 +36,10 @@
 
 .fn-delete {
   margin-right: auto;
-  color: #d9705a;
+  color: var(--danger);
 }
 .fn-delete:hover {
-  background: rgba(217, 112, 90, 0.12);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 /* ── Повторное использование источника ───────────── */

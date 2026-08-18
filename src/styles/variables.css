@@ -28,7 +28,10 @@
      зелёным «удалить» и «неверный пароль» не покажешь. */
   --danger:       #d9705a;
 
-  --selection-bg: rgba(98, 160, 48, 0.22);
+  /* Считаем из акцента, а не задаём числом: раньше здесь лежал зелёный rgba,
+     и каждая новая палитра забывала его переопределить — текст выделялся
+     зелёным при синей теме. Теперь подтягивается сам. */
+  --selection-bg: color-mix(in srgb, var(--accent) 22%, transparent);
 
   --font-editor: 'Georgia', 'Times New Roman', serif;
   --font-ui:     -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -80,5 +83,209 @@
 
   --danger:       #b23b36;
 
-  --selection-bg: rgba(98, 160, 48, 0.28);
+  /* На светлом фоне подсветка бледнее, поэтому доля выше */
+  --selection-bg: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* ── Палитры по линиям метро ────────────────────────────────────────────────
+ *
+ * Устройство: фоны и текст повторяют ЯРКОСТЬ токенов «тёмного леса», меняя
+ * оттенок и насыщенность, — поэтому все проверки, не касающиеся акцента,
+ * проходят по построению. Насыщенность фона при этом можно поднимать сколько
+ * угодно: контраст зависит только от яркости, и цвет достаётся даром.
+ *
+ * Акцент, наоборот, не приравнивается к эталону, а отталкивается от фирменного
+ * цвета линии и сдвигается ровно настолько, чтобы пройти пороги. Первая версия
+ * приравнивала и его — оранжевый с жёлтым были обязаны иметь яркость зелёного
+ * и уходили в коричневый.
+ *
+ * Почему в светлой теме жёлтый — густое золото, а не жёлтый. --accent несёт
+ * ссылки и текст, а тексту нужно 4.5:1 к почти белой странице. Жёлтый #ffcd1c
+ * даёт там 1.5:1: это не вопрос подбора, ярче него на светлом фоне читаемого
+ * жёлтого не существует. Цвет линии в светлой теме держат фоны, не акцент.
+ *
+ * --danger уводим по оттенку от акцента: у оранжевой линии красный «удалить»
+ * сливался бы с акцентом, поэтому там он малиновый.
+ *
+ * Правя значения, прогоняйте npm run check:contrast.
+ */
+
+[data-theme="dark"][data-palette="arbatskaya"] {
+  --bg-primary:     #0e171f;
+  --bg-secondary:   #121b25;
+  --bg-panel:       #0a141d;
+  --bg-hover:       #1f3144;
+  --bg-active:      #273f58;
+  --accent:         #398cdf;
+  --accent-hover:   #5ca0e4;
+  --accent-dim:     #1465b6;
+  --text-primary:   #cedceb;
+  --text-secondary: #708eab;
+  --text-muted:     #5f84aa;
+  --text-inverse:   #0e171f;
+  --border:         #1b344e;
+  --border-light:   #2a4661;
+  --danger:         #d87157;
+}
+
+[data-theme="light"][data-palette="arbatskaya"] {
+  --bg-primary:     #f1f6fc;
+  --bg-secondary:   #e6eef7;
+  --bg-panel:       #dbe8f6;
+  --bg-hover:       #b3cde8;
+  --bg-active:      #a8c6e5;
+  --accent:         #1b5fa3;
+  --accent-hover:   #134678;
+  --accent-dim:     #1879d9;
+  --text-primary:   #0f1b28;
+  --text-secondary: #284c71;
+  --text-muted:     #486a8d;
+  --text-inverse:   #f1f6fc;
+  --border:         #a4c5e5;
+  --border-light:   #bfd7f0;
+  --danger:         #a44932;
+}
+
+[data-theme="dark"][data-palette="kaluzhskaya"] {
+  --bg-primary:     #1a150f;
+  --bg-secondary:   #201914;
+  --bg-panel:       #18120c;
+  --bg-hover:       #3a2d22;
+  --bg-active:      #4b3a2b;
+  --accent:         #f18424;
+  --accent-hover:   #f5a45e;
+  --accent-dim:     #d36504;
+  --text-primary:   #e4d9cf;
+  --text-secondary: #9d8773;
+  --text-muted:     #977c64;
+  --text-inverse:   #1a150f;
+  --border:         #402f20;
+  --border-light:   #534030;
+  --danger:         #dd6a7d;
+}
+
+[data-theme="light"][data-palette="kaluzhskaya"] {
+  --bg-primary:     #f9f5f1;
+  --bg-secondary:   #f4ece6;
+  --bg-panel:       #f0e5db;
+  --bg-hover:       #dcc6b4;
+  --bg-active:      #d7bfa9;
+  --accent:         #a5520b;
+  --accent-hover:   #914909;
+  --accent-dim:     #e06b05;
+  --text-primary:   #211912;
+  --text-secondary: #5e4530;
+  --text-muted:     #7b634e;
+  --text-inverse:   #f9f5f1;
+  --border:         #d7bda6;
+  --border-light:   #e5d1bf;
+  --danger:         #b4364b;
+}
+
+[data-theme="dark"][data-palette="kalininskaya"] {
+  --bg-primary:     #18160e;
+  --bg-secondary:   #1d1b12;
+  --bg-panel:       #15130b;
+  --bg-hover:       #352f1f;
+  --bg-active:      #443d27;
+  --accent:         #f6c225;
+  --accent-hover:   #f8d260;
+  --accent-dim:     #dea600;
+  --text-primary:   #e0dbc9;
+  --text-secondary: #958a68;
+  --text-muted:     #8c805d;
+  --text-inverse:   #18160e;
+  --border:         #39321c;
+  --border-light:   #4b432c;
+  --danger:         #dc6d69;
+}
+
+[data-theme="light"][data-palette="kalininskaya"] {
+  --bg-primary:     #f8f5ee;
+  --bg-secondary:   #f1ede2;
+  --bg-panel:       #ede6d4;
+  --bg-hover:       #d5caa6;
+  --bg-active:      #d0c29a;
+  --accent:         #846406;
+  --accent-hover:   #755905;
+  --accent-dim:     #b28600;
+  --text-primary:   #1d1a10;
+  --text-secondary: #54492b;
+  --text-muted:     #716749;
+  --text-inverse:   #f8f5ee;
+  --border:         #cfc195;
+  --border-light:   #dfd4b1;
+  --danger:         #b33a36;
+}
+
+[data-theme="dark"][data-palette="koltsevaya"] {
+  --bg-primary:     #0b1818;
+  --bg-secondary:   #0f1d1d;
+  --bg-panel:       #081515;
+  --bg-hover:       #193433;
+  --bg-active:      #1f4341;
+  --accent:         #63e3db;
+  --accent-hover:   #97ede7;
+  --accent-dim:     #25e4d7;
+  --text-primary:   #bde2df;
+  --text-secondary: #5a9591;
+  --text-muted:     #4e8b87;
+  --text-inverse:   #0b1818;
+  --border:         #153835;
+  --border-light:   #224a48;
+  --danger:         #d87157;
+}
+
+[data-theme="light"][data-palette="koltsevaya"] {
+  --bg-primary:     #e7f9f8;
+  --bg-secondary:   #d9f3f1;
+  --bg-panel:       #c5efec;
+  --bg-hover:       #88d8d2;
+  --bg-active:      #75d2cc;
+  --accent:         #15756e;
+  --accent-hover:   #126862;
+  --accent-dim:     #139c93;
+  --text-primary:   #0c1d1c;
+  --text-secondary: #1f524e;
+  --text-muted:     #3c706d;
+  --text-inverse:   #e7f9f8;
+  --border:         #6cd2cb;
+  --border-light:   #93e2dd;
+  --danger:         #a44932;
+}
+
+[data-theme="dark"][data-palette="nekrasovskaya"] {
+  --bg-primary:     #211118;
+  --bg-secondary:   #27151e;
+  --bg-panel:       #1f0e16;
+  --bg-hover:       #482435;
+  --bg-active:      #5d2e44;
+  --accent:         #e35f9d;
+  --accent-hover:   #ec93bd;
+  --accent-dim:     #e4217c;
+  --text-primary:   #ebd5df;
+  --text-secondary: #ac7d93;
+  --text-muted:     #aa708b;
+  --text-inverse:   #211118;
+  --border:         #522239;
+  --border-light:   #66334b;
+  --danger:         #d5744a;
+}
+
+[data-theme="light"][data-palette="nekrasovskaya"] {
+  --bg-primary:     #fbf3f7;
+  --bg-secondary:   #f7eaf1;
+  --bg-panel:       #f6e1eb;
+  --bg-hover:       #e7bfd2;
+  --bg-active:      #e4b6cc;
+  --accent:         #c6236f;
+  --accent-hover:   #ae1f62;
+  --accent-dim:     #ea559b;
+  --text-primary:   #2a131d;
+  --text-secondary: #773253;
+  --text-muted:     #945371;
+  --text-inverse:   #fbf3f7;
+  --border:         #e4b4ca;
+  --border-light:   #efcbdb;
+  --danger:         #9b502f;
 }

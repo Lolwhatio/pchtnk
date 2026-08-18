@@ -63,7 +63,7 @@
 }
 .media-preview-error {
   font-size: var(--fs-xs);
-  color: #bf6060;
+  color: var(--danger);
   padding: 16px;
   text-align: center;
 }

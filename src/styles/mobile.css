@@ -89,8 +89,14 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .settings {
-    width: min(300px, 86vw);
+    position: fixed;
+    top: 40px;
     bottom: 0;
+    right: 0;
+    width: min(300px, 86vw);
+    z-index: 30;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   /* ── Диалоги по ширине экрана ── */
