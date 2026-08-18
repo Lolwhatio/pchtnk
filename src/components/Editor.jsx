@@ -873,8 +873,11 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
         codeBlock: { languageClassPrefix: 'language-' },
         link:      false,
       }),
+      // Ссылка открывается обычным щелчком: документ всегда редактируемый,
+      // и без этого ссылки в нём выглядели мёртвыми. Поставить курсор внутрь
+      // ссылки по-прежнему можно — щелчком рядом и стрелками, а также ⌘K.
       Link.configure({
-        openOnClick: false,
+        openOnClick: true,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
       ResizableImage,

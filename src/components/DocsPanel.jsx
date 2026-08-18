@@ -161,7 +161,7 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
           />
         ) : (
           <button className="docs-panel__project-name" onDoubleClick={() => setEditing(true)}>
-            {project.title}
+            <span className="docs-panel__project-label">{project.title}</span>
             <span className="docs-panel__project-count">{docs.length}</span>
           </button>
         )}

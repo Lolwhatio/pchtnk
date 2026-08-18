@@ -207,6 +207,13 @@
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
+  /* Без указателя ссылка в редактируемом тексте выглядит мёртвой,
+     даже когда открывается по щелчку */
+  cursor: pointer;
+}
+.editor-content .ProseMirror a:hover {
+  color: var(--accent-hover);
+  text-decoration-thickness: 2px;
 }
 
 /* Blockquote */

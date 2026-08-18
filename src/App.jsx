@@ -46,12 +46,34 @@ function storeDocs(docs)      { try { localStorage.setItem(DOCS_KEY,     JSON.st
 function loadProjects()       { try { return JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]') } catch { return [] } }
 function storeProjects(list)  { try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(list))      } catch { /* ignore */ } }
 
+// Название из первой строки. Резать по 60-му символу нельзя: в шапку
+// столько не влезает, да и рубится это посреди слова («…и не х»).
+// Берём первое предложение, если оно короткое, иначе — целые слова.
+const TITLE_MAX = 40
+
+function makeTitle(text) {
+  const t = (text || '').replace(/\s+/g, ' ').trim()
+  if (!t) return ''
+  if (t.length <= TITLE_MAX) return t
+
+  // Предложение целиком, если помещается
+  const sentence = t.match(/^[^.!?…]+[.!?…]/)
+  if (sentence && sentence[0].length <= TITLE_MAX + 12) {
+    return sentence[0].replace(/[.!?…]+$/, '').trim()
+  }
+
+  // Иначе по границе слова, не оставляя огрызков
+  const cut = t.slice(0, TITLE_MAX)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > TITLE_MAX / 2 ? cut.slice(0, lastSpace) : cut).replace(/[,;:—–-]+$/, '').trim()
+}
+
 function titleFromJson(json) {
   const nodes = json?.content || []
   const h1 = nodes.find(n => n.type === 'heading' && n.attrs?.level === 1)
-  if (h1) { const t = (h1.content || []).map(n => n.text || '').join('').trim(); if (t) return t }
+  if (h1) { const t = (h1.content || []).map(n => n.text || '').join('').trim(); if (t) return makeTitle(t) }
   const first = nodes.find(n => n.content?.length > 0)
-  if (first) { const t = (first.content || []).map(n => n.text || '').join('').trim(); if (t) return t.slice(0, 60) }
+  if (first) { const t = (first.content || []).map(n => n.text || '').join('').trim(); if (t) return makeTitle(t) }
   return ''
 }
 
@@ -394,9 +416,9 @@ export default function App() {
       const json = editor.getJSON()
       const nodes = json.content || []
       const h1 = nodes.find(n => n.type === 'heading' && n.attrs?.level === 1)
-      if (h1) { const t = (h1.content || []).map(n => n.text || '').join('').trim(); if (t) { setFileName(t); return } }
+      if (h1) { const t = (h1.content || []).map(n => n.text || '').join('').trim(); if (t) { setFileName(makeTitle(t)); return } }
       const first = nodes.find(n => n.content?.length > 0)
-      if (first) { const t = (first.content || []).map(n => n.text || '').join('').trim(); if (t) { setFileName(t.slice(0, 60)); return } }
+      if (first) { const t = (first.content || []).map(n => n.text || '').join('').trim(); if (t) { setFileName(makeTitle(t)); return } }
       setFileName('Без названия')
     }
     editor.on('update', updateTitle)
@@ -1210,8 +1232,8 @@ export default function App() {
                 {
                   key: 'deyo',
                   icon: <IconSwapLetter />,
-                  label: 'Убрать точки над е',
-                  title: 'Заменить букву е с точками на обычную во всем тексте',
+                  label: 'Убрать точки над ё',
+                  title: 'Заменить ё на е во всем тексте',
                   onClick: handleDeyo,
                 },
                 {
