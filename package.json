@@ -10,7 +10,7 @@
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:icons": "node scripts/check-icons.mjs",
     "preview": "vite preview",
-    "electron:dev": "vite build && electron electron/main.js",
+    "electron:dev": "vite build && electron electron/main.cjs",
     "electron:build": "ELECTRON=1 vite build && electron-builder --mac --arm64"
   },
   "main": "electron/main.cjs",
