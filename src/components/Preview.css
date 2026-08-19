@@ -250,45 +250,58 @@
   flex-shrink: 0;
 }
 
-/* ── Страница для PDF ───────────────────────────── */
+/* ── Предпросмотр PDF: настоящие страницы ───────── */
 /* Печатная версия белая независимо от темы — показываем её такой же,
-   иначе тёмный предпросмотр обещает не то, что выйдет из принтера */
+   иначе тёмный предпросмотр обещает не то, что выйдет из принтера.
 
-.preview-body--paper { background: var(--bg-secondary); }
+   Раньше здесь лежал один лист с min-height в A4. Лист был флекс-элементом
+   и растянуться по содержимому не мог: текст вываливался за белое поле
+   и дочитывался тёмным по тёмному. Теперь поток заранее разложен
+   по страницам (см. paginate в Preview.jsx), а тут только их вид. */
 
-.preview-page {
-  width: 100%;
-  max-width: 210mm;
-  min-height: 297mm;
-  padding: 20mm;
+.preview-body--paper {
+  background: var(--bg-secondary);
+  align-items: flex-start;   /* лист живёт своим ростом, а не ростом окна */
+  overflow-x: auto;          /* лист шире узкого окна — прокручиваем, а не режем */
+  padding: 40px 24px 64px;
+}
+
+.pdf-sheets {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+}
+
+.pdf-page {
+  position: relative;
+  flex-shrink: 0;
+  width: 794px;              /* A4 при 96 dpi, см. utils/pdfLayout */
+  height: 1123px;
+  padding: 76px 106px;   /* поля листа, см. utils/pdfLayout */
   background: #fff;
   border-radius: 2px;
-  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 3px 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.pdf-page--tall { height: auto; min-height: 1123px; overflow: visible; }
+
+.pdf-page__num {
+  position: absolute;
+  right: 106px;
+  bottom: 30px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  color: #a7b0a8;
 }
 
-.preview-content--print {
-  max-width: none;
-  color: #1a2a1c;
+/* Измерительная копия: считаем высоты блоков до того, как разложить их
+   по страницам. Из потока убрана, чтобы не мигала. */
+.pdf-probe {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
 }
-.preview-content--print h1,
-.preview-content--print h2,
-.preview-content--print h3,
-.preview-content--print h4,
-.preview-content--print h5,
-.preview-content--print h6 { color: #0f1c10; }
-.preview-content--print a { color: #2d5a1b; }
-.preview-content--print blockquote {
-  border-left-color: #9db894;
-  color: #3a5a3c;
-}
-.preview-content--print code,
-.preview-content--print pre {
-  background: #eef1ec;
-  color: #1a3a1c;
-  border-color: #d3dccf;
-}
-.preview-content--print li::marker { color: #6b8a63; }
-.preview-content--print th { background: #eef1ec; }
-.preview-content--print th,
-.preview-content--print td { border-color: #c6d2c0; }
-.preview-content--print hr { border-top-color: #c6d2c0; }

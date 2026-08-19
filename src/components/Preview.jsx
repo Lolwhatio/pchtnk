@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import html2pdf from 'html2pdf.js'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
 import { IconSettings } from './icons'
+import { pdfCss, CONTENT_W, CONTENT_H, MARGIN_MM } from '../utils/pdfLayout'
 import './Preview.css'
 
 const PRINT_STYLES = `
@@ -59,45 +60,99 @@ const PRINT_STYLES = `
   }
 `
 
-// Стили печатной версии — отдельно, чтобы html2canvas не схватил тёмную тему
-const PDF_INLINE_STYLE = `
-  *,*::before,*::after{box-sizing:border-box}
-  *{color:#1a2a1c !important;background:transparent !important;box-shadow:none !important}
-  body{font-family:Georgia,serif;font-size:16px;line-height:1.6}
-  h1{font-family:system-ui,sans-serif;font-size:2em;font-weight:800;
-     line-height:1.2;margin:0 0 .5em;color:#0f1c10 !important}
-  h2{font-family:system-ui,sans-serif;font-size:1.6em;font-weight:700;
-     margin:1.8em 0 .45em}
-  h3{font-family:system-ui,sans-serif;font-size:1.32em;font-weight:600;
-     margin:1.4em 0 .35em}
-  h4{font-family:system-ui,sans-serif;font-size:1.15em;font-weight:600;margin:1.2em 0 .3em}
-  h5{font-family:system-ui,sans-serif;font-size:1em;font-weight:600;margin:1.2em 0 .3em}
-  h6{font-family:system-ui,sans-serif;font-size:.9em;font-weight:600;margin:1.2em 0 .3em;
-     text-transform:uppercase;letter-spacing:.06em}
-  p{margin:0 0 .35em}
-  a{color:#2d5a1b !important;text-decoration:underline}
-  blockquote{border-left:3px solid #62a030 !important;margin:1.4em 0;
-             padding:.5em 0 .5em 1.3em;font-style:italic}
-  code{background:#e8f0e4 !important;color:#1a3a1c !important;
-       padding:.1em .35em;border-radius:3px;font-size:.875em;font-family:monospace}
-  pre{background:#e8f0e4 !important;border:1px solid #c8d8c0 !important;
-      border-radius:6px;padding:1em 1.25em;margin:1.2em 0}
-  pre code{background:none !important;padding:0}
-  ul,ol{margin:.4em 0 .85em 1.5em}
-  li{margin-bottom:.25em}
-  hr{border:none;border-top:1px solid #c0d4b8 !important;margin:2.2em 0}
-  strong{font-weight:700}
-  em{font-style:italic}
-  s{text-decoration:line-through;opacity:.6}
-  /* Рамки задаём с !important — их сносит общее правило * выше */
-  table{border-collapse:collapse;width:100%;margin:1.4em 0;table-layout:fixed}
-  th,td{border:1px solid #9db894 !important;padding:.45em .65em;
-        text-align:left;vertical-align:top}
-  th{background:#e8f0e4 !important;font-family:system-ui,sans-serif;
-     font-size:.9em;font-weight:600}
-  td>*:last-child,th>*:last-child{margin-bottom:0}
-  tr{page-break-inside:avoid}
-`
+// Печатная вёрстка живёт в utils/pdfLayout — одна и на предпросмотр, и на файл.
+
+// Тело документа для PDF. Никакой отдельной шапки: название документа —
+// это его же заголовок первого уровня, набранный как все остальные.
+// Дописываем заголовок сами только тогда, когда в тексте его нет, — иначе
+// файл уходил бы вообще без названия на первой странице.
+function pdfBody(html, fileName) {
+  const box = document.createElement('div')
+  box.innerHTML = html
+  const first = box.firstElementChild
+  if (!first || first.tagName !== 'H1') {
+    return `<h1>${escapeHtml(fileName)}</h1>${html}`
+  }
+  return html
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// ── Предпросмотр PDF: настоящие страницы ─────────────────────────────────────
+// Раньше здесь был один белый прямоугольник ростом ровно в A4, а текст,
+// который в него не влез, вываливался наружу и дочитывался тёмным по тёмному.
+// Теперь поток режется на страницы по тем же размерам, по которым его режет
+// html2pdf: блок целиком уходит на следующую страницу, если не помещается.
+function paginate(host, html) {
+  host.textContent = ''
+
+  const probe = document.createElement('div')
+  probe.className = 'pdf-doc pdf-probe'
+  probe.style.width = `${CONTENT_W}px`
+  probe.innerHTML = html
+  host.appendChild(probe)
+
+  // Считаем по offsetTop, а не по высоте: так учитываются схлопнутые отступы
+  const pages = [[]]
+  let pageTop = 0
+  for (const block of [...probe.children]) {
+    const bottom = block.offsetTop + block.offsetHeight
+    const current = pages[pages.length - 1]
+    if (current.length && bottom - pageTop > CONTENT_H) {
+      pageTop = block.offsetTop
+      pages.push([block])
+    } else {
+      current.push(block)
+    }
+  }
+
+  probe.remove()
+
+  pages.forEach((blocks, i) => {
+    const page = document.createElement('div')
+    // Блок выше страницы (большая картинка, длинная таблица) целиком
+    // не помещается никуда — такой странице разрешаем вырасти, иначе
+    // предпросмотр молча обрезал бы содержимое
+    const tall = blocks.some(b => b.offsetHeight > CONTENT_H)
+    page.className = `pdf-page${tall ? ' pdf-page--tall' : ''}`
+
+    const body = document.createElement('div')
+    body.className = 'pdf-doc pdf-page__body'
+    blocks.forEach(b => body.appendChild(b))
+    page.appendChild(body)
+
+    const num = document.createElement('div')
+    num.className = 'pdf-page__num'
+    num.textContent = `${i + 1} / ${pages.length}`
+    page.appendChild(num)
+
+    host.appendChild(page)
+  })
+}
+
+function PdfPaper({ html, fileName }) {
+  const hostRef = useRef(null)
+  const styleRef = useRef(null)
+
+  useLayoutEffect(() => {
+    if (styleRef.current) styleRef.current.textContent = pdfCss()
+  }, [])
+
+  useLayoutEffect(() => {
+    if (hostRef.current) paginate(hostRef.current, pdfBody(html, fileName))
+  }, [html, fileName])
+
+  return (
+    <>
+      <style ref={styleRef} />
+      <div className="pdf-sheets" ref={hostRef} />
+    </>
+  )
+}
 
 export default function Preview({ editor, fileName, typograf, typografEnabled, onTypografToggle, onClose }) {
   const [showTypograf, setShowTypograf] = useState(false)
@@ -130,22 +185,59 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
   const handleExportPDF = async () => {
     setBuilding(true)
     try {
+      // Обёртку обязательно кладём в документ — здесь и была причина
+      // «плакатного» кегля.
+      //
+      // html2pdf снимает элемент по его собственным размерам и по ним же
+      // считает переносы страниц. У элемента, которого нет в документе,
+      // размеры нулевые: текст верстался в колонку шириной чуть ли не
+      // в слово, каждый неразрывный блок выглядел вылезающим за страницу
+      // и получал перенос — девять страниц вместо двух, файл на 5 МБ
+      // и растянутый на всю ширину листа шрифт.
+      //
+      // Прячем за экраном хост, а обёртка внутри него лежит обычным блоком:
+      // у position:fixed высота родителю не достаётся, и снимок выходил
+      // нулевой высоты.
+      const host = document.createElement('div')
+      host.style.cssText = `position:fixed;left:-100000px;top:0;width:${CONTENT_W}px`
+
       const wrapper = document.createElement('div')
-      wrapper.style.cssText = 'font-family:Georgia,serif;font-size:17px;line-height:1.75;color:#111;background:#fff'
+      wrapper.style.cssText = `width:${CONTENT_W}px;background:#ffffff`
+      host.appendChild(wrapper)
+      document.body.appendChild(host)
+
       const style = document.createElement('style')
-      style.textContent = PDF_INLINE_STYLE
+      style.textContent = pdfCss()
       wrapper.appendChild(style)
+
       const content = document.createElement('div')
-      content.innerHTML = html
+      content.className = 'pdf-doc'
+      content.innerHTML = pdfBody(html, fileName)
       wrapper.appendChild(content)
 
       const blob = await html2pdf().set({
-        margin: [15, 20, 15, 20],
-        image: { type: 'jpeg', quality: 0.98 },
+        margin: MARGIN_MM,
+        // 0.98 на почти белой странице давал мегабайты ни за что
+        image: { type: 'jpeg', quality: 0.92 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css'] },
+        // html2pdf режет один длинный снимок по высоте страницы — где придётся,
+        // хоть посередине строки. Поэтому перечисляем всё, что рвать нельзя,
+        // и абзац с пунктом списка здесь обязательны: без них низ страницы
+        // приходился на середину строки, а её вторая половина уезжала наверх
+        // следующей. Тот же список блоков, что переносит предпросмотр, —
+        // страницы обязаны совпасть.
+        pagebreak: {
+          mode: ['css', 'legacy'],
+          avoid: [
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'p', 'li', 'blockquote', 'pre',
+            'table', 'tr', 'figure', 'img', '.sources',
+          ],
+        },
       }).from(wrapper).outputPdf('blob')
+
+      host.remove()
 
       const url = URL.createObjectURL(blob)
       const a = Object.assign(document.createElement('a'), { href: url, download: fileName + '.pdf' })
@@ -230,12 +322,7 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
         {format === 'md' ? (
           <pre className="preview-source">{markdown}</pre>
         ) : format === 'pdf' ? (
-          <div className="preview-page">
-            <div
-              className="preview-content preview-content--print"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          </div>
+          <PdfPaper html={html} fileName={fileName} />
         ) : (
           <div
             className="preview-content"
