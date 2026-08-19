@@ -1,10 +1,12 @@
 import { Plugin, PluginKey } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
+import { patchDecos, eachTextblock, blockText } from './decoUtils'
 
 export const hangingWordsKey = new PluginKey('hangingWords')
 
-// Висячие предлоги: короткое слово не должно оставаться в конце строки, а тире
-// не должно уезжать в начало следующей. Типограф решает это неразрывными
+// Висячие предлоги: короткое слово не должно оставаться в конце строки, тире
+// не должно уезжать в начало следующей, а абзац не должен заканчиваться
+// одиноким словом на отдельной строке. Типограф решает это неразрывными
 // пробелами, но только по ⌘⇧T или в предпросмотре — пока текст набирают,
 // предлоги висят. Здесь та же типографика, но декорацией: сам текст не
 // меняется, запрещён только перенос внутри пары.
@@ -23,51 +25,80 @@ const SHORT_WORD = new RegExp(
   'giu'
 )
 
-// Слово + пробелы + тире: «команды — годы», тире остаётся на своей строке.
-const BEFORE_DASH = /(\p{L}[\p{L}\p{N}-]{0,30})([ \u00A0]+)([—–])/gu
+// Что угодно + пробелы + тире: тире остаётся на строке предыдущего слова.
+//
+// Раньше здесь стояло `\p{L}…` — требовалась буква вплотную к пробелу, и
+// самый частый в русском случай не ловился: «…ничего достойного, — и появился»
+// (перед тире запятая), «Квартал 1702 — дом» (цифра), «…свои Кузьминки» —
+// тире съезжало в начало следующей строки. Берём любой непробельный хвост
+// предыдущего слова, ограничив длину, чтобы неразрывным не стало полстроки.
+const BEFORE_DASH = /([^\s\u00A0]{1,30})([ \u00A0]+)([—–])(?=[\s\u00A0]|$)/gu
 
-function buildDecos(doc) {
-  const decos = []
+// Висячая строка: последние два слова абзаца держим вместе, чтобы на
+// отдельной строке не оставалось одинокое слово. Пару шире 24 знаков не
+// склеиваем — перенос двух длинных слов оставил бы дыру больше висячей строки.
+const WIDOW_MAX_PAIR = 24
+const WIDOW_MIN_WORDS = 4
 
-  doc.descendants((node, pos, parent) => {
-    if (!node.isText) return
-    // В коде типографика не нужна
-    if (parent?.type.name === 'codeBlock') return false
+function widowPair(text) {
+  const end = text.replace(/[\s\u00A0]+$/, '').length
+  if (!end) return null
+  const head = text.slice(0, end)
+  if (head.split(/[\s\u00A0]+/).filter(Boolean).length < WIDOW_MIN_WORDS) return null
 
-    const text = node.text
-    // Границы уже занятых кусков: не даём парам сцепляться в длинную цепочку,
-    // иначе неразрывным станет целое предложение и оно вылезет за колонку.
-    let lastEnd = -1
+  // Начало предпоследнего слова: пропускаем последнее слово и пробелы перед ним
+  const lastWord = head.search(/[^\s\u00A0]+$/)
+  if (lastWord <= 0) return null
+  const gap = head.slice(0, lastWord).search(/[\s\u00A0]+$/)
+  if (gap <= 0) return null
+  const prevWord = head.slice(0, gap).search(/[^\s\u00A0]+$/)
+  if (prevWord < 0) return null
 
-    const push = (from, to) => {
-      if (from < lastEnd) return
-      lastEnd = to
-      decos.push(Decoration.inline(pos + from, pos + to, { class: 'nowrap-pair' }))
+  return end - prevWord <= WIDOW_MAX_PAIR ? [prevWord, end] : null
+}
+
+function blockDecos(node, pos, out) {
+  const { text, map } = blockText(node, pos)
+  if (!text) return
+
+  const matches = []
+  for (const re of [SHORT_WORD, BEFORE_DASH]) {
+    re.lastIndex = 0
+    let m
+    while ((m = re.exec(text)) !== null) {
+      // У SHORT_WORD первая группа — граница слева, в пару она не входит
+      const from = re === SHORT_WORD ? m.index + m[1].length : m.index
+      matches.push([from, m.index + m[0].length])
     }
+  }
+  const widow = widowPair(text)
+  if (widow) matches.push(widow)
 
-    const matches = []
-    for (const re of [SHORT_WORD, BEFORE_DASH]) {
-      re.lastIndex = 0
-      let m
-      while ((m = re.exec(text)) !== null) {
-        const from = re === SHORT_WORD ? m.index + m[1].length : m.index
-        matches.push([from, m.index + m[0].length])
-      }
-    }
-    matches.sort((a, b) => a[0] - b[0])
-    for (const [from, to] of matches) push(from, to)
-  })
+  matches.sort((a, b) => a[0] - b[0])
 
-  return DecorationSet.create(doc, decos)
+  // Не даём парам сцепляться в цепочку: иначе неразрывным станет целое
+  // предложение и оно вылезет за колонку.
+  let lastEnd = -1
+  for (const [from, to] of matches) {
+    if (from < lastEnd) continue
+    lastEnd = to
+    out.push(Decoration.inline(map[from], map[to - 1] + 1, { class: 'nowrap-pair' }))
+  }
+}
+
+function buildDecos(doc, from = 0, to = doc.content.size) {
+  const out = []
+  eachTextblock(doc, from, to, (node, pos) => blockDecos(node, pos, out))
+  return out
 }
 
 export function createHangingWordsPlugin() {
   return new Plugin({
     key: hangingWordsKey,
     state: {
-      init(_, { doc }) { return buildDecos(doc) },
-      apply(tr, old, _, newState) {
-        return tr.docChanged ? buildDecos(newState.doc) : old
+      init(_, { doc }) { return DecorationSet.create(doc, buildDecos(doc)) },
+      apply(tr, old) {
+        return tr.docChanged ? patchDecos(old, tr, buildDecos) : old
       },
     },
     props: {
