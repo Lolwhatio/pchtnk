@@ -275,11 +275,22 @@ export default function Toolbar({ editor }) {
   const [selStats, setSelStats] = useState(null)
   const [, forceUpdate] = useState(0)
 
+  // Счётчик по всему документу — с задержкой.
+  //
+  // countOf разбивает весь текст на слова: на статье в 900 тыс. знаков это
+  // 150 тысяч строк в массиве и 40 мс на каждое нажатие клавиши. Цифра
+  // в углу не обязана успевать за набором — а вот набор за ней обязан.
   useEffect(() => {
     if (!editor) return
-    const update = () => {
-      setStats(countOf(editor.getText()))
+    let timer = null
 
+    const countSoon = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => setStats(countOf(editor.getText())), 300)
+    }
+
+    // Выделение считаем сразу: оно короткое, и цифра нужна тут же
+    const update = () => {
       const { from, to, empty } = editor.state.selection
       if (empty) {
         setSelStats(null)
@@ -290,10 +301,18 @@ export default function Toolbar({ editor }) {
       }
       forceUpdate(n => n + 1)
     }
-    editor.on('update', update)
+
+    const onUpdate = () => { update(); countSoon() }
+
+    editor.on('update', onUpdate)
     editor.on('selectionUpdate', update)
     update()
-    return () => { editor.off('update', update); editor.off('selectionUpdate', update) }
+    countSoon()   // первый счёт — тоже через таймер, чтобы не рендерить дважды подряд
+    return () => {
+      if (timer) clearTimeout(timer)
+      editor.off('update', onUpdate)
+      editor.off('selectionUpdate', update)
+    }
   }, [editor])
 
   const handleInsertFootnote = () => window.dispatchEvent(new CustomEvent('pechatniki:insert-footnote'))
