@@ -44,9 +44,25 @@ const genId        = () => Date.now().toString(36) + Math.random().toString(36).
 const emptyDoc = () => ({ type: 'doc', content: [{ type: 'paragraph' }] })
 
 function loadDocs()           { try { return JSON.parse(localStorage.getItem(DOCS_KEY)     || '[]') } catch { return [] } }
-function storeDocs(docs)      { try { localStorage.setItem(DOCS_KEY,     JSON.stringify(docs))      } catch { /* ignore */ } }
 function loadProjects()       { try { return JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]') } catch { return [] } }
 function storeProjects(list)  { try { localStorage.setItem(PROJECTS_KEY, JSON.stringify(list))      } catch { /* ignore */ } }
+
+// Запись документов молчать не имеет права.
+//
+// Раньше здесь стоял пустой catch: когда хранилище переполнялось (а забить
+// его нетрудно — картинки лежат в документе строками base64), запись тихо
+// не проходила, но приложение всё равно показывало «Сохранено». Человек
+// продолжал писать в полной уверенности, что текст цел, а он существовал
+// только в памяти вкладки — до перезагрузки. Теперь ошибка возвращается
+// наверх и превращается в сообщение.
+function storeDocs(docs) {
+  try {
+    localStorage.setItem(DOCS_KEY, JSON.stringify(docs))
+    return true
+  } catch {
+    return false
+  }
+}
 
 // Название из первой строки. Резать по 60-му символу нельзя: в шапку
 // столько не влезает, да и рубится это посреди слова («…и не х»).
@@ -323,7 +339,7 @@ export default function App() {
   const flushDocs = useCallback((updated) => {
     docsRef.current = updated
     setDocs(updated)
-    storeDocs(updated)
+    return storeDocs(updated)
   }, [])
 
   // ── Проекты ───────────────────────────────────────────────────────────────
@@ -493,7 +509,7 @@ export default function App() {
 
   const materializeCurrent = useCallback((extra = {}) => {
     const now = Date.now()
-    flushDocs([{
+    const ok = flushDocs([{
       id:          curIdRef.current,
       title:       nameRef.current || 'Без названия',
       content:     editor ? editor.getJSON() : emptyDoc(),
@@ -503,6 +519,7 @@ export default function App() {
       ...extra,
     }, ...docsRef.current])
     localStorage.setItem(CUR_KEY, curIdRef.current)
+    return ok
   }, [editor, flushDocs])
 
   // Завершение ручного переименования: если название реально изменили —
@@ -546,18 +563,20 @@ export default function App() {
   // приложения оставляло бы пустышку в списке недавних.
   const persistCurrent = useCallback(() => {
     if (!editor || !curIdRef.current) return
-    if (isScratch()) {
-      if (editor.isEmpty) return
-      materializeCurrent()
-      flashSaved()
-      return
-    }
-    flushDocs(docsRef.current.map(d =>
-      d.id === curIdRef.current
-        ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
-        : d
-    ))
-    flashSaved()
+    const ok = isScratch()
+      ? (editor.isEmpty ? null : materializeCurrent())
+      : flushDocs(docsRef.current.map(d =>
+          d.id === curIdRef.current
+            ? { ...d, content: editor.getJSON(), title: nameRef.current || 'Без названия', updatedAt: Date.now() }
+            : d
+        ))
+    if (ok === null) return          // пустой холст — сохранять нечего
+    if (ok) { flashSaved(); return }
+    // Место кончилось. Молчать нельзя: текст сейчас есть только во вкладке
+    setNotice({
+      kind: 'error',
+      text: 'Не удалось сохранить: в хранилище браузера кончилось место. Выгрузите документ (Экспорт) и удалите лишние — чаще всего место занимают вставленные картинки.',
+    })
   }, [editor, flushDocs, isScratch, materializeCurrent, flashSaved])
 
   // ── Сохранить текущий документ (дебаунс 600 мс) ──────────────────────────
