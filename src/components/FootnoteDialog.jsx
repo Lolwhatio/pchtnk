@@ -87,7 +87,7 @@ export default function FootnoteDialog({ existing, number, sources = [], onConfi
               value={note}
               onChange={e => setNote(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Щерба Л. В. Языковая система и речевая деятельность, 1974"
+              placeholder="ГОСТ 7.60-2003. СИБИД. Издания. Основные виды. Термины и определения. — М.: ИПК Издательство стандартов, 2004"
               rows={2}
             />
           </label>
