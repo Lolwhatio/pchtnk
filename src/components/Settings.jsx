@@ -3,6 +3,15 @@ import { IconClose } from './icons'
 import { PALETTES } from '../utils/palettes'
 import './Settings.css'
 
+// Клик по любому переключателю не должен уводить фокус из редактора.
+//
+// Иначе получалось так: выбрал ширину колонки — фокус остался на кнопке,
+// выделение в тексте никуда не делось, а ⌘C уже обрабатывает не ProseMirror,
+// а браузер. Браузер сериализует выделение сам и подставляет каждому тегу
+// вычисленные стили — во внешнем документе вместо текста оказывалась каша
+// из CSS. Тот же приём стоит на кнопках тулбара.
+const keepFocus = (e) => e.preventDefault()
+
 export default function Settings({
   typograf, typografEnabled, onToggle,
   isolationMode, onIsolationToggle,
@@ -46,6 +55,7 @@ export default function Settings({
                 role="radio"
                 aria-checked={theme === t.id}
                 onClick={() => onTheme(t.id)}
+                onMouseDown={keepFocus}
               >
                 <span>{t.label}</span>
               </button>
@@ -70,6 +80,7 @@ export default function Settings({
                 aria-checked={palette === p.id}
                 title={p.name}
                 onClick={() => onPalette(p.id)}
+                onMouseDown={keepFocus}
               >
                 <span className="settings-line-dot" style={{ background: p.dot, color: p.fg }}>
                   {p.num}
@@ -92,6 +103,7 @@ export default function Settings({
           <button
             className={`settings-toggle${isolationMode ? ' settings-toggle--on' : ''}`}
             onClick={onIsolationToggle}
+            onMouseDown={keepFocus}
             role="switch"
             aria-checked={isolationMode}
             aria-label="Режим самоизоляции"
@@ -117,6 +129,7 @@ export default function Settings({
                 role="radio"
                 aria-checked={editorWidth === w.px}
                 onClick={() => onEditorWidth(w.px)}
+                onMouseDown={keepFocus}
               >
                 <span>{w.label}</span>
                 <span className="settings-seg-hint">{w.hint}</span>
@@ -134,6 +147,7 @@ export default function Settings({
           <button
             className={`settings-toggle${fadeEnabled ? ' settings-toggle--on' : ''}`}
             onClick={onFadeToggle}
+            onMouseDown={keepFocus}
             role="switch"
             aria-checked={fadeEnabled}
             aria-label="Прятать панели при наборе"

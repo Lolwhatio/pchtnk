@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { IconClose, IconUpload } from './icons'
+import { fileToImageSrc } from '../utils/images'
 import './MediaDialog.css'
 
 export default function MediaDialog({ onConfirm, onClose }) {
@@ -15,11 +16,11 @@ export default function MediaDialog({ onConfirm, onClose }) {
     if (tab === 'url') setTimeout(() => urlRef.current?.focus(), 30)
   }, [tab])
 
-  const readFile = (file) => {
+  // Ужимаем здесь же, а не при вставке: в предпросмотре видно ровно то,
+  // что ляжет в документ (см. utils/images)
+  const readFile = async (file) => {
     if (!file?.type.startsWith('image/')) return
-    const reader = new FileReader()
-    reader.onload = (e) => setPreview(e.target.result)
-    reader.readAsDataURL(file)
+    setPreview(await fileToImageSrc(file))
   }
 
   const handleDrop = (e) => {

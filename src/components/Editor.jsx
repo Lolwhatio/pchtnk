@@ -17,6 +17,7 @@ import { createHangingWordsPlugin } from '../hooks/useHangingWords'
 import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
 import { sliceToText, cleanClipboardDom } from '../utils/clipboard'
+import { fileToImageSrc } from '../utils/images'
 import './Editor.css'
 
 // ── Markdown-детектор ─────────────────────────────────────────────────────────
@@ -842,13 +843,11 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
         event.preventDefault()
         const coords = { left: event.clientX, top: event.clientY }
         const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from
-        files.forEach(file => {
-          const reader = new FileReader()
-          reader.onload = (e) => {
-            const node = view.state.schema.nodes.image.create({ src: e.target.result })
-            view.dispatch(view.state.tr.insert(pos, node))
-          }
-          reader.readAsDataURL(file)
+        files.forEach(async (file) => {
+          const src = await fileToImageSrc(file)
+          if (view.isDestroyed) return
+          const node = view.state.schema.nodes.image.create({ src })
+          view.dispatch(view.state.tr.insert(pos, node))
         })
         return true
       },
@@ -858,13 +857,11 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
         setTimeout(() => { isPastingRef.current = false }, 200)
         const files = [...(event.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'))
         if (files.length) {
-          files.forEach(file => {
-            const reader = new FileReader()
-            reader.onload = (e) => {
-              const node = view.state.schema.nodes.image.create({ src: e.target.result })
-              view.dispatch(view.state.tr.replaceSelectionWith(node))
-            }
-            reader.readAsDataURL(file)
+          files.forEach(async (file) => {
+            const src = await fileToImageSrc(file)
+            if (view.isDestroyed) return
+            const node = view.state.schema.nodes.image.create({ src })
+            view.dispatch(view.state.tr.replaceSelectionWith(node))
           })
           return true
         }
@@ -947,6 +944,39 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
     if (editor) onReady?.(editor)
     return () => { if (editor && !editor.isDestroyed) onReady?.(null) }
   }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── ⌘C, когда фокус ушёл из редактора ───────────────────────────────────
+  // Выделение в тексте живёт само по себе, а обработчик копирования висит на
+  // самом редакторе. Стоит фокусу уехать на кнопку в панели (настройки,
+  // оглавление, список документов) — и ⌘C достаётся браузеру: он собирает
+  // HTML из живого DOM и подставляет каждому тегу вычисленные стили, поэтому
+  // во внешнем документе вместо текста оказывался CSS. Перехватываем такой
+  // случай и отдаём ровно то же, что отдал бы сам редактор.
+  useEffect(() => {
+    if (!editor) return
+
+    const onCopy = (event) => {
+      const dom = editor.view.dom
+      if (dom.contains(event.target)) return          // редактор справится сам
+      if (editor.state.selection.empty) return
+
+      // Выделение должно лежать в тексте, а не в поле ввода или диалоге
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return
+      if (!dom.contains(sel.getRangeAt(0).commonAncestorContainer)) return
+
+      const slice = editor.state.selection.content()
+      const wrap = document.createElement('div')
+      wrap.appendChild(clipboardSerializer.serializeFragment(slice.content, { document }))
+
+      event.clipboardData.setData('text/html', wrap.innerHTML)
+      event.clipboardData.setData('text/plain', sliceToText(slice))
+      event.preventDefault()
+    }
+
+    document.addEventListener('copy', onCopy, true)
+    return () => document.removeEventListener('copy', onCopy, true)
+  }, [editor])
 
   // Обновляем декорации стоп-слов при смене списка
   useEffect(() => {
