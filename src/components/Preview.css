@@ -250,6 +250,26 @@
   flex-shrink: 0;
 }
 
+/* Сорвавшаяся сборка PDF. Красным, а не акцентом: зелёным «не удалось»
+   не покажешь. Само не гаснет — сообщение об ошибке человек закрывает сам,
+   иначе оно пропадёт раньше, чем он поймёт, что произошло.
+
+   Пара «danger на bg-panel» — та самая «Ошибка на панели», которую уже
+   проверяет npm run check:contrast во всех палитрах и обеих темах;
+   подложка своего замеса потребовала бы отдельной проверки. */
+.preview-done--error {
+  background: var(--bg-panel);
+  color: var(--danger);
+  border-bottom-color: var(--danger);
+}
+
+.preview-done__close {
+  margin-left: 12px;
+  color: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
 /* ── Предпросмотр PDF: настоящие страницы ───────── */
 /* Печатная версия белая независимо от темы — показываем её такой же,
    иначе тёмный предпросмотр обещает не то, что выйдет из принтера.
@@ -284,7 +304,6 @@
   box-shadow: 0 3px 20px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
-.pdf-page--tall { height: auto; min-height: 1123px; overflow: visible; }
 
 .pdf-page__num {
   position: absolute;

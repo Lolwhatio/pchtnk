@@ -23,9 +23,43 @@ export const MARGIN_Y = 76   // 20 мм
 export const CONTENT_W = PAGE_W - MARGIN_X * 2   // 582
 export const CONTENT_H = PAGE_H - MARGIN_Y * 2   // 971
 
-// Поля для html2pdf задаются в мм и обязаны совпадать с теми, по которым
-// предпросмотр считает разбиение
-export const MARGIN_MM = [20, 28, 20, 28]
+// A4 в миллиметрах и поля, посчитанные из содержимого: так поля выходят
+// ровно теми, что остались от листа, и полоса стоит по центру страницы,
+// а не «почти по центру» из-за округления пикселей в миллиметры.
+export const PAGE_W_MM = 210
+export const PAGE_H_MM = 297
+export const CONTENT_W_MM = (CONTENT_W * 25.4) / 96   // 153,99
+export const CONTENT_H_MM = (CONTENT_H * 25.4) / 96   // 256,92
+export const MARGIN_X_MM = (PAGE_W_MM - CONTENT_W_MM) / 2
+export const MARGIN_Y_MM = (PAGE_H_MM - CONTENT_H_MM) / 2
+
+// ── Разбивка потока на страницы ──────────────────────────────────────────────
+// Одна на предпросмотр и на файл. Раньше предпросмотр резал поток сам, а файл
+// резал html2pdf — по своим правилам и по своему снимку, поэтому страницы
+// расходились: то, что в предпросмотре стояло на второй странице, в файле
+// оказывалось на первой.
+//
+// probe — копия документа шириной в полосу, уже вставленная в дерево:
+// высоты блоков читаются только из живого элемента. Возвращаем сами блоки,
+// разложенные по страницам, — раскладывать их по листам каждый будет по-своему.
+//
+// Считаем по offsetTop, а не по сумме высот: так учитываются схлопнутые
+// вертикальные отступы соседних блоков.
+export function splitPages(probe) {
+  const pages = [[]]
+  let pageTop = 0
+  for (const block of [...probe.children]) {
+    const bottom = block.offsetTop + block.offsetHeight
+    const current = pages[pages.length - 1]
+    if (current.length && bottom - pageTop > CONTENT_H) {
+      pageTop = block.offsetTop
+      pages.push([block])
+    } else {
+      current.push(block)
+    }
+  }
+  return pages
+}
 
 // ── Стили ────────────────────────────────────────────────────────────────────
 // Чистый текст, чёрным по белому. Ни линеек под шапкой и над разделами,

@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
-import html2pdf from 'html2pdf.js'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
 import { IconSettings } from './icons'
-import { pdfCss, CONTENT_W, CONTENT_H, MARGIN_MM } from '../utils/pdfLayout'
+import { pdfCss, splitPages, CONTENT_W, CONTENT_H } from '../utils/pdfLayout'
+import { buildPdfBlob } from '../utils/pdfFile'
 import './Preview.css'
 
 const PRINT_STYLES = `
@@ -85,8 +85,19 @@ function escapeHtml(s) {
 // ── Предпросмотр PDF: настоящие страницы ─────────────────────────────────────
 // Раньше здесь был один белый прямоугольник ростом ровно в A4, а текст,
 // который в него не влез, вываливался наружу и дочитывался тёмным по тёмному.
-// Теперь поток режется на страницы по тем же размерам, по которым его режет
-// html2pdf: блок целиком уходит на следующую страницу, если не помещается.
+// Теперь поток режется на страницы — той же splitPages, которой режет его
+// и сборка файла, так что предпросмотр и PDF совпадают постранично.
+
+// Лист с содержимым. offset — на сколько целых страниц содержимое сдвинуто
+// вверх: так показывается продолжение блока, который сам выше листа.
+function makeSheet(body, offset) {
+  const page = document.createElement('div')
+  page.className = 'pdf-page'
+  if (offset) body.style.marginTop = `-${offset * CONTENT_H}px`
+  page.appendChild(body)
+  return page
+}
+
 function paginate(host, html) {
   host.textContent = ''
 
@@ -96,41 +107,44 @@ function paginate(host, html) {
   probe.innerHTML = html
   host.appendChild(probe)
 
-  // Считаем по offsetTop, а не по высоте: так учитываются схлопнутые отступы
-  const pages = [[]]
-  let pageTop = 0
-  for (const block of [...probe.children]) {
-    const bottom = block.offsetTop + block.offsetHeight
-    const current = pages[pages.length - 1]
-    if (current.length && bottom - pageTop > CONTENT_H) {
-      pageTop = block.offsetTop
-      pages.push([block])
-    } else {
-      current.push(block)
-    }
-  }
+  const pages = splitPages(probe)
 
   probe.remove()
 
-  pages.forEach((blocks, i) => {
-    const page = document.createElement('div')
-    // Блок выше страницы (большая картинка, длинная таблица) целиком
-    // не помещается никуда — такой странице разрешаем вырасти, иначе
-    // предпросмотр молча обрезал бы содержимое
-    const tall = blocks.some(b => b.offsetHeight > CONTENT_H)
-    page.className = `pdf-page${tall ? ' pdf-page--tall' : ''}`
+  // Сначала раскладываем, потом нумеруем: неделимый блок выше листа занимает
+  // несколько страниц, и сколько их всего — известно только после раскладки.
+  const sheets = []
 
+  for (const blocks of pages) {
     const body = document.createElement('div')
     body.className = 'pdf-doc pdf-page__body'
     blocks.forEach(b => body.appendChild(b))
-    page.appendChild(body)
 
+    const sheet = makeSheet(body, 0)
+    host.appendChild(sheet)
+    sheets.push(sheet)
+
+    // Блок целиком не помещается никуда (длинный блок кода, большая таблица,
+    // высокая картинка) — рвать его негде. Файл режет по высоте страницы
+    // сам снимок, и предпросмотр показывает ровно то же: тот же блок,
+    // сдвинутый вверх на целую страницу.
+    //
+    // Меряем здесь, а не при разбивке: у отсоединённого элемента offsetHeight
+    // равен нулю, и «высокая» страница считалась обычной — предпросмотр молча
+    // обрезал её по overflow, показывая три страницы там, где в файле шесть.
+    const extra = Math.ceil(body.offsetHeight / CONTENT_H) - 1
+    for (let k = 1; k <= extra; k++) {
+      const tail = makeSheet(body.cloneNode(true), k)
+      host.appendChild(tail)
+      sheets.push(tail)
+    }
+  }
+
+  sheets.forEach((sheet, i) => {
     const num = document.createElement('div')
     num.className = 'pdf-page__num'
-    num.textContent = `${i + 1} / ${pages.length}`
-    page.appendChild(num)
-
-    host.appendChild(page)
+    num.textContent = `${i + 1} / ${sheets.length}`
+    sheet.appendChild(num)
   })
 }
 
@@ -157,6 +171,8 @@ function PdfPaper({ html, fileName }) {
 export default function Preview({ editor, fileName, typograf, typografEnabled, onTypografToggle, onClose }) {
   const [showTypograf, setShowTypograf] = useState(false)
   const [building, setBuilding] = useState(false)
+  const [progress, setProgress] = useState(null) // { done, total } — сборка PDF постранично
+  const [failed, setFailed] = useState(null)   // текст ошибки сборки
   const [done, setDone] = useState(null)       // что скачали — подтверждение под шапкой
 
   const html = useMemo(() => {
@@ -184,68 +200,27 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
 
   const handleExportPDF = async () => {
     setBuilding(true)
+    setProgress(null)
+    setFailed(null)
     try {
-      // Обёртку обязательно кладём в документ — здесь и была причина
-      // «плакатного» кегля.
-      //
-      // html2pdf снимает элемент по его собственным размерам и по ним же
-      // считает переносы страниц. У элемента, которого нет в документе,
-      // размеры нулевые: текст верстался в колонку шириной чуть ли не
-      // в слово, каждый неразрывный блок выглядел вылезающим за страницу
-      // и получал перенос — девять страниц вместо двух, файл на 5 МБ
-      // и растянутый на всю ширину листа шрифт.
-      //
-      // Прячем за экраном хост, а обёртка внутри него лежит обычным блоком:
-      // у position:fixed высота родителю не достаётся, и снимок выходил
-      // нулевой высоты.
-      const host = document.createElement('div')
-      host.style.cssText = `position:fixed;left:-100000px;top:0;width:${CONTENT_W}px`
-
-      const wrapper = document.createElement('div')
-      wrapper.style.cssText = `width:${CONTENT_W}px;background:#ffffff`
-      host.appendChild(wrapper)
-      document.body.appendChild(host)
-
-      const style = document.createElement('style')
-      style.textContent = pdfCss()
-      wrapper.appendChild(style)
-
-      const content = document.createElement('div')
-      content.className = 'pdf-doc'
-      content.innerHTML = pdfBody(html, fileName)
-      wrapper.appendChild(content)
-
-      const blob = await html2pdf().set({
-        margin: MARGIN_MM,
-        // 0.98 на почти белой странице давал мегабайты ни за что
-        image: { type: 'jpeg', quality: 0.92 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        // html2pdf режет один длинный снимок по высоте страницы — где придётся,
-        // хоть посередине строки. Поэтому перечисляем всё, что рвать нельзя,
-        // и абзац с пунктом списка здесь обязательны: без них низ страницы
-        // приходился на середину строки, а её вторая половина уезжала наверх
-        // следующей. Тот же список блоков, что переносит предпросмотр, —
-        // страницы обязаны совпасть.
-        pagebreak: {
-          mode: ['css', 'legacy'],
-          avoid: [
-            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-            'p', 'li', 'blockquote', 'pre',
-            'table', 'tr', 'figure', 'img', '.sources',
-          ],
-        },
-      }).from(wrapper).outputPdf('blob')
-
-      host.remove()
+      const blob = await buildPdfBlob(pdfBody(html, fileName), {
+        // Страницы снимаются по одной, и на длинном тексте это секунды.
+        // Молчащая кнопка «Собираем…» в такой паузе выглядит как зависшая.
+        onProgress: (done, total) => setProgress(total > 1 ? { done, total } : null),
+      })
 
       const url = URL.createObjectURL(blob)
       const a = Object.assign(document.createElement('a'), { href: url, download: fileName + '.pdf' })
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 1000)
       flashDone(fileName + '.pdf')
+    } catch (err) {
+      // Молчать нельзя: кнопка вернётся в исходное, файла не будет,
+      // и человек решит, что просто не попал по ней
+      setFailed(err?.message || 'неизвестная ошибка')
     } finally {
       setBuilding(false)
+      setProgress(null)
     }
   }
 
@@ -299,7 +274,9 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
             disabled={building}
             title={`Сохранить ${fileName}${current.ext}`}
           >
-            {building ? 'Собираем…' : `Скачать ${current.ext}`}
+            {building
+              ? (progress ? `Собираем… ${progress.done} / ${progress.total}` : 'Собираем…')
+              : `Скачать ${current.ext}`}
           </button>
           <button
             className={`preview-btn preview-btn--icon${showTypograf ? ' active' : ''}`}
@@ -313,6 +290,13 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
 
       {done && (
         <div className="preview-done" role="status">Скачан файл {done}</div>
+      )}
+
+      {failed && (
+        <div className="preview-done preview-done--error" role="alert">
+          Не удалось собрать PDF: {failed}
+          <button className="preview-done__close" onClick={() => setFailed(null)}>Скрыть</button>
+        </div>
       )}
 
       {/* Предпросмотр показывает выбранный формат: markdown — исходником,
