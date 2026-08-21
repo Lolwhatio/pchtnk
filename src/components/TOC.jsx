@@ -8,6 +8,11 @@ export default function TOC({ editor, onClose }) {
 
   useEffect(() => {
     if (!editor) return
+    // Оглавление меняется куда реже, чем документ: набор внутри абзаца
+    // заголовков не трогает. Поэтому сверяем состав и обновляем состояние
+    // только когда он и правда изменился — иначе React перерисовывал весь
+    // список на каждое нажатие клавиши.
+    let signature = null
     const extract = () => {
       const items = []
       editor.state.doc.forEach((node, offset) => {
@@ -19,6 +24,9 @@ export default function TOC({ editor, onClose }) {
           })
         }
       })
+      const next = items.map(h => `${h.level}\u0000${h.pos}\u0000${h.text}`).join('\n')
+      if (next === signature) return
+      signature = next
       setHeadings(items)
     }
     editor.on('update', extract)

@@ -663,8 +663,18 @@ const SourcesList = Node.create({
       dom.className = 'sources-list'
       dom.setAttribute('contenteditable', 'false')
 
+      // Список источников перебирается заново на каждую правку документа,
+      // а меняется он только когда трогают сноски. Сверяем состав и молчим,
+      // если он тот же: иначе на каждое нажатие клавиши пересобирался
+      // весь список — с удалением и созданием узлов DOM.
+      let signature = null
+
       const render = () => {
         const items = numberFootnotes(editor.state.doc).sources
+        const next = items.map(it => `${it.number}\u0000${it.note}\u0000${it.url}`).join('\n')
+        if (next === signature) return
+        signature = next
+
         dom.replaceChildren()
 
         const title = document.createElement('div')

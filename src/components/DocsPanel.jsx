@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import {
   IconTrash, IconChevronRight, IconPlus, IconClose, IconPencil,
   IconFolderPlus, IconFolderIn,
@@ -21,12 +21,42 @@ function plainText(content) {
   return out.join(' ')
 }
 
-function snippetOf(doc) {
-  const t = plainText(doc.content).replace(/\s+/g, ' ').trim()
+// Текст документа считаем один раз на документ — и для подписи, и для поиска.
+//
+// Ключ кеша — сам объект документа: документы неизменяемы, при правке
+// приходит новый объект, и старая запись обесценивается сама. Раньше дерево
+// документа обходили заново и фильтр поиска, и каждая перерисовка строки:
+// одно нажатие в поле поиска обходило всю базу целиком, а с открытой панелью
+// это повторялось ещё и на каждом автосохранении.
+//
+// Кеша два, и это не случайно. Подпись — семьдесят знаков, её не жалко
+// держать всегда. Текст для поиска — это весь документ целиком, и заводить
+// его на каждое автосохранение только ради того, чтобы никто не искал,
+// значило бы менять время на память впустую.
+const snippetCache = new WeakMap()
+const searchCache  = new WeakMap()
+
+function docSnippet(doc) {
+  const hit = snippetCache.get(doc)
+  if (hit !== undefined) return hit
+
+  const text  = plainText(doc.content).replace(/\s+/g, ' ').trim()
   const title = (doc.title || '').trim()
   // Первая строка обычно и есть название — во втором ряду она лишняя
-  const rest = title && t.startsWith(title) ? t.slice(title.length).trim() : t
-  return rest.slice(0, 70)
+  const rest  = title && text.startsWith(title) ? text.slice(title.length).trim() : text
+
+  const snippet = rest.slice(0, 70)
+  snippetCache.set(doc, snippet)
+  return snippet
+}
+
+function docSearchText(doc) {
+  const hit = searchCache.get(doc)
+  if (hit !== undefined) return hit
+
+  const lower = plainText(doc.content).replace(/\s+/g, ' ').toLowerCase()
+  searchCache.set(doc, lower)
+  return lower
 }
 
 function formatDate(ts) {
@@ -45,11 +75,15 @@ function formatDate(ts) {
 // до броска пуст: браузер отдаёт данные только в drop.
 let draggingId = null
 
-function DocItem({ doc, isActive, onSelect, onDelete, onMove, onReorder, reorderable, projects, canDelete }) {
+// memo здесь не украшение: пока панель открыта, автосохранение обновляет
+// список раз в 600 мс, и без него все строки перерисовывались на каждое
+// нажатие в редакторе. Пропсы стабильны — обработчики приходят из useCallback,
+// документы неизменяемы, — поэтому перерисовывается только изменившаяся строка.
+const DocItem = memo(function DocItem({ doc, isActive, onSelect, onDelete, onMove, onReorder, reorderable, projects, canDelete }) {
   const [showMover, setShowMover] = useState(false)
   const [dropEdge, setDropEdge] = useState(null) // null | 'before' | 'after'
   const moverRef = useRef(null)
-  const snippet = snippetOf(doc)
+  const snippet = docSnippet(doc)
 
   useDismiss(moverRef, showMover, () => setShowMover(false))
 
@@ -142,9 +176,11 @@ function DocItem({ doc, isActive, onSelect, onDelete, onMove, onReorder, reorder
       </div>
     </div>
   )
-}
+})
 
-function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDeleteProject, onRenameProject, onNewInProject, onMove, onReorder, reorderable, projects, canDelete }) {
+// Секция проекта тоже под memo: её список документов приходит стабильным
+// (см. useMemo с группировкой ниже), поэтому чужие правки её не трогают.
+const ProjectSection = memo(function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDeleteProject, onRenameProject, onNewInProject, onMove, onReorder, reorderable, projects, canDelete }) {
   const [collapsed, setCollapsed] = useState(false)
   const [editing, setEditing]     = useState(false)
   const [title, setTitle]         = useState(project.title)
@@ -245,7 +281,7 @@ function ProjectSection({ project, docs, currentId, onSelect, onDelete, onDelete
       )}
     </div>
   )
-}
+})
 
 export default function DocsPanel({
   docs, projects = [], currentId,
@@ -263,18 +299,23 @@ export default function DocsPanel({
     // Ищем и по названию, и по тексту: половина документов называется одинаково
     return docs.filter(d =>
       (d.title || '').toLowerCase().includes(q) ||
-      plainText(d.content).toLowerCase().includes(q)
+      docSearchText(d).includes(q)
     )
   }, [docs, query])
 
-  // Группируем по проектам
-  const byProject = {}
-  projects.forEach(p => { byProject[p.id] = [] })
-  const noDocs = []
-  visible.forEach(doc => {
-    if (doc.projectId && byProject[doc.projectId]) byProject[doc.projectId].push(doc)
-    else noDocs.push(doc)
-  })
+  // Группируем по проектам. Через useMemo — иначе у каждой секции проекта
+  // на любую перерисовку панели менялся бы массив документов, и memo на ней
+  // не срабатывал бы ни разу.
+  const { byProject, noDocs } = useMemo(() => {
+    const byProject = {}
+    projects.forEach(p => { byProject[p.id] = [] })
+    const noDocs = []
+    visible.forEach(doc => {
+      if (doc.projectId && byProject[doc.projectId]) byProject[doc.projectId].push(doc)
+      else noDocs.push(doc)
+    })
+    return { byProject, noDocs }
+  }, [projects, visible])
 
   const canDelete = docs.length > 1
   const searching = query.trim().length > 0
