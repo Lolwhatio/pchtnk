@@ -16,6 +16,27 @@
       base-uri 'self';
     " />
     <title>pechatniki</title>
+
+    <!-- Тема и палитра — до первой отрисовки.
+         Те же атрибуты ставит и React, но только после монтирования, и кадр
+         между разбором CSS и первым рендером успевал показать базовую палитру:
+         при выбранной «Некрасовской» страница на миг зеленела.
+         Ключи и значения по умолчанию продублированы из App.jsx намеренно —
+         модуль сюда не подключить, он выполняется уже после первого кадра.
+         Значение не проверяем: неизвестная палитра не совпадёт ни с одним
+         блоком [data-palette] и даст ту же базовую тему, которую через
+         мгновение поставит и React. -->
+    <script>
+      try {
+        var root = document.documentElement
+        root.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+        root.setAttribute('data-palette', localStorage.getItem('pechatniki-palette') || 'forest')
+        var width = localStorage.getItem('pechatniki-editor-width')
+        if (width) root.style.setProperty('--editor-width', width + 'px')
+      } catch (e) {
+        /* приватный режим — обойдёмся значениями по умолчанию */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
