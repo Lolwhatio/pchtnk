@@ -84,6 +84,15 @@ function nodeToHtml(node, ctx) {
       }
       return `<figure class="kb-img">${img}</figure>\n`
     }
+    // Живого iframe в сохранённом файле не будет: страница лежит на диске,
+    // а содержимое встройки — на чужом сервере. Оставляем адрес целиком,
+    // как и в markdown, — из него понятно, что и куда вело.
+    case 'embed': {
+      const { src, title } = node.attrs || {}
+      if (!src) return ''
+      const label = esc(title || 'Встроенный контент')
+      return `<p class="kb-embed"><strong>${label}</strong> — <a href="${esc(src)}" target="_blank" rel="noopener noreferrer">${esc(src)}</a></p>\n`
+    }
     case 'footnote': {
       // Один источник — один номер; повтор ведёт к той же записи.
       const key = sourceKey(node.attrs?.note, node.attrs?.url)

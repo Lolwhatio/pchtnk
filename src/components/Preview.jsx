@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
 import { IconSettings } from './icons'
-import { pdfCss, splitPages, CONTENT_W, CONTENT_H } from '../utils/pdfLayout'
+import { pdfCss, splitPages, imagesReady, CONTENT_W, CONTENT_H } from '../utils/pdfLayout'
 import { buildPdfBlob } from '../utils/pdfFile'
 import './Preview.css'
 
@@ -58,6 +58,11 @@ const PRINT_STYLES = `
     font-style:italic;color:#3a7828;
     background:rgba(98,160,48,.08);padding:0 .25em;border-radius:3px;
   }
+  /* Картинка из редактора шире колонки почти всегда — держим её в полосе.
+     В кадре ужимать нельзя: уехало бы само окно (см. layOutImages) */
+  img{display:block;max-width:100%;height:auto;margin:1.5em 0}
+  .img-crop{margin:1.5em 0}
+  .img-crop img{margin:0}
 `
 
 // Печатная вёрстка живёт в utils/pdfLayout — одна и на предпросмотр, и на файл.
@@ -98,7 +103,11 @@ function makeSheet(body, offset) {
   return page
 }
 
-function paginate(host, html) {
+// Ждём картинок, поэтому асинхронно: без декодирования у <img> нулевая высота
+// и страницы считаются по одному тексту (см. imagesReady). `alive` гасит
+// разбивку, которую успел обогнать следующий прогон, — иначе две раскладки
+// писали бы в один и тот же host.
+async function paginate(host, html, alive) {
   host.textContent = ''
 
   const probe = document.createElement('div')
@@ -106,6 +115,9 @@ function paginate(host, html) {
   probe.style.width = `${CONTENT_W}px`
   probe.innerHTML = html
   host.appendChild(probe)
+
+  await imagesReady(probe)
+  if (!alive()) { probe.remove(); return }
 
   const pages = splitPages(probe)
 
@@ -157,7 +169,10 @@ function PdfPaper({ html, fileName }) {
   }, [])
 
   useLayoutEffect(() => {
-    if (hostRef.current) paginate(hostRef.current, pdfBody(html, fileName))
+    if (!hostRef.current) return
+    let alive = true
+    paginate(hostRef.current, pdfBody(html, fileName), () => alive)
+    return () => { alive = false }
   }, [html, fileName])
 
   return (

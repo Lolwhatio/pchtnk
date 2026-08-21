@@ -14,7 +14,7 @@
 // постранично по построению, а не по совпадению настроек.
 
 import {
-  pdfCss, splitPages,
+  pdfCss, splitPages, imagesReady,
   CONTENT_W, CONTENT_H, CONTENT_W_MM, MARGIN_X_MM, MARGIN_Y_MM,
 } from './pdfLayout'
 
@@ -70,6 +70,9 @@ export async function buildPdfBlob(html, { onProgress } = {}) {
     probe.style.width = `${CONTENT_W}px`
     probe.innerHTML = html
     host.appendChild(probe)
+    // Картинка без декодирования занимает нулевую высоту, и страницы
+    // посчитались бы по одному тексту — см. imagesReady
+    await imagesReady(probe)
     const pages = splitPages(probe)
     probe.remove() // блоки живы — сейчас разойдутся по листам
 

@@ -33,6 +33,39 @@ export const CONTENT_H_MM = (CONTENT_H * 25.4) / 96   // 256,92
 export const MARGIN_X_MM = (PAGE_W_MM - CONTENT_W_MM) / 2
 export const MARGIN_Y_MM = (PAGE_H_MM - CONTENT_H_MM) / 2
 
+// ── Картинки: ждём декодирования ─────────────────────────────────────────────
+// Высота картинки известна браузеру только после того, как он её декодирует:
+// до этого <img> занимает нулевую высоту. Померить поток сразу после
+// probe.innerHTML = html значит померить его без картинок — страницы выйдут
+// длиннее листа, лишнее срежется по overflow:hidden, и до бумаги не доедет
+// ни картинка, ни текст под ней. Поэтому и предпросмотр, и сборка файла ждут
+// декодирования перед первым же измерением.
+//
+// Ждём и неудачу тоже: битый адрес не повод подвесить экспорт. По той же
+// причине есть общий срок — картинка по сети может не ответить вовсе,
+// и тогда лучше собрать документ без неё, чем не собрать никакого.
+const DECODE_TIMEOUT = 8000
+
+export function imagesReady(root, timeout = DECODE_TIMEOUT) {
+  const imgs = [...root.querySelectorAll('img')]
+  if (!imgs.length) return Promise.resolve()
+
+  const settled = imgs.map(img => {
+    // decode() ждёт и загрузку, и распаковку — ровно до момента, когда
+    // картинку можно рисовать, а значит и мерить
+    if (typeof img.decode === 'function') return img.decode().catch(() => {})
+    return new Promise(done => {
+      img.addEventListener('load', done, { once: true })
+      img.addEventListener('error', done, { once: true })
+    })
+  })
+
+  return Promise.race([
+    Promise.all(settled),
+    new Promise(done => setTimeout(done, timeout)),
+  ])
+}
+
 // ── Разбивка потока на страницы ──────────────────────────────────────────────
 // Одна на предпросмотр и на файл. Раньше предпросмотр резал поток сам, а файл
 // резал html2pdf — по своим правилам и по своему снимку, поэтому страницы
@@ -40,8 +73,10 @@ export const MARGIN_Y_MM = (PAGE_H_MM - CONTENT_H_MM) / 2
 // оказывалось на первой.
 //
 // probe — копия документа шириной в полосу, уже вставленная в дерево:
-// высоты блоков читаются только из живого элемента. Возвращаем сами блоки,
-// разложенные по страницам, — раскладывать их по листам каждый будет по-своему.
+// высоты блоков читаются только из живого элемента. Картинки в ней к этому
+// моменту должны быть декодированы (imagesReady) — иначе меряется пустота.
+// Возвращаем сами блоки, разложенные по страницам, — раскладывать их
+// по листам каждый будет по-своему.
 //
 // Считаем по offsetTop, а не по сумме высот: так учитываются схлопнутые
 // вертикальные отступы соседних блоков.
@@ -167,9 +202,15 @@ export function pdfCss() {
 .pdf-doc td > *:last-child,.pdf-doc th > *:last-child{margin-bottom:0}
 .pdf-doc tr{break-inside:avoid;page-break-inside:avoid}
 
-/* ── Картинки ────────────────────────────────────────────────────*/
+/* ── Картинки ────────────────────────────────────────────────────
+   Ширину задаёт полоса набора: снимок с экрана шире колонки почти
+   всегда, и без max-width он вылезал бы за правое поле. Внутри кадра
+   картинку ужимать нельзя — вместе с ней уехало бы и окно кадра
+   (его собирает layOutImages в utils/markdown). */
 .pdf-doc figure{margin:1.3em 0;break-inside:avoid;page-break-inside:avoid}
-.pdf-doc img{display:block;max-width:100%;height:auto}
+.pdf-doc img{display:block;max-width:100%;height:auto;margin:1.1em 0}
+.pdf-doc .img-crop{margin:1.1em 0;break-inside:avoid;page-break-inside:avoid}
+.pdf-doc .img-crop img{margin:0}
 
 /* ── Сноски и источники ──────────────────────────────────────────
    Список источников — обычный текст помельче под скромным заголовком,

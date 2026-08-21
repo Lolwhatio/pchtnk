@@ -324,3 +324,15 @@
   visibility: hidden;
   pointer-events: none;
 }
+
+/* Картинка в предпросмотре HTML: держим её в колонке — из редактора
+   приходит снимок в 1600 px, а колонка вдвое уже. Кадрированную не трогаем,
+   у неё окно с overflow:hidden и своя ширина (см. layOutImages). */
+.preview-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.4em 0;
+}
+.preview-content .img-crop { margin: 1.4em 0; }
+.preview-content .img-crop img { margin: 0; }
