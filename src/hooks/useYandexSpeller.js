@@ -1,34 +1,90 @@
 const SPELLER_URL = 'https://speller.yandex.net/services/spellservice.json/checkText'
 
 // Маппинг: индекс символа в getText() → позиция ProseMirror
-// Воспроизводит алгоритм TipTap v3 getText() с blockSeparator='\n\n':
-//   • перед каждым не-первым дочерним блоком doc добавляется '\n\n' (2 позиции)
-//   • hardBreak и другие инлайн-листья добавляют 1 позицию (без записи в map)
+// Воспроизводит getTextBetween из TipTap v3 с blockSeparator='\n\n':
+//   • '\n\n' (2 позиции) ставится перед КАЖДЫМ блоком, кроме стоящего
+//     в самом начале документа, — и перед вложенными тоже: у пункта списка
+//     их три подряд (список, пункт, абзац в пункте)
+//   • hardBreak даёт 1 позицию (его renderText — '\n'), без записи в map
+//
+// Раньше разделители считались только между блоками верхнего уровня, и после
+// первого же списка или цитаты позиции уезжали: Спеллер подсвечивал соседнее
+// слово, а «Заменить» молча пропускал ошибку, не найдя её на месте.
+// Незаметно это было потому, что Спеллер почти никогда ничего не находил
+// (см. forSpeller ниже).
 export function buildPosMap(doc) {
   const map = []
   let textPos = 0
-  let firstBlock = true
 
-  doc.nodesBetween(0, doc.content.size, (node, pos, parent) => {
+  doc.nodesBetween(0, doc.content.size, (node, pos) => {
+    if (node.isBlock && pos > 0) textPos += 2
     if (node.type.name === 'hardBreak') {
       textPos++
       return false
     }
     if (node.isText) {
       for (let i = 0; i < node.text.length; i++) map[textPos++] = pos + i
-    } else if (node.isBlock && parent === doc) {
-      if (!firstBlock) textPos += 2
-      firstBlock = false
     }
   })
 
   return map
 }
 
+// ── Что Спеллеру отправлять нельзя ───────────────────────────────────────────
+// Стоит в тексте хоть одному такому знаку — Спеллер отвечает пустым списком
+// на весь текст сразу, без ошибки и без статуса. Проверено 21.09.2026 на живом
+// сервисе, и GET, и POST, при любых lang, format и options: «да — искуственный»
+// даёт [], «да - искуственный» — ошибку. Среди этих знаков тире, ёлочки,
+// неразрывный пробел — то, что типограф ставит почти в каждый абзац, поэтому
+// на обработанном тексте проверка не находила ничего и никогда, а выглядело
+// это как «ошибок нет».
+//
+// Такие знаки меняем на безопасные той же длины — позиции из ответа тогда
+// ложатся на исходный текст как есть. Невидимые и комбинируемые знаки
+// (ударение) выбрасываем и позиции пересчитываем: пробел вместо них разрезал
+// бы слово надвое.
+const SWAP = new Map([
+  ...[...'\u2010\u2011\u2012\u2013\u2014\u2015\u2212'].map(c => [c, '-']),            // дефисы, тире, минус
+  ...[...'«»„“”‟'].map(c => [c, '"']),
+  ...[...'‘’‚‛'].map(c => [c, "'"]),
+  ...[...'\u00a0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000'].map(c => [c, ' ']),  // неразрывные и тонкие пробелы
+])
+// Комбинируемые знаки (ударение), нулевой ширины и управление направлением
+const DROP = /[\u0300-\u036f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/
+
+// Текст для Спеллера и карта: map[i] — где в исходном тексте стоит i-й знак
+// отправленного; последний элемент — длина исходного текста
+function forSpeller(text) {
+  let out = ''
+  const map = []
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (DROP.test(c)) continue
+    out += SWAP.get(c) ?? c
+    map.push(i)
+  }
+  map.push(text.length)
+  return { out, map }
+}
+
 export async function fetchSpellerErrors(text) {
-  const params = new URLSearchParams({ text, lang: 'ru,en', format: 'plain' })
-  const res = await fetch(`${SPELLER_URL}?${params}`)
+  const { out, map } = forSpeller(text)
+  // POST, а не GET: адрес длиннее 10 КБ сервер отвергает (414), а кириллица
+  // в адресе весит по шесть байт на букву — это всего около двух тысяч знаков
+  const res = await fetch(SPELLER_URL, {
+    method: 'POST',
+    body: new URLSearchParams({ text: out, lang: 'ru,en', format: 'plain' }),
+  })
   if (!res.ok) throw new Error('Speller unavailable')
   const data = await res.json()
-  return data.filter(e => e.s?.length > 0)
+  return data
+    // Код 4 — «в тексте слишком много ошибок»: это не слово, а весь текст разом.
+    // Значки вроде → и ⌘ Спеллер тоже отдаёт как ошибки — в них нет ни буквы
+    .filter(e => e.code !== 4 && e.s?.length > 0 && /\p{L}/u.test(e.word))
+    // Конец слова — последняя его буква плюс один, а не начало следующего
+    // знака: выброшенный невидимый знак сразу за словом в замену не попадает
+    .map(e => {
+      const pos = map[e.pos]
+      return { ...e, pos, len: map[e.pos + e.len - 1] + 1 - pos }
+    })
 }
