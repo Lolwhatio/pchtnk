@@ -25,6 +25,8 @@
    экрана, и у флекс-контейнера оно не давало нужного места для прокрутки. */
 
 .editor-wrap {
+  /* По ширине полосы решается, влезают ли метки H1–H6 в поле слева */
+  container: editor / inline-size;
   flex: 1;
   min-width: 0;
   overflow-y: auto;
@@ -126,6 +128,12 @@
   transition: color 0.25s ease, opacity 0.25s ease;
 }
 
+/* Метки уровней — только у активного блока: в фокусе обещана пустота,
+   а служебные надписи оставались бы у всех заголовков */
+.editor-wrap--focus .ProseMirror > :is(h1, h2, h3, h4, h5, h6):not(.focus-active)::before {
+  opacity: 0;
+}
+
 /* Курсор виден только на активной строке.
  *
  * Сам блок в списке обязателен, а не только его потомки: пустой абзац —
@@ -169,15 +177,15 @@
   height: 0;
 }
 
-/* ── Заголовки: символ разметки в колонке слева ──────────────────────────
-   # и ## — JetBrains Mono цветом syntax, 26 и 19px; сам заголовок — Onest
-   по шкале. Символ рисуется псевдоэлементом: в документ он не попадает,
-   выделить и стереть его нельзя. Отступ текста — ширина символов (знак
-   моноширинного — 0,6 кегля) плюс зазор 12px. */
+/* ── Заголовки ─────────────────────────────────────────────────────────────
+   Onest по шкале спеки. Уровень подписан меткой H1–H6 в поле слева от
+   колонки. Символы # и ## из макета стояли в самой колонке, сдвигали
+   заголовок вправо от текста и читались как мусор — метки вернулись.
+   Метка — псевдоэлемент: в документ она не попадает, выделить и стереть
+   её нельзя, в центровке колонки не участвует. */
 
 .editor-content .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
   position: relative;
-  padding-left: calc(var(--md-count) * 0.6 * var(--md-size) + 12px);
   font-family: var(--font-ui);
   color: var(--ink);
   text-wrap: pretty;
@@ -186,57 +194,65 @@
 
 .editor-content .ProseMirror :is(h1, h2, h3, h4, h5, h6)::before {
   position: absolute;
-  left: 0;
-  top: var(--md-top);
-  font-family: var(--font-mono);
-  font-size: var(--md-size);
-  font-weight: 400;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  padding-right: 14px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 700;
   font-style: normal;
   letter-spacing: 0;
-  line-height: var(--md-lh);
+  line-height: 1;
   color: var(--syntax);
+  white-space: nowrap;
   user-select: none;
   pointer-events: none;
 }
+.editor-content .ProseMirror h1::before { content: 'H1'; }
+.editor-content .ProseMirror h2::before { content: 'H2'; }
+.editor-content .ProseMirror h3::before { content: 'H3'; }
+.editor-content .ProseMirror h4::before { content: 'H4'; }
+.editor-content .ProseMirror h5::before { content: 'H5'; }
+.editor-content .ProseMirror h6::before { content: 'H6'; }
+
+/* Метке нужно поле слева от колонки. Колонка упирается в края полосы —
+   в узком окне или когда открыты панели — и поля нет: метки прячем, иначе
+   они обрезались бы о край. Меряем саму полосу, а не окно: на широком
+   мониторе с тремя открытыми панелями места слева столько же, сколько
+   на ноутбуке. */
+@container editor (max-width: 800px) {
+  .editor-content .ProseMirror :is(h1, h2, h3, h4, h5, h6)::before { display: none; }
+}
 
 .editor-content .ProseMirror h1 {
-  --md-count: 1; --md-size: 26px; --md-top: 4px; --md-lh: 1.15;
   font-size: 38px;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
-.editor-content .ProseMirror h1::before { content: '#'; }
 
 .editor-content .ProseMirror h2 {
-  --md-count: 2; --md-size: 19px; --md-top: 2px; --md-lh: 1.3;
   font-size: 25px;
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.25;
 }
-.editor-content .ProseMirror h2::before { content: '##'; }
 
 .editor-content .ProseMirror h3 {
-  --md-count: 3; --md-size: 16px; --md-top: 1px; --md-lh: 1.45;
   font-size: 19px;
   font-weight: 600;
   line-height: 1.3;
 }
-.editor-content .ProseMirror h3::before { content: '###'; }
 
-/* H4–H6 в спеке нет: продолжаем шкалу вниз, символ — 12,5px */
+/* H4–H6 в спеке нет: продолжаем шкалу вниз */
 .editor-content .ProseMirror :is(h4, h5, h6) {
-  --md-size: 12.5px; --md-top: 3px; --md-lh: 1.35;
   font-weight: 600;
   line-height: 1.35;
 }
-.editor-content .ProseMirror h4 { --md-count: 4; font-size: 17px; }
-.editor-content .ProseMirror h5 { --md-count: 5; font-size: 15.5px; }
-.editor-content .ProseMirror h6 { --md-count: 6; font-size: 14px; color: var(--muted); }
-.editor-content .ProseMirror h4::before { content: '####'; }
-.editor-content .ProseMirror h5::before { content: '#####'; }
-.editor-content .ProseMirror h6::before { content: '######'; }
+.editor-content .ProseMirror h4 { font-size: 17px; }
+.editor-content .ProseMirror h5 { font-size: 15.5px; }
+.editor-content .ProseMirror h6 { font-size: 14px; color: var(--muted); }
 
 /* ── Текст ───────────────────────────────────────────────────────────────── */
 

@@ -183,7 +183,7 @@ function HeadingDropdown({ editor, direction = 'up' }) {
               className={`menu-item${activeLevel === level ? ' menu-item--active' : ''}`}
               onClick={() => { editor.chain().focus().toggleHeading({ level }).run(); setOpen(false) }}
             >
-              <span className="toolbar-menu__md" aria-hidden="true">{'#'.repeat(level)}</span>
+              <span className="toolbar-menu__md" aria-hidden="true">H{level}</span>
               Заголовок {level} <kbd>⌘⌥{level}</kbd>
             </button>
           ))}

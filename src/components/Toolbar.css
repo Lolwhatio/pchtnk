@@ -85,12 +85,13 @@
   right: 0;
 }
 
-/* Символ разметки у пунктов «Заголовок N» — тот же, что в тексте */
+/* Метка уровня у пунктов «Заголовок N» — та же, что в поле у текста */
 .toolbar-menu__md {
-  width: 46px;
+  width: 26px;
   flex: none;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: var(--fs-label);
+  font-weight: 700;
   color: var(--syntax);
 }
 

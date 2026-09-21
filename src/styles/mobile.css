@@ -32,10 +32,11 @@
   .editor-column { gap: 22px; }
 
   /* Шкала заголовков на ступень мельче: 38px на экране в 375 — это
-     два слова в строке */
-  .editor-content .ProseMirror h1 { font-size: 30px; --md-size: 22px; --md-top: 2px; }
-  .editor-content .ProseMirror h2 { font-size: 22px; --md-size: 17px; --md-top: 1px; }
-  .editor-content .ProseMirror h3 { font-size: 18px; --md-size: 14px; }
+     два слова в строке. Метки H1–H6 здесь не видны: поля слева нет
+     (см. @container editor в Editor.css) */
+  .editor-content .ProseMirror h1 { font-size: 30px; }
+  .editor-content .ProseMirror h2 { font-size: 22px; }
+  .editor-content .ProseMirror h3 { font-size: 18px; }
 
   /* ── Боковые панели → слои поверх текста ──
      Слой занимает тело приложения под шапкой, какой бы высоты она ни была
