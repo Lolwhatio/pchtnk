@@ -1,0 +1,202 @@
+/* Капсула знака. Геометрия приходит переменными из Capsule.jsx
+   (--H, --eye, --gap, --pad, --stroke, --font, --bridge-w, --bridge-h). */
+
+.capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap);
+  height: var(--H);
+  padding: 0 var(--pad);
+  border-radius: calc(var(--H) / 2);
+  box-sizing: border-box;
+  flex: none;
+  vertical-align: middle;
+  /* Unifix SP — юникейсная гарнитура с одним начертанием: имя всегда
+     строчными, синтетический bold и обводку не применяем */
+  font-family: var(--font-logo);
+  font-size: var(--font);
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Контурный локап — версия для интерфейса: прозрачная заливка, обводка
+   цветом границы темы, имя цветом ink (шапка) или muted (статус-бар) */
+.capsule--outline {
+  border: var(--stroke) solid var(--border);
+  color: var(--ink);
+}
+.capsule--outline.capsule--muted { color: var(--muted); }
+
+/* Залитая капсула — основной локап и маскот в уведомлениях */
+.capsule--filled {
+  background: var(--capsule-fill);
+  color: var(--capsule-name);
+}
+
+/* Знак без слота — два кружка по центру капсулы шириной в две высоты */
+.capsule--bare {
+  min-width: calc(var(--H) * 2);
+  justify-content: center;
+}
+
+.capsule--button {
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+.capsule--outline.capsule--button:hover { border-color: var(--border-strong); }
+
+/* ── Слот ─────────────────────────────────────────────────────────────── */
+/* Ширину ставит Capsule.jsx по метрикам набранного текста; двигаются
+   только края капсулы, глаза остаются собой. Текст прижат влево —
+   новая буква проявляется по мере того, как слот расходится. */
+
+.capsule__slot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  overflow: hidden;
+  flex: none;
+  transition: width 240ms var(--ease-slot);
+}
+
+/* pre, а не nowrap: иначе пробел в конце набранного схлопывается,
+   и на «1 234 слова» курсор замирал на пробеле, а слот не расходился */
+.capsule__text {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  white-space: pre;
+}
+
+.capsule__bridge {
+  width: var(--bridge-w);
+  height: var(--bridge-h);
+  border-radius: calc(var(--bridge-h) / 2);
+  background: var(--bridge);
+  flex: none;
+}
+.capsule--filled .capsule__bridge { background: var(--capsule-bridge); }
+
+/* Курсор набора: мигает 500/500 мс, цвет ветки; 4×38 при кегле 44 */
+.capsule__caret {
+  width: max(1.5px, calc(var(--font) * 0.09));
+  height: calc(var(--font) * 0.86);
+  margin-left: calc(var(--font) * 0.07);
+  border-radius: 2px;
+  background: var(--accent);
+  flex: none;
+  animation: capsule-caret 1s steps(1) infinite;
+}
+@keyframes capsule-caret {
+  50% { opacity: 0; }
+}
+
+/* ── Глаза ────────────────────────────────────────────────────────────── */
+/* Глаз умеет ровно три вещи: менять высоту, становиться куполом ^_^
+   и становиться кольцом. Ни зрачков, ни бликов, ни смещения по вертикали.
+   Цвета не зависят от темы: логотип не перекрашивается никогда. */
+
+.capsule__eye {
+  width: var(--eye);
+  height: var(--eye);
+  border-radius: calc(var(--eye) / 2);
+  border: 0 solid transparent;
+  box-sizing: border-box;
+  flex: none;
+  transition:
+    height 130ms var(--ease-blink),
+    border-radius 180ms var(--ease-slot),
+    transform 240ms var(--ease-slot),
+    background-color 120ms ease,
+    border-width 120ms ease;
+}
+.capsule__eye--l { background-color: var(--eye-left); }
+.capsule__eye--r { background-color: var(--eye-right); }
+
+/* Моргание: оба глаза схлопываются в чёрточку и возвращаются */
+.capsule--blink .capsule__eye { height: calc(var(--eye) * 0.25); }
+
+/* Печатаете — гипножаба: глаза по очереди раздуваются и опадают
+   в противофазе, смена каждые 240 мс */
+.capsule--eyes-typing .capsule__eye {
+  animation: capsule-toad 480ms var(--ease-slot) infinite;
+}
+.capsule--eyes-typing .capsule__eye--r { animation-delay: -240ms; }
+@keyframes capsule-toad {
+  0%, 100% { transform: scale(0.84); }
+  50%      { transform: scale(1.16); }
+}
+
+/* Подмигнуть: левый — в чёрточку, правый чуть подрастает */
+.capsule--eyes-wink .capsule__eye--l { height: calc(var(--eye) * 0.2); }
+.capsule--eyes-wink .capsule__eye--r { transform: scale(1.08); }
+
+/* Сохранено: купола вверх — ^_^ */
+.capsule--eyes-saved .capsule__eye {
+  height: calc(var(--eye) / 2);
+  border-radius: calc(var(--eye) / 2) calc(var(--eye) / 2) 0 0;
+  transition:
+    height 220ms ease-out,
+    border-radius 220ms ease-out,
+    transform 240ms var(--ease-slot),
+    background-color 120ms ease;
+}
+
+/* Ожидание: правый глаз — кольцо и дышит. Единственная непрерывная
+   анимация в системе — она означает, что процесс идёт */
+.capsule--eyes-waiting .capsule__eye--r {
+  background-color: transparent;
+  border-width: calc(var(--eye) * 0.3);
+  border-color: var(--eye-right);
+  animation: capsule-breathe 1.4s ease-in-out infinite;
+}
+@keyframes capsule-breathe {
+  0%, 100% { transform: scale(0.88); }
+  50%      { transform: scale(1.12); }
+}
+
+/* Ошибка: оба глаза розовеют и на мгновение сужаются. Без тряски —
+   знак не дёргается, цвет говорит сам */
+.capsule--eyes-error .capsule__eye {
+  background-color: var(--error);
+  animation: capsule-squint 400ms var(--ease-blink);
+}
+@keyframes capsule-squint {
+  50% { height: calc(var(--eye) * 0.67); }
+}
+/* В Некрасовской ошибка совпадает с акцентом — там она обводкой */
+[data-palette="nekrasovskaya"] .capsule--eyes-error .capsule__eye {
+  background-color: transparent;
+  border-width: calc(var(--eye) * 0.3);
+  border-color: var(--error);
+}
+
+/* Взгляд: оба глаза сдвигаются вбок и возвращаются */
+.capsule--eyes-look .capsule__eye {
+  animation: capsule-look 840ms var(--ease-slot);
+}
+@keyframes capsule-look {
+  50% { transform: translateX(calc(var(--eye) * 0.17)); }
+}
+
+/* Сон и фокус: оба глаза — чёрточки, статично */
+.capsule--eyes-sleep .capsule__eye {
+  height: calc(var(--eye) * 0.3);
+  transition: height 200ms var(--ease-blink), background-color 120ms ease;
+}
+
+/* «Уменьшить движение»: остаётся только смена высоты глаз,
+   слот переключается мгновенно */
+@media (prefers-reduced-motion: reduce) {
+  .capsule__eye {
+    animation: none !important;
+    transform: none !important;
+  }
+  .capsule__slot { transition: none; }
+  .capsule__caret { animation: none; }
+}
