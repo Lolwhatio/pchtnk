@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:icons": "node scripts/check-icons.mjs",
+    "icons": "node scripts/build-icons.mjs",
     "preview": "vite preview",
     "electron:dev": "vite build && electron electron/main.cjs",
     "electron:build": "ELECTRON=1 vite build && electron-builder --mac --arm64"
@@ -34,7 +35,7 @@
           ]
         }
       ],
-      "icon": "public/favicon.svg"
+      "icon": "build/icon.icns"
     },
     "dmg": {
       "title": "Печатники",

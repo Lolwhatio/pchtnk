@@ -8,10 +8,10 @@ function createWindow() {
     minWidth: 760,
     minHeight: 500,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 12, y: 13 }, // вертикально по центру шапки 40px
+    trafficLightPosition: { x: 18, y: 21 }, // по центру шапки 57px, по её левому полю
     vibrancy: 'under-window',
     visualEffectState: 'active',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#0F1810', // холст ветки 10 — окно не мигает серым до загрузки
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
