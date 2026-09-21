@@ -19,7 +19,7 @@
   --rail-off:      #2C4431;  /* линия ветки, непройденный участок        */
   --faint:         #7FA381;  /* третий план: даты, мелкие подписи        */
   --muted:         #8FA991;  /* второй план: описания                    */
-  --text:          #CCDFCC;  /* основной текст                           */
+  --text:          #DCE9DA;  /* основной текст                           */
   --ink:           #F2F6EF;  /* заголовки, активные элементы             */
   --syntax:        #567E5E;  /* символы markdown-разметки                */
   --row-active:    #16241A;  /* выбранная строка списка, ховер ghost     */
@@ -141,6 +141,11 @@
   --cell-selection: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
+/* Основной текст тёмной темы светлее, чем в спеке (#CCDFCC у ветки 10):
+   Literata на тёмном в 17,5px читалась тусклой. Взят тон #DCE9DA из самого
+   справочника дизайна, у остальных веток — тот же сдвиг к цвету заголовков
+   (42% пути от спекового text к ink). */
+
 /* ── Ветки ────────────────────────────────────────────────────────────────
  * Фон тёмной темы — почти чёрный с примесью тона ветки. В спеке у каждой
  * ветки четырнадцать значений; три недостающих (border-strong, row-active,
@@ -163,7 +168,7 @@
   --border-soft: #161F2A;
   --rail-off:    #26374B;
   --ink:         #EEF3F9;
-  --text:        #C6D4E2;
+  --text:        #D7E1EC;
   --muted:       #93A6BC;
   --faint:       #8195AC;
   --syntax:      #5A7290;
@@ -183,7 +188,7 @@
   --border-soft: #241A12;
   --rail-off:    #453120;
   --ink:         #F8F1E9;
-  --text:        #DFD0BE;
+  --text:        #E9DED0;
   --muted:       #B9A288;
   --faint:       #A78F74;
   --syntax:      #7A6249;
@@ -203,7 +208,7 @@
   --border-soft: #242010;
   --rail-off:    #463D1C;
   --ink:         #F8F4E8;
-  --text:        #DFD8BE;
+  --text:        #E9E4D0;
   --muted:       #BBB289;
   --faint:       #A99F74;
   --syntax:      #7C7349;
@@ -223,7 +228,7 @@
   --border-soft: #102322;
   --rail-off:    #1D403F;
   --ink:         #ECF6F6;
-  --text:        #C3DBDB;
+  --text:        #D4E6E6;
   --muted:       #8FB3B3;
   --faint:       #7DA2A2;
   --syntax:      #4F7676;
@@ -243,7 +248,7 @@
   --border-soft: #25131E;
   --rail-off:    #452539;
   --ink:         #F8ECF3;
-  --text:        #E0C7D5;
+  --text:        #EAD6E2;
   --muted:       #BC94AA;
   --faint:       #AA8296;
   --syntax:      #7B5468;
