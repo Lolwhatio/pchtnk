@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import TypografPanel from './TypografPanel'
+import MarkdownSource from './MarkdownSource'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
 import { IconSettings, IconBack } from './icons'
 import { pdfCss, splitPages, imagesReady, CONTENT_W, CONTENT_H } from '../utils/pdfLayout'
@@ -206,14 +207,43 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
   const markdown = useMemo(() => (editor ? editorToMarkdown(editor) : ''), [editor])
 
   const doneTimer = useRef(null)
-  const flashDone = (name) => {
-    setDone(name)
+  const flashDone = (text) => {
+    setDone(text)
     if (doneTimer.current) clearTimeout(doneTimer.current)
     doneTimer.current = setTimeout(() => setDone(null), 3000)
   }
   useEffect(() => () => { if (doneTimer.current) clearTimeout(doneTimer.current) }, [])
 
-  const handleExportPDF = async () => {
+  const FORMATS = [
+    { id: 'md',   label: 'MD',   ext: '.md',   mime: 'text/markdown',   kind: 'Markdown', hint: 'Исходник markdown — для гита, заметок, других редакторов' },
+    { id: 'html', label: 'HTML', ext: '.html', mime: 'text/html',       kind: 'HTML',     hint: 'Готовая веб-страница со стилями' },
+    { id: 'pdf',  label: 'PDF',  ext: '.pdf',  mime: 'application/pdf', kind: 'PDF',      hint: 'Постранично, для печати и отправки' },
+  ]
+  const current = FORMATS.find(f => f.id === format)
+
+  const htmlFile = () =>
+    `<!DOCTYPE html>\n<html lang="ru">\n<head>\n<meta charset="UTF-8">\n<title>${fileName}</title>\n<style>\n${PRINT_STYLES}\n</style>\n</head>\n<body>\n${html}\n</body>\n</html>`
+
+  // Подтверждение под шапкой: сохранили в выбранное место или отдали браузеру
+  const finish = (how, name) => flashDone(how === 'saved' ? `Файл ${name} сохранен` : `Скачан файл ${name}`)
+
+  // Место для файла спрашиваем сразу по нажатию: диалог открывается только
+  // в ответ на действие человека, а PDF собирается секунды — к концу сборки
+  // разрешение открыть диалог уже истекло бы. Поэтому сначала «куда»,
+  // потом сборка и запись.
+  const handleDownload = async () => {
+    const f = current
+    const name = fileName + f.ext
+    let target
+    try {
+      target = await pickSaveTarget(name, f)
+    } catch {
+      return // передумали в диалоге — ничего не сохраняем
+    }
+
+    if (f.id === 'md')   return finish(await saveFile(new Blob([markdown], { type: f.mime }), name, target), name)
+    if (f.id === 'html') return finish(await saveFile(new Blob([htmlFile()], { type: f.mime }), name, target), name)
+
     setBuilding(true)
     setProgress(null)
     setFailed(null)
@@ -223,12 +253,7 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
         // Молчащая кнопка «Собираем…» в такой паузе выглядит как зависшая.
         onProgress: (done, total) => setProgress(total > 1 ? { done, total } : null),
       })
-
-      const url = URL.createObjectURL(blob)
-      const a = Object.assign(document.createElement('a'), { href: url, download: fileName + '.pdf' })
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-      flashDone(fileName + '.pdf')
+      finish(await saveFile(blob, name, target), name)
     } catch (err) {
       // Молчать нельзя: кнопка вернётся в исходное, файла не будет,
       // и человек решит, что просто не попал по ней
@@ -237,30 +262,6 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
       setBuilding(false)
       setProgress(null)
     }
-  }
-
-  const handleExportHTML = () => {
-    const full = `<!DOCTYPE html>\n<html lang="ru">\n<head>\n<meta charset="UTF-8">\n<title>${fileName}</title>\n<style>\n${PRINT_STYLES}\n</style>\n</head>\n<body>\n${html}\n</body>\n</html>`
-    download(full, fileName + '.html', 'text/html')
-    flashDone(fileName + '.html')
-  }
-
-  const handleExportMarkdown = () => {
-    download(markdown, fileName + '.md', 'text/markdown')
-    flashDone(fileName + '.md')
-  }
-
-  const FORMATS = [
-    { id: 'md',   label: 'MD',   ext: '.md',   hint: 'Исходник markdown — для гита, заметок, других редакторов' },
-    { id: 'html', label: 'HTML', ext: '.html', hint: 'Готовая веб-страница со стилями' },
-    { id: 'pdf',  label: 'PDF',  ext: '.pdf',  hint: 'Постранично, для печати и отправки' },
-  ]
-  const current = FORMATS.find(f => f.id === format)
-
-  const handleDownload = () => {
-    if (format === 'md')   return handleExportMarkdown()
-    if (format === 'html') return handleExportHTML()
-    return handleExportPDF()
   }
 
   return (
@@ -310,7 +311,7 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
       </div>
 
       {done && (
-        <div className="preview-done" role="status">Скачан файл {done}</div>
+        <div className="preview-done" role="status">{done}</div>
       )}
 
       {failed && (
@@ -325,7 +326,7 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
           переключались бы, а на экране ничего не менялось. */}
       <div className={`preview-body${format === 'pdf' ? ' preview-body--paper' : ''}`}>
         {format === 'md' ? (
-          <pre className="preview-source">{markdown}</pre>
+          <MarkdownSource markdown={markdown} fileName={fileName} />
         ) : format === 'pdf' ? (
           <PdfPaper html={html} fileName={fileName} />
         ) : (
@@ -349,14 +350,43 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
   )
 }
 
-function download(content, filename, type) {
-  const blob = new Blob([content], { type })
+// ── Сохранение файла ────────────────────────────────────────────────────────
+// Где есть системный диалог «Сохранить как» (Chrome, Edge, десктопная
+// версия) — через него: так же работает ⌘S, и человек видит, куда кладёт
+// файл. Где нет (Safari, Firefox) — обычным скачиванием. Встроенный браузер
+// некоторых приложений скачивание по ссылке молча глотает, а диалог
+// показывает — раньше в нём «Скачан файл» появлялось, а файла не было.
+
+// null — диалога нет или его не пустили: тогда скачиваем.
+// Отмена в диалоге бросает AbortError наверх — сохранять нечего.
+async function pickSaveTarget(name, f) {
+  if (!window.showSaveFilePicker) return null
+  try {
+    return await window.showSaveFilePicker({
+      suggestedName: name,
+      types: [{ description: f.kind, accept: { [f.mime]: [f.ext] } }],
+    })
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err
+    return null
+  }
+}
+
+// 'saved' — записали туда, куда показал человек; 'downloaded' — скачали
+async function saveFile(blob, name, target) {
+  if (target) {
+    const writable = await target.createWritable()
+    await writable.write(blob)
+    await writable.close()
+    return 'saved'
+  }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = filename
+  a.download = name
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return 'downloaded'
 }

@@ -40,20 +40,6 @@
 
 .preview-download { min-width: 118px; }
 
-/* ── Исходник markdown ──────────────────────────── */
-
-.preview-source {
-  width: 100%;
-  max-width: var(--editor-width);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--text);
-  white-space: pre-wrap;
-  word-break: break-word;
-  tab-size: 2;
-}
-
 .preview-body {
   flex: 1;
   overflow-y: auto;

@@ -1,0 +1,126 @@
+/* Файл .md в предпросмотре экспорта — карточка с исходником.
+   Набран, как текст в макете редактора: абзацы — Literata, заголовки —
+   Onest, а моноширинным только символы разметки и код. Сплошь
+   моноширинный исходник читался технической распечаткой. Цвета — как
+   у блока кода в справочнике: разметка цветом syntax, жирный — цветом
+   ветки, код — цветом пересадки. */
+
+.md-file {
+  width: 100%;
+  max-width: calc(var(--editor-width) + 68px);
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  overflow: hidden;
+}
+
+.md-file__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-ui);
+}
+
+.md-file__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
+  line-height: 1;
+  flex: none;
+}
+
+.md-file__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-row);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.md-file__meta {
+  flex: none;
+  font-size: var(--fs-caption);
+  color: var(--faint);
+}
+
+.md-file__body {
+  padding: 26px 34px 34px;
+  font-family: var(--font-editor);
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text);
+  tab-size: 2;
+}
+
+/* Строка файла. Пустая держит высоту строки — иначе абзацы слипались бы */
+.md-line {
+  min-height: 1.75em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Символы разметки — моноширинным и мельче, как # и - в макете редактора */
+.md-syntax {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  color: var(--syntax);
+}
+
+.md-heading {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--ink);
+}
+.md-heading--1 { font-size: 1.3em; letter-spacing: -0.01em; }
+.md-heading--2 { font-size: 1.15em; }
+.md-line:has(.md-heading) { padding-top: 0.2em; }
+
+.md-bold    { color: var(--accent-ink); font-weight: 700; }
+.md-italic  { font-style: italic; }
+.md-strike  { color: var(--faint); text-decoration: line-through; }
+.md-code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  color: var(--transfer-ink);
+}
+.md-link    { color: var(--accent-ink); }
+.md-image   { color: var(--muted); }
+.md-url {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--faint);
+}
+.md-doc     { color: var(--ink); text-decoration: underline; text-decoration-color: var(--transfer); text-underline-offset: 3px; }
+.md-fn      { color: var(--accent-ink); }
+.md-tag {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--syntax);
+}
+/* Таблица держится на выравнивании столбцов — её строки моноширинные */
+.md-line--table {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+}
+.md-line--table .md-syntax { font-size: 1em; }
+.md-quote   { color: var(--muted); font-style: italic; }
+
+/* Выделять из предпросмотра удобно кусками: разметка копируется вместе
+   с текстом, как в самом файле */
+.md-file__body ::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
