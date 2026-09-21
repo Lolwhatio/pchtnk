@@ -3,7 +3,6 @@ import Editor from './components/Editor'
 import Toolbar from './components/Toolbar'
 import Preview from './components/Preview'
 import Rail from './components/Rail'
-import StatusBar from './components/StatusBar'
 import Capsule from './components/Capsule'
 import Settings from './components/Settings'
 import DocsPanel from './components/DocsPanel'
@@ -19,7 +18,7 @@ import OverflowMenu from './components/OverflowMenu'
 import Notice from './components/Notice'
 import {
   IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
-  IconTOC, IconSettings, IconTools, IconExport, IconShare,
+  IconDocs, IconTOC, IconSettings, IconTools, IconExport, IconShare,
   IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible,
 } from './components/icons'
 import Typograf from 'typograf'
@@ -29,7 +28,7 @@ import { useTooltips } from './hooks/useTooltips'
 import { useMascot } from './hooks/useMascot'
 import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdown'
 import { stripInvisibles, pluralInvisible } from './utils/invisibles'
-import { isPalette, DEFAULT_PALETTE, paletteById } from './utils/palettes'
+import { isPalette, DEFAULT_PALETTE } from './utils/palettes'
 import { exportKnowledgeBase } from './utils/export'
 import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
 import './App.css'
@@ -109,8 +108,8 @@ const WELCOME_MD = `# Добро пожаловать в Печатники
 - **Типограф** — расставит правильные кавычки, тире и неразрывные пробелы (кнопка в шапке или ⌘⇧T).
 - **Проверка орфографии** через Яндекс.Спеллер (в меню инструментов, ⌘⇧Y).
 - **Деёизация** — заменит ё на е для текстов, где принята буква е.
-- **Ветка** — структура документа слева: каждый заголовок становится станцией, а линия показывает, где вы сейчас.
-- **Документы и проекты** — все ваши тексты живут в панели слева (нажмите на знак в левом верхнем углу).
+- **Структура** — заголовки документа слева, как станции на линии метро: линия показывает, где вы сейчас.
+- **Документы и проекты** — все ваши тексты живут в панели слева (кнопка «Документы» в шапке).
 - **Поделиться заметкой** — документ превращается в ссылку без облачного хранения, при желании с паролем.
 - **Экспорт** — Markdown, PDF или вся база знаний одним файлом.
 
@@ -215,25 +214,17 @@ function getBootstrap() {
   return _bootstrap
 }
 
-// ── Подписи ──────────────────────────────────────────────────────────────────
-
-// 1 слово, 2 слова, 5 слов, 21 слово
-function pluralWords(n) {
-  const d = n % 10, h = n % 100
-  if (d === 1 && h !== 11) return 'слово'
-  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return 'слова'
-  return 'слов'
-}
-
-// «20 августа», а для прошлых лет — «20 августа 2025»
-function longDate(ts) {
+// ── Дата над текстом ─────────────────────────────────────────────────────────
+// Число — в кружок, остальное — рядом: «(21) сентября», а для прошлых
+// лет — «(20) августа 2025»
+function docDate(ts) {
   const d = new Date(ts)
   const sameYear = d.getFullYear() === new Date().getFullYear()
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) })
+  const month = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) })
+    .replace(/^\d+\s*/, '')
     .replace(/\s*г\.$/, '')
+  return { day: d.getDate(), month }
 }
-
-const paletteNum = (id) => paletteById(id).num
 
 // ── Мобильный экран ──────────────────────────────────────────────────────────
 // На телефоне нижний тулбар закрыт клавиатурой, поэтому инструменты
@@ -1281,10 +1272,9 @@ export default function App() {
     setLinkDialog(null)
   }, [editor])
 
-  // ── Ветка, фокус, документы ───────────────────────────────────────────────
-  // Фокус прячет ветку, а открыть ветку из фокуса — значит из него выйти:
-  // так в макете. Состояние ветки при этом помнится, и после фокуса она
-  // возвращается, если была открыта.
+  // ── Структура, фокус, документы ───────────────────────────────────────────
+  // Фокус прячет структуру, а открыть её из фокуса — значит из него выйти:
+  // так в макете. Открыта ли она, помнится, и после фокуса она возвращается.
   const rememberRail = useCallback((open) => {
     if (!isMobile) localStorage.setItem(RAIL_KEY, open ? '1' : '0')
   }, [isMobile])
@@ -1330,16 +1320,8 @@ export default function App() {
     ? 'sleep'
     : mascot.eyes
 
-  // Капсула в статус-баре по щелчку печатает в слот, сколько написано
-  const [capsuleSay, setCapsuleSay] = useState(null)
   // Чистый лист датируется началом сессии: он и заведён в этот момент
   const [sessionStart] = useState(() => Date.now())
-  const sayWordCount = useCallback(() => {
-    if (!editor) return
-    const text = editor.getText().trim()
-    const n = text ? text.split(/\s+/).length : 0
-    setCapsuleSay({ text: `${n.toLocaleString('ru')} ${pluralWords(n)}`, key: Date.now() })
-  }, [editor])
 
   // ── Глобальные горячие клавиши ────────────────────────────────────────────
   useEffect(() => {
@@ -1410,10 +1392,12 @@ export default function App() {
   // Лаунчер держим в DOM (для плавного затухания), а видимостью правит recentVisible
   const mountRecent = !focusMode && !showPreview && !showDocs && recentDocs.length > 0
 
-  // Строка над текстом: номер ветки, дата документа и его проект
+  // Строка над текстом: число, когда заведён документ, — в кружке, рядом
+  // месяц и проект. У нового листа это сегодняшний день
   const currentDoc = docs.find(d => d.id === currentDocId)
   const project = currentDoc?.projectId ? projects.find(p => p.id === currentDoc.projectId) : null
-  const docMeta = [longDate(currentDoc?.createdAt ?? sessionStart), project?.title].filter(Boolean).join(' · ')
+  const metaDate = docDate(currentDoc?.createdAt ?? sessionStart)
+  const docMeta = `${metaDate.month} · ${project?.title || 'без проекта'}`
 
   const startRename = () => { nameEditStartRef.current = fileName; setIsEditingName(true) }
 
@@ -1472,7 +1456,7 @@ export default function App() {
           {
             key: 'rail',
             icon: <IconTOC />,
-            label: 'Ветка — структура',
+            label: 'Структура',
             active: railOpen,
             onClick: toggleRail,
           },
@@ -1519,19 +1503,31 @@ export default function App() {
     <div className={`app${focusMode ? ' app--focus' : ''}${uiFaded ? ' app--faded' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
       {!showPreview && (
         <header className="app-header">
-          {/* Знак — он же вход в список документов: левый верхний угол,
-              рядом с панелью, которую открывает */}
+          {/* Знак — логотип и индикатор состояния, не кнопка. В покое между
+              глазами перемычка; при запуске знак печатает своё имя и стирает */}
           <Capsule
             className="app-header__logo"
             size={36}
-            slot="pchtnk"
-            intro
+            intro="pchtnk"
             eyes={headerEyes}
-            onClick={toggleDocs}
-            title="Документы"
-            aria-label="Документы"
-            aria-pressed={showDocs}
+            role="img"
+            aria-label="Печатники"
           />
+
+          {/* Документы и структура — рядом со знаком, у левого края:
+              обе панели открываются слева */}
+          <nav className="app-header__nav" aria-label="Панели">
+            <button className="chip" onClick={toggleDocs} aria-pressed={showDocs} title="Все документы и проекты">
+              <IconDocs size={14} />
+              <span className="chip__label">Документы</span>
+            </button>
+            {!isMobile && (
+              <button className="chip" onClick={toggleRail} aria-pressed={railVisible} title="Заголовки документа и ссылки на другие">
+                <span className="glyph-rail" aria-hidden="true"><i /><i /><i /></span>
+                <span className="chip__label">Структура</span>
+              </button>
+            )}
+          </nav>
 
           <div className="app-header__doc">
             {isEditingName ? (
@@ -1577,7 +1573,7 @@ export default function App() {
             </button>
           )}
 
-          {/* ← Назад — появляется при переходе по пересадке.
+          {/* ← Назад — появляется при переходе по ссылке на документ.
               На узком экране только значок: с подписью шапка переполняется. */}
           {navCanBack && (
             <button className="chip" onClick={handleNavBack} title="Назад" aria-label="Назад">
@@ -1605,10 +1601,6 @@ export default function App() {
 
             {!isMobile && (
               <div className="app-header__controls">
-                <button className="chip" onClick={toggleRail} aria-pressed={railVisible} title="Структура документа">
-                  <span className="glyph-rail" aria-hidden="true"><i /><i /><i /></span>
-                  <span className="chip__label">Ветка</span>
-                </button>
                 <button className="chip" onClick={toggleFocus} aria-pressed={focusMode} title="Режим фокуса (⌘⇧D)">
                   <span className="glyph-ring" aria-hidden="true" />
                   <span className="chip__label">Фокус</span>
@@ -1651,7 +1643,6 @@ export default function App() {
           <Rail
             editor={editor}
             docs={docs}
-            palette={palette}
             onTransfer={(id) => handleSelectDoc(id, true)}
           />
         )}
@@ -1677,7 +1668,7 @@ export default function App() {
             onDocSelect={handleSelectDoc}
             stopPhrases={stopPhrases}
             typograf={typografEnabled ? tp : null}
-            lineNum={paletteNum(palette)}
+            metaDay={metaDate.day}
             meta={docMeta}
           >
             {mountRecent && (
@@ -1726,19 +1717,10 @@ export default function App() {
       </div>
 
       {/* Форматирование — в нижней панели, только на десктопе: на телефоне
-          её закрывает клавиатура. В фокусе панель уходит, статус-бар остаётся. */}
+          её закрывает клавиатура. В фокусе панель уходит.
+          Статус-бара из макета нет: тема и ветка есть в настройках, логотип —
+          в шапке, а полоса под ними отнимала высоту у текста. */}
       {!showPreview && !isMobile && !focusMode && <Toolbar editor={editor} />}
-
-      {!showPreview && !isMobile && (
-        <StatusBar
-          status={mascot.status}
-          eyes={mascot.eyes}
-          say={capsuleSay}
-          onCapsule={sayWordCount}
-          palette={palette}
-          onPalette={setPalette}
-        />
-      )}
 
       {spellErrors.length > 0 && (
         <SpellDialog

@@ -3,7 +3,7 @@
 .notice {
   position: fixed;
   left: 50%;
-  bottom: 112px;               /* над тулбаром и статус-баром */
+  bottom: 64px;                /* над нижней панелью форматирования */
   transform: translateX(-50%);
   z-index: 200;
 

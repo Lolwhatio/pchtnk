@@ -2,7 +2,7 @@
    и исправление видно на месте */
 .spell-dialog {
   position: fixed;
-  bottom: 112px; /* над тулбаром и статус-баром */
+  bottom: 64px; /* над нижней панелью форматирования */
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;

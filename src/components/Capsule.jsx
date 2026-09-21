@@ -2,8 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './Capsule.css'
 
 // Капсула пересадки — знак Печатников. Логотип, маскот и индикатор
-// состояния — это один компонент в трёх местах: шапка, статус-бар,
-// уведомление. Всё движение интерфейса живёт здесь; больше в приложении
+// состояния — это один компонент в двух местах: шапка и уведомление. Всё движение интерфейса живёт здесь; больше в приложении
 // ничего не двигается (design_handoff_pechatniki/README.md, «Движение»).
 //
 //   size    — высота капсулы H, от неё считается вся геометрия
@@ -12,8 +11,8 @@ import './Capsule.css'
 //   say     — { text, key }: напечатать, подержать 2 с и стереть обратно
 //   eyes    — 'rest' | 'typing' | 'saved' | 'waiting' | 'error'
 //             | 'wink' | 'look' | 'sleep'
-//   tone    — цвет имени в контурной версии: 'ink' | 'muted'
-//   intro   — при появлении начать с перемычки и напечатать slot
+//   intro   — текст, который знак один раз печатает при появлении
+//             и стирает обратно (в шапке — имя поверх перемычки)
 //   blink   — моргать в покое раз в 4–7 с
 //
 // Если передан onClick, капсула становится кнопкой.
@@ -70,8 +69,7 @@ export default function Capsule({
   slot = null,
   say = null,
   eyes = 'rest',
-  tone = 'ink',
-  intro = false,
+  intro = null,
   blink = true,
   className = '',
   onClick,
@@ -86,13 +84,6 @@ export default function Capsule({
   // Так «pchtnk» → «1 234 слова» само распадается на стирание и набор,
   // а перемычка возвращается, только когда слот опустел.
   const [typed, setTyped] = useState(() => (intro ? '' : (slot ?? '')))
-  const [started, setStarted] = useState(!intro)
-
-  useEffect(() => {
-    if (started) return
-    const t = setTimeout(() => setStarted(true), INTRO_DELAY)
-    return () => clearTimeout(t)
-  }, [started])
 
   // Реплика заводится по смене ключа, а не текста: одну и ту же фразу
   // можно сказать дважды подряд
@@ -102,7 +93,15 @@ export default function Capsule({
   }
   const message = spoken.text
 
-  const target = (!started && !reduced) ? '' : (message ?? slot ?? '')
+  // Вступление — та же реплика, только сказанная один раз сама: знак
+  // успевает появиться с перемычкой, потом печатает имя и стирает его
+  useEffect(() => {
+    if (!intro) return
+    const t = setTimeout(() => setSpoken(s => ({ ...s, text: intro })), INTRO_DELAY)
+    return () => clearTimeout(t)
+  }, [intro])
+
+  const target = message ?? slot ?? ''
   // «Уменьшить движение»: слот переключается сразу, без посимвольного набора
   const shown = reduced ? target : typed
   const animating = shown !== target
@@ -184,7 +183,6 @@ export default function Capsule({
   const cls = [
     'capsule',
     `capsule--${variant}`,
-    `capsule--${tone}`,
     `capsule--eyes-${eyes}`,
     blinking && 'capsule--blink',
     !hasSlot && 'capsule--bare',

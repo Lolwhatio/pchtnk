@@ -32,7 +32,7 @@ export default function DocLinkPopup({ query, coords, docs, selectedIdx, onSelec
       style={style}
       onMouseDown={e => e.preventDefault()} /* не снимаем фокус с редактора */
     >
-      <div className="dl-popup__hint">Пересадка на документ — выберите, куда</div>
+      <div className="dl-popup__hint">Ссылка на документ — выберите какой</div>
       {docs.length === 0 ? (
         <div className="dl-popup__empty">
           {query ? 'Нет совпадений' : 'Нет других документов'}

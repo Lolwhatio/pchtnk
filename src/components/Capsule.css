@@ -24,12 +24,11 @@
 }
 
 /* Контурный локап — версия для интерфейса: прозрачная заливка, обводка
-   цветом границы темы, имя цветом ink (шапка) или muted (статус-бар) */
+   цветом границы темы, имя цветом ink */
 .capsule--outline {
   border: var(--stroke) solid var(--border);
   color: var(--ink);
 }
-.capsule--outline.capsule--muted { color: var(--muted); }
 
 /* Залитая капсула — основной локап и маскот в уведомлениях */
 .capsule--filled {

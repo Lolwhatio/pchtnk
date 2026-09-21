@@ -54,8 +54,8 @@ export default function Settings({
       <div className="settings-body">
 
         {/* ── Вид ───────────────────────────────────
-            Тема и ветка есть и в шапке со статус-баром, но на телефоне их там
-            нет — поэтому и здесь, в одном месте со всеми настройками. */}
+            Тема есть и в шапке, но на телефоне её там нет — поэтому и здесь,
+            в одном месте со всеми настройками. Ветка — только здесь. */}
         <div className="settings-section-label">Вид</div>
         <div className="settings-row settings-row--stack">
           <span className="settings-row-name">Тема</span>

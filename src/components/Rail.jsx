@@ -1,13 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { paletteById } from '../utils/palettes'
 import './Rail.css'
 
-// Ветка — структура документа как схема линии метро.
+// Структура документа как схема линии метро.
 //
-// Станции — заголовки #, ## и ### по порядку, уровень задаёт размер точки
+// Станции — заголовки H1, H2 и H3 по порядку, уровень задаёт размер точки
 // и отступ. Линия до станции, в которой стоит курсор, — цветом ветки:
-// это пройденный участок. Ниже — пересадки, то есть ссылки [[…]] на другие
-// документы: щелчок переводит туда, как и щелчок по ссылке в тексте.
+// это пройденный участок. Ниже — ссылки [[…]] на другие документы:
+// щелчок переводит туда, как и щелчок по ссылке в тексте.
 //
 // Заменила оглавление: то же самое, только видно, где ты сейчас.
 
@@ -54,7 +53,7 @@ function activeIndex(stations, pos) {
   return idx
 }
 
-export default function Rail({ editor, docs, palette, onTransfer }) {
+export default function Rail({ editor, docs, onTransfer }) {
   const [stations, setStations] = useState([])
   const [active, setActive] = useState(-1)
   const [transfers, setTransfers] = useState([])
@@ -156,20 +155,18 @@ export default function Rail({ editor, docs, palette, onTransfer }) {
     if (dom instanceof HTMLElement) dom.scrollIntoView({ block: 'start' })
   }
 
-  const line = paletteById(palette)
   const known = new Set(docs.map(d => d.id))
 
   return (
     <nav className="rail" aria-label="Структура документа">
       <div className="rail__inner">
         <div className="rail__head">
-          <span className="rail__num" aria-hidden="true">{line.num}</span>
           <span className="rail__title">Структура</span>
         </div>
 
         {stations.length === 0 ? (
           <p className="rail__empty">
-            Заголовков пока нет. Строка, начатая с&nbsp;#, станет первой станцией
+            Заголовков пока нет. Сделайте строку заголовком — она станет первой станцией
           </p>
         ) : (
           <div className="rail__stations" ref={listRef}>
@@ -197,7 +194,7 @@ export default function Rail({ editor, docs, palette, onTransfer }) {
         )}
 
         <div className="rail__transfers">
-          <span className="rail__title">Пересадки</span>
+          <span className="rail__title">Ссылки</span>
           {transfers.length === 0 ? (
             <p className="rail__empty">
               Наберите [[ и название — здесь появится ссылка на другой документ

@@ -6,8 +6,9 @@
 }
 
 /* ── Шапка ────────────────────────────────────────────────────────────────
-   Слева знак (он же вход в документы), название и статус; справа —
-   обработка текста и файлы, затем «Ветка», «Фокус» и тема, как в макете. */
+   Слева знак, «Документы» и «Структура» (обе панели открываются слева),
+   затем название и статус; справа обработка текста и файлы, «Фокус»
+   и тема. */
 
 .app-header {
   position: relative;
@@ -33,6 +34,13 @@
   background: var(--surface);
   border-bottom: 1px solid var(--border-soft);
   pointer-events: none;
+}
+
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
 }
 
 .app-header__doc {
@@ -107,15 +115,18 @@
   margin-left: 10px;
 }
 
-/* В фокусе шапка — ровно та, что в макете: знак, название, статус
-   и три переключателя. Остальное ждёт выхода из фокуса. */
+/* В фокусе шапка остаётся с одними переключателями, инструменты ждут
+   выхода из фокуса */
 .app--focus .app-header__tools { display: none; }
 
-/* Узкое окно: подписи «Ветка» и «Фокус» уходят, остаются значки.
-   Назначение остаётся в подсказке. */
+/* Узкое окно: подписи кнопок-капсул уходят, остаются значки.
+   Назначение остаётся в подсказке. Кнопка — круг: ширина равна высоте,
+   какой бы та ни была (30px, на пальце 40px) */
 @media (max-width: 1180px) {
+  .app-header__nav .chip,
   .app-header__controls .chip {
-    width: 30px;
+    width: auto;
+    aspect-ratio: 1;
     padding: 0;
     justify-content: center;
   }
@@ -130,7 +141,7 @@
 }
 
 /* ── Авто-затухание при наборе ─────────────────────────────────────────────
-   Печатаешь — шапка, тулбар и статус-бар тают, двинул мышь или нажал
+   Печатаешь — шапка и нижняя панель тают, двинул мышь или нажал
    служебную клавишу — возвращаются. Знак не тает: пока идёт набор, он
    единственный спутник на экране, и гипножабу затем и рисовали.
 
@@ -139,14 +150,12 @@
    кнопку попасть легче, чем в видимую. */
 .app-header::before,
 .app-header > :not(.app-header__logo),
-.toolbar,
-.statusbar {
+.toolbar {
   transition: opacity 0.45s ease, visibility 0s;
 }
 .app--faded .app-header::before { opacity: 0; }
 .app--faded .app-header > :not(.app-header__logo),
-.app--faded .toolbar,
-.app--faded .statusbar {
+.app--faded .toolbar {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -155,8 +164,7 @@
 @media (prefers-reduced-motion: reduce) {
   .app-header::before,
   .app-header > :not(.app-header__logo),
-  .toolbar,
-  .statusbar { transition: none; }
+  .toolbar { transition: none; }
 }
 
 /* ── Electron macOS: отступ под кнопки закрыть/свернуть/развернуть ──

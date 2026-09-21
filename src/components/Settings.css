@@ -73,7 +73,7 @@
 .settings-row--stack > .seg { align-self: flex-start; }
 .settings-row--stack > .seg--wide { align-self: stretch; }
 
-/* ── Ветки: кружки с номером, как в статус-баре ─── */
+/* ── Ветки: кружки с номером, как на схеме метро ─── */
 
 .settings-lines {
   display: flex;

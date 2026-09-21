@@ -45,11 +45,12 @@
   gap: var(--block-gap);
 }
 
-/* Строка над текстом: кружок с номером ветки, дата и проект */
+/* Строка над текстом: число в кружке, рядом месяц и проект —
+   читается как одна дата, «(21) сентября · проект» */
 .editor-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   user-select: none;
 }
 .editor-meta__num {

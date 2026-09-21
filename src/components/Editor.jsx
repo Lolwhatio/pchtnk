@@ -765,7 +765,7 @@ const OptimaShortcuts = Extension.create({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Editor({ onReady, onChange, focusMode, initialContent, docs, onDocSelect, stopPhrases, typograf, lineNum, meta, children }) {
+export default function Editor({ onReady, onChange, focusMode, initialContent, docs, onDocSelect, stopPhrases, typograf, metaDay, meta, children }) {
   const wrapRef = useRef(null)
   // editorProps собираются один раз, поэтому режим читаем через реф —
   // иначе обработчик навсегда запомнит значение с первого рендера
@@ -1170,11 +1170,11 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
       onClick={handleWrapClick}
     >
       <div className="editor-column">
-        {/* Строка над текстом: номер ветки, дата и проект документа.
+        {/* Строка над текстом: число в кружке, месяц и проект документа.
             Не часть документа — в экспорт не попадает */}
         {meta && (
           <div className="editor-meta" contentEditable={false}>
-            <span className="editor-meta__num" aria-hidden="true">{lineNum}</span>
+            <span className="editor-meta__num">{metaDay}</span>
             <span className="editor-meta__text">{meta}</span>
           </div>
         )}
