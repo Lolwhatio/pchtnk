@@ -22,6 +22,18 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, '../dist/index.html'))
 
+  // В полноэкранном режиме macOS прячет кнопки окна — сообщаем странице,
+  // чтобы она убрала отступ под них (см. .is-fullscreen в App.css).
+  // Хватает одного класса на <html>, preload ради него не нужен.
+  const syncFullscreen = () => {
+    win.webContents
+      .executeJavaScript(`document.documentElement.classList.toggle('is-fullscreen', ${win.isFullScreen()})`)
+      .catch(() => {})
+  }
+  win.on('enter-full-screen', syncFullscreen)
+  win.on('leave-full-screen', syncFullscreen)
+  win.webContents.on('did-finish-load', syncFullscreen)
+
   // Открывать внешние ссылки в браузере, не в Electron
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)

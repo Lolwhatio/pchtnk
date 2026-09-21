@@ -159,10 +159,15 @@
   .statusbar { transition: none; }
 }
 
-/* ── Electron macOS: отступ под кнопки закрыть/свернуть/развернуть ── */
+/* ── Electron macOS: отступ под кнопки закрыть/свернуть/развернуть ──
+   Только пока они есть. В полноэкранном режиме macOS их прячет, и отступ
+   в 88px оставался пустой дырой слева от знака. Класс is-fullscreen ставит
+   electron/main.cjs, когда окно входит в полный экран и выходит из него. */
 .app--electron .app-header {
-  padding-left: 88px;
   -webkit-app-region: drag; /* шапка тащит окно */
+}
+html:not(.is-fullscreen) .app--electron .app-header {
+  padding-left: 88px;
 }
 /* кнопки и интерактивные элементы внутри шапки — не тащат */
 .app--electron .app-header button,
