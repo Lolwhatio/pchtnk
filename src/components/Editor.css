@@ -25,7 +25,7 @@
    экрана, и у флекс-контейнера оно не давало нужного места для прокрутки. */
 
 .editor-wrap {
-  /* По ширине полосы решается, влезают ли метки H1–H6 в поле слева */
+  /* От ширины полосы считается зазор у меток H1–H6 (см. «Заголовки») */
   container: editor / inline-size;
   flex: 1;
   min-width: 0;
@@ -198,7 +198,13 @@
   right: 100%;
   top: 50%;
   transform: translateY(-50%);
-  padding-right: 14px;
+  /* Зазор до заголовка — 14px, пока слева есть свободное поле. В узкой
+     полосе (узкое окно, открытые панели) колонка доходит до полей полосы
+     в 28px, и метка придвигается к заголовку до 8px, чтобы в них
+     поместиться: метка шириной ~16px плюс зазор — 24px. 100cqi — ширина
+     полосы без полей, так что половина разницы с колонкой — это свободное
+     место слева сверх 28px. */
+  padding-right: clamp(8px, calc((100cqi - var(--editor-width)) / 2 + 6px), 14px);
   font-family: var(--font-ui);
   font-size: var(--fs-label);
   font-weight: 700;
@@ -216,15 +222,6 @@
 .editor-content .ProseMirror h4::before { content: 'H4'; }
 .editor-content .ProseMirror h5::before { content: 'H5'; }
 .editor-content .ProseMirror h6::before { content: 'H6'; }
-
-/* Метке нужно поле слева от колонки. Колонка упирается в края полосы —
-   в узком окне или когда открыты панели — и поля нет: метки прячем, иначе
-   они обрезались бы о край. Меряем саму полосу, а не окно: на широком
-   мониторе с тремя открытыми панелями места слева столько же, сколько
-   на ноутбуке. */
-@container editor (max-width: 800px) {
-  .editor-content .ProseMirror :is(h1, h2, h3, h4, h5, h6)::before { display: none; }
-}
 
 .editor-content .ProseMirror h1 {
   font-size: 38px;
