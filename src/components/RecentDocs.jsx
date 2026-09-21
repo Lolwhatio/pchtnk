@@ -11,7 +11,8 @@ function ago(ts) {
 
 // Лаунчер недавних документов на пустом холсте.
 // visible=false — тает и перестаёт ловить клики (появляется снова, когда
-// документ снова опустеет).
+// документ снова опустеет). Строки — те же, что в списке документов:
+// точка, название, дата справа.
 export default function RecentDocs({ docs, visible, onSelect }) {
   if (!docs.length) return null
   return (
@@ -20,6 +21,7 @@ export default function RecentDocs({ docs, visible, onSelect }) {
       <div className="recent__list">
         {docs.map(d => (
           <button key={d.id} className="recent__item" onClick={() => onSelect(d.id)} tabIndex={visible ? 0 : -1}>
+            <span className="recent__dot" aria-hidden="true" />
             <span className="recent__title">{d.title}</span>
             <span className="recent__time">{ago(d.updatedAt)}</span>
           </button>

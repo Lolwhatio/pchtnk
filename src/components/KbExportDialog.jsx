@@ -59,15 +59,15 @@ export default function KbExportDialog({ docs, projects = [], onConfirm, onClose
   }
 
   return (
-    <div className="kb-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="kb-dialog" role="dialog" aria-label="Скачать проект">
-        <div className="kb-header">
-          <span className="kb-title">Скачать проект</span>
-          <button className="kb-close" onClick={onClose}><IconClose size={12} /></button>
+    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="dialog" role="dialog" aria-label="Скачать проект">
+        <div className="dialog__header">
+          <span className="dialog__title">Скачать проект</span>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
-        <div className="kb-body">
-          <p className="kb-desc">
+        <div className="dialog__body">
+          <p className="dialog__desc">
             Соберем документы выбранных проектов в один HTML-файл. Откройте его
             двойным кликом — внутри главная страница, оглавление и рабочие
             ссылки между документами.
@@ -89,21 +89,22 @@ export default function KbExportDialog({ docs, projects = [], onConfirm, onClose
           </div>
 
           <div className="kb-name">
-            <label className="kb-name-label">Название базы знаний</label>
+            <label className="dialog__label" htmlFor="kb-name">Название базы знаний</label>
             <input
-              className="kb-name-input"
+              id="kb-name"
+              className="field"
               value={effectiveTitle}
               onChange={e => { setTitle(e.target.value); setTitleDirty(true) }}
               placeholder={selectedGroups.length > 1 ? 'Например: Рабочие заметки' : 'Название'}
             />
-            <p className="kb-name-hint">
+            <p className="dialog__hint">
               {!titleDirty && autoTitle
                 ? 'Подставили из проекта — можно поменять.'
                 : 'Попадет на главную страницу, в боковое меню и в имя файла.'}
             </p>
           </div>
 
-          <button className="kb-btn" disabled={!canExport} onClick={handleConfirm}>
+          <button className="btn btn--primary btn--block" disabled={!canExport} onClick={handleConfirm}>
             Скачать{selectedDocs.length > 0 ? ` (${selectedDocs.length} док.)` : ''}
           </button>
         </div>

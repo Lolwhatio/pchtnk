@@ -35,91 +35,134 @@ function ratio(a, b) {
 }
 
 // ── Разбор variables.css ─────────────────────────────────────────────────────
-// Слои повторяют каскад: :root (тёмная по умолчанию) → [data-theme="light"]
-// → [data-theme="…"][data-palette="…"]. Палитра задаёт все токены сама,
-// но слои всё равно накладываем — так проверка не разойдётся с браузером,
-// если однажды палитра станет задавать только часть.
+// Слои повторяют каскад на <html>, где стоят оба атрибута:
+//   :root → [data-theme] → [data-palette] → [data-theme][data-palette]
+//   → [data-theme]:is(…палитры…)
+// Одинаковая специфичность решается порядком в файле, как и в браузере.
+// Значения — сырыми строками: var() и color-mix() считаются уже после
+// сборки слоёв, потому что ссылаются на итоговые значения соседей.
 
 function readBlock(body) {
   const out = {}
-  for (const line of body.split('\n')) {
-    const d = line.match(/--([\w-]+)\s*:\s*([^;]+);/)
-    if (d && d[2].trim().startsWith('#')) out[d[1]] = d[2].trim()
-  }
+  // Комментарии вырезаем: в них встречаются двоеточия и точки с запятой
+  const clean = body.replace(/\/\*[\s\S]*?\*\//g, '')
+  for (const m of clean.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim()
   return out
 }
 
-function parseTokens(css) {
-  const one = (re) => { const m = css.match(re); return m ? readBlock(m[1]) : {} }
-
-  const dark = one(/:root\s*\{([\s\S]*?)\n\}/)
-  const lightOwn = one(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)
-  const light = { ...dark, ...lightOwn }
-
-  // Палитры: [data-theme="dark|light"][data-palette="id"]
-  const palettes = new Map()
-  const re = /\[data-theme="(dark|light)"\]\[data-palette="([\w-]+)"\]\s*\{([\s\S]*?)\n\}/g
-  for (const m of css.matchAll(re)) {
-    const [, theme, id, body] = m
-    if (!palettes.has(id)) palettes.set(id, {})
-    palettes.get(id)[theme] = { ...(theme === 'light' ? light : dark), ...readBlock(body) }
+function parseBlocks(css) {
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const blocks = []
+  for (const m of clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = m[1].trim().replace(/\s+/g, ' ')
+    blocks.push({ selector, decls: readBlock(m[2]) })
   }
+  return blocks
+}
 
-  return { dark, light, lightOwn, palettes }
+// Подходит ли селектор к <html data-theme=theme data-palette=palette>
+function matches(selector, theme, palette) {
+  if (selector === ':root') return true
+  const attrs = [...selector.matchAll(/\[data-(theme|palette)="([\w-]+)"\]/g)]
+  const isList = selector.match(/:is\(([^)]*)\)/)
+  const own = isList ? attrs.filter(a => !isList[1].includes(a[0])) : attrs
+  for (const [, kind, value] of own) {
+    if (kind === 'theme' && value !== theme) return false
+    if (kind === 'palette' && value !== palette) return false
+  }
+  if (isList) {
+    const options = [...isList[1].matchAll(/\[data-palette="([\w-]+)"\]/g)].map(m => m[1])
+    if (!options.includes(palette)) return false
+  }
+  return own.length > 0 || !!isList
+}
+
+const specificity = (selector) => selector === ':root' ? 1 :
+  [...selector.replace(/:is\([^)]*\)/, '[x]').matchAll(/\[/g)].length
+
+function tokensFor(blocks, theme, palette) {
+  const layers = blocks
+    .map((b, order) => ({ ...b, order, spec: specificity(b.selector) }))
+    .filter(b => matches(b.selector, theme, palette))
+    .sort((a, b) => a.spec - b.spec || a.order - b.order)
+  const raw = {}
+  for (const l of layers) Object.assign(raw, l.decls)
+  return raw
+}
+
+// var() и color-mix(in srgb, A p%, B) — ровно то, чем пользуется variables.css
+function resolveColor(raw, value, depth = 0) {
+  if (depth > 10 || value == null) return null
+  const v = value.trim()
+  if (v.startsWith('#')) return parseHex(v)
+  const ref = v.match(/^var\(--([\w-]+)\)$/)
+  if (ref) return resolveColor(raw, raw[ref[1]], depth + 1)
+  const mix = v.match(/^color-mix\(in srgb,\s*(.+?)\s+(\d+(?:\.\d+)?)%,\s*(.+)\)$/)
+  if (mix) {
+    const a = resolveColor(raw, mix[1], depth + 1)
+    const b = resolveColor(raw, mix[3], depth + 1)
+    if (!a || !b) return null // прозрачность в проверку не берём
+    const p = parseFloat(mix[2]) / 100
+    return a.map((c, i) => c * p + b[i] * (1 - p))
+  }
+  return null
 }
 
 // ── Список проверок ──────────────────────────────────────────────────────────
 // [что, цвет, фон, минимальный контраст]
+//
+// Пороги — WCAG: 4,5 для текста, 3 для крупного текста и графики.
+// Пары, которые спека задаёт ниже порога сознательно, сюда не входят,
+// а перечислены в конце файла вывода — чтобы о них помнили.
 
 const CHECKS = [
-  ['Значок кнопки в покое',           'text-secondary', 'bg-panel',     3.0],
-  ['Значок при наведении',            'text-primary',   'bg-hover',     4.5],
-  ['Значок включённой кнопки',        'accent',         'bg-active',    3.0],
-  ['Включённая при наведении',        'accent',         'bg-hover',     3.0],
-  ['Подложка наведения',              'bg-hover',       'bg-panel',     1.25],
-  ['Подложка включённой',             'bg-active',      'bg-panel',     1.40],
-  ['Включённая к наведению',          'bg-active',      'bg-hover',     1.07],
-  ['Служебный текст на панели',       'text-muted',     'bg-panel',     4.5],
-  ['Служебный текст на странице',     'text-muted',     'bg-primary',   4.5],
-  ['Второстепенный текст',            'text-secondary', 'bg-panel',     4.5],
-  ['Ссылка в тексте',                 'accent',         'bg-primary',   4.5],
-  ['Метки H1–H6, маркеры списков',    'accent-dim',     'bg-primary',   3.0],
-  ['Зачёркнутый, плейсхолдер',        'text-muted',     'bg-primary',   4.5],
-  ['Инлайн-код',                      'text-primary',   'bg-secondary', 4.5],
-  ['Цитата',                          'text-secondary', 'bg-primary',   4.5],
-  ['Основной текст',                  'text-primary',   'bg-primary',   4.5],
-  ['Разделитель к панели',            'border',         'bg-panel',     1.4],
-  ['Граница панели к странице',       'border',         'bg-primary',   1.4],
-  ['Наведение на акцентную кнопку',   'accent-hover',   'bg-primary',   4.5],
-  ['Ошибка на странице',              'danger',         'bg-primary',   4.5],
-  ['Ошибка на панели',                'danger',         'bg-panel',     4.5],
-  ['Надпись на главной кнопке',       'bg-primary',     'accent',       4.5],
-  ['Она же при наведении',            'bg-primary',     'accent-hover', 4.5],
+  ['Основной текст',                 'text',         'bg',          4.5],
+  ['Заголовки',                      'ink',          'bg',          4.5],
+  ['Заголовок панели',               'ink',          'surface',     4.5],
+  ['Текст на панели',                'text',         'surface',     4.5],
+  ['Второй план на холсте',          'muted',        'bg',          4.5],
+  ['Второй план на панели',          'muted',        'surface',     4.5],
+  ['Подписи на холсте',              'faint',        'bg',          4.5],
+  ['Подписи на панели',              'faint',        'surface',     4.5],
+  ['Дата в выбранной строке',        'faint',        'row-active',  4.5],
+  ['Выбранная строка списка',        'ink',          'row-active',  4.5],
+  ['Строка под курсором',            'text',         'row-active',  4.5],
+  ['Ссылка в тексте',                'accent-ink',   'bg',          4.5],
+  ['Выбранный пункт меню',           'accent-ink',   'surface',     4.5],
+  ['Он же под курсором',             'accent-ink',   'row-active',  4.5],
+  ['Инлайн-код',                     'transfer-ink', 'bg',          4.5],
+  ['Инлайн-код в цитате',            'transfer-ink', 'surface',     4.5],
+  ['Цитата',                         'muted',        'surface',     4.5],
+  ['Ошибка на холсте',               'error-ink',    'bg',          4.5],
+  ['Ошибка на панели',               'error-ink',    'surface',     4.5],
+  ['Символы разметки # и -',         'syntax',       'bg',          3.0],
+  ['Надпись на кнопке ветки',        'on-accent',    'accent',      3.0],
+  ['Она же под курсором',            'on-accent',    'accent-hover',3.0],
 ]
 
-// Токены, которые светлая тема обязана переопределять сама:
-// без этого она унаследует акцент тёмной темы и провалит контраст.
-const MUST_OVERRIDE_IN_LIGHT = ['accent', 'accent-hover', 'accent-dim', 'danger']
+// Сознательно ниже порога — решение спеки, а не недосмотр
+const KNOWN = [
+  'Надпись на primary-кнопке Арбатско-Покровской: белый на #3C87D0 — 3,8:1, ниже 4,5 для текста 14px',
+  'Цвет ветки и пересадки на светлой бумаге (точки, линия, кольца) — 1,4–3,6:1: спека не меняет их в светлой теме',
+  'Границы (border, border-soft) — 1,2–1,5:1: это разделители, не текст',
+]
 
 // ── Прогон ───────────────────────────────────────────────────────────────────
 
 const css = readFileSync(CSS, 'utf8')
-const { dark, light, lightOwn, palettes } = parseTokens(css)
+const blocks = parseBlocks(css)
 
-const missing = MUST_OVERRIDE_IN_LIGHT.filter(t => !(t in lightOwn))
+const palettes = ['forest', ...new Set(
+  [...css.matchAll(/\[data-palette="([\w-]+)"\]/g)].map(m => m[1])
+)]
 
-const rows = []
-let failed = 0
-
-for (const [label, fg, bg, min] of CHECKS) {
-  const cell = (theme) => {
-    if (!theme[fg] || !theme[bg]) return { v: null }
-    return { v: ratio(parseHex(theme[fg]), parseHex(theme[bg])) }
-  }
-  const d = cell(dark), l = cell(light)
-  const ok = d.v != null && l.v != null && d.v >= min && l.v >= min
-  if (!ok) failed++
-  rows.push({ label, fg, bg, min, dark: d.v, light: l.v, ok })
+function run(theme, palette) {
+  const raw = tokensFor(blocks, theme, palette)
+  return CHECKS.map(([label, fg, bg, min]) => {
+    const a = resolveColor(raw, raw[fg]), b = resolveColor(raw, raw[bg])
+    const v = a && b ? ratio(a, b) : null
+    return { label, fg, bg, min, v, ok: v != null && v >= min }
+  })
 }
 
 // ── Вывод ────────────────────────────────────────────────────────────────────
@@ -128,70 +171,55 @@ const pad = (s, n) => String(s).padEnd(n)
 const padS = (s, n) => String(s).padStart(n)
 const fmt = v => v == null ? '  —  ' : padS(v.toFixed(2), 5)
 
+const dark = run('dark', 'forest')
+const light = run('light', 'forest')
+let failed = 0
+
 console.log('\nПроверка контраста · WCAG 2.1 · ' + CSS.replace(process.cwd() + '/', ''))
-console.log('─'.repeat(78))
-console.log(pad('Проверка', 32) + pad('цвет / фон', 26) + padS('мин', 5) + padS('тёмн', 7) + padS('светл', 7))
-console.log('─'.repeat(78))
-
-for (const r of rows) {
-  const mark = r.ok ? ' ' : '✗'
+console.log('Ветка 10, темная и светлая')
+console.log('─'.repeat(80))
+console.log(pad('Проверка', 32) + pad('цвет / фон', 28) + padS('мин', 5) + padS('тёмн', 7) + padS('светл', 7))
+console.log('─'.repeat(80))
+dark.forEach((d, i) => {
+  const l = light[i]
+  const ok = d.ok && l.ok
+  if (!ok) failed++
   console.log(
-    mark + ' ' + pad(r.label, 30) +
-    pad(`${r.fg} / ${r.bg}`, 26) +
-    padS(r.min.toFixed(2), 5) +
-    padS(fmt(r.dark), 7) +
-    padS(fmt(r.light), 7)
+    (ok ? '  ' : '✗ ') + pad(d.label, 30) +
+    pad(`${d.fg} / ${d.bg}`, 28) +
+    padS(d.min.toFixed(2), 5) + padS(fmt(d.v), 7) + padS(fmt(l.v), 7)
   )
-}
-console.log('─'.repeat(78))
+})
+console.log('─'.repeat(80))
 
-// ── Остальные палитры ────────────────────────────────────────────────────────
-// Подробную таблицу печатать двенадцать раз незачем: у палитры те же токены
-// и те же пороги, поэтому показываем запас — худшее отношение к своему порогу.
-// Меньше единицы значит провал.
-
-let palFailed = 0
-
-if (palettes.size) {
-  console.log('\nПалитры · то же дерево проверок')
-  console.log('─'.repeat(78))
-  console.log(pad('Палитра', 24) + pad('тема', 10) + padS('худший запас', 14) + '  на чём')
-  console.log('─'.repeat(78))
-
-  for (const [id, byTheme] of palettes) {
-    for (const theme of ['dark', 'light']) {
-      const t = byTheme[theme]
-      if (!t) { console.log('✗ ' + pad(id, 22) + pad(theme, 10) + padS('нет блока', 14)); palFailed++; continue }
-
-      let worst = { margin: Infinity, label: '' }
-      for (const [label, fg, bg, min] of CHECKS) {
-        if (!t[fg] || !t[bg]) continue
-        const margin = ratio(parseHex(t[fg]), parseHex(t[bg])) / min
-        if (margin < worst.margin) worst = { margin, label }
-      }
-      const ok = worst.margin >= 1
-      if (!ok) palFailed++
-      console.log(
-        (ok ? '  ' : '✗ ') + pad(id, 22) + pad(theme, 10) +
-        padS('×' + worst.margin.toFixed(2), 14) + '  ' + worst.label
-      )
-    }
+// Остальные ветки: подробную таблицу печатать десять раз незачем — показываем
+// запас, то есть худшее отношение к своему порогу. Меньше единицы — провал.
+console.log('\nВетки · то же дерево проверок')
+console.log('─'.repeat(80))
+console.log(pad('Ветка', 24) + pad('тема', 10) + padS('худший запас', 14) + '  на чём')
+console.log('─'.repeat(80))
+for (const palette of palettes.slice(1)) {
+  for (const theme of ['dark', 'light']) {
+    const rows = run(theme, palette)
+    const worst = rows.reduce((w, r) => {
+      const m = r.v == null ? 0 : r.v / r.min
+      return m < w.m ? { m, label: r.label } : w
+    }, { m: Infinity, label: '' })
+    const ok = worst.m >= 1
+    if (!ok) failed++
+    console.log((ok ? '  ' : '✗ ') + pad(palette, 22) + pad(theme, 10) + padS('×' + worst.m.toFixed(2), 14) + '  ' + worst.label)
   }
-  console.log('─'.repeat(78))
 }
+console.log('─'.repeat(80))
 
-if (missing.length) {
-  console.log(`\n✗ Светлая тема не переопределяет: ${missing.map(t => '--' + t).join(', ')}`)
-  console.log('  Без этого она наследует акцент тёмной темы.')
-}
+console.log('\nНиже порога по решению спеки:')
+for (const k of KNOWN) console.log('  · ' + k)
 
-const problems = failed + palFailed + (missing.length ? 1 : 0)
-
-if (problems === 0) {
-  const total = rows.length * (2 + palettes.size * 2)
-  console.log(`\n✓ Пройдено ${total} проверок · палитр ${palettes.size + 1} × 2 темы\n`)
+if (failed === 0) {
+  const total = CHECKS.length * palettes.length * 2
+  console.log(`\n✓ Пройдено ${total} проверок · веток ${palettes.length} × 2 темы\n`)
   process.exit(0)
 }
 
-console.log(`\n✗ Не проходят проверок: ${failed + palFailed}\n`)
+console.log(`\n✗ Не проходят проверок: ${failed}\n`)
 process.exit(1)

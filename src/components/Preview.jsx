@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import TypografPanel from './TypografPanel'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
-import { IconSettings } from './icons'
+import { IconSettings, IconBack } from './icons'
 import { pdfCss, splitPages, imagesReady, CONTENT_W, CONTENT_H } from '../utils/pdfLayout'
 import { buildPdfBlob } from '../utils/pdfFile'
 import './Preview.css'
@@ -266,14 +266,17 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
   return (
     <div className="preview">
       <div className="preview-header">
-        <button className="preview-close" onClick={onClose}>← Назад</button>
+        <button className="chip" onClick={onClose} title="Вернуться к тексту (Esc)">
+          <IconBack size={14} />
+          Назад
+        </button>
         <span className="preview-title">{fileName}</span>
         <div className="preview-actions">
-          <div className="preview-formats" role="radiogroup" aria-label="Формат">
+          <div className="seg" role="radiogroup" aria-label="Формат">
             {FORMATS.map(f => (
               <button
                 key={f.id}
-                className={`preview-format${format === f.id ? ' preview-format--on' : ''}`}
+                className="seg__opt"
                 role="radio"
                 aria-checked={format === f.id}
                 onClick={() => setFormat(f.id)}
@@ -284,7 +287,17 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
             ))}
           </div>
           <button
-            className="preview-btn preview-btn--primary"
+            className="btn-icon btn-icon--outline"
+            onClick={() => setShowTypograf(s => !s)}
+            title="Настройки типографа"
+            aria-label="Настройки типографа"
+            aria-pressed={showTypograf}
+          >
+            <IconSettings />
+          </button>
+          {/* Единственная primary-кнопка экрана */}
+          <button
+            className="btn btn--primary btn--sm preview-download"
             onClick={handleDownload}
             disabled={building}
             title={`Сохранить ${fileName}${current.ext}`}
@@ -292,13 +305,6 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
             {building
               ? (progress ? `Собираем… ${progress.done} / ${progress.total}` : 'Собираем…')
               : `Скачать ${current.ext}`}
-          </button>
-          <button
-            className={`preview-btn preview-btn--icon${showTypograf ? ' active' : ''}`}
-            onClick={() => setShowTypograf(s => !s)}
-            title="Настройки типографа"
-          >
-            <IconSettings />
           </button>
         </div>
       </div>
@@ -310,7 +316,7 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
       {failed && (
         <div className="preview-done preview-done--error" role="alert">
           Не удалось собрать PDF: {failed}
-          <button className="preview-done__close" onClick={() => setFailed(null)}>Скрыть</button>
+          <button className="btn btn--sm btn--ghost preview-done__close" onClick={() => setFailed(null)}>Скрыть</button>
         </div>
       )}
 

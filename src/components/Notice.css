@@ -1,64 +1,54 @@
+/* Уведомление: паддинг 12/16/12/14, фон холста, контур, радиус 8, зазор 14.
+   Текст Onest 13, время справа — 10px третьим планом. */
 .notice {
   position: fixed;
   left: 50%;
-  bottom: 64px;
+  bottom: 112px;               /* над тулбаром и статус-баром */
   transform: translateX(-50%);
   z-index: 200;
 
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: min(520px, calc(100vw - 32px));
-  padding: 10px 10px 10px 14px;
+  gap: 14px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 12px 8px 12px 14px;
 
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
 
   font-family: var(--font-ui);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   line-height: 1.45;
-  color: var(--text-primary);
+  color: var(--text);
 
+  /* Появляется, но не въезжает: кроме капсулы, в интерфейсе ничего
+     не движется */
   animation: notice-in 0.2s ease;
 }
 
-.notice--error {
-  border-color: var(--danger);
-}
+.notice--error { border-color: var(--error); }
 
 .notice-text {
   flex: 1;
   min-width: 0;
 }
 
-.notice-close {
+.notice-time {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-  color: var(--text-secondary);
-  transition: color var(--transition), background var(--transition);
-}
-.notice-close:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  font-size: var(--fs-tiny);
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
+.notice-close { flex: none; width: 26px; height: 26px; }
+
 @keyframes notice-in {
-  from { opacity: 0; transform: translate(-50%, 8px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .notice { animation: none; }
-}
-
-/* На тач-устройствах цель должна быть крупнее */
-@media (pointer: coarse) {
-  .notice-close { width: 44px; height: 44px; }
 }

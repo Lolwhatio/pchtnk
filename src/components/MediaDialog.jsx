@@ -37,25 +37,25 @@ export default function MediaDialog({ onConfirm, onClose }) {
   const canConfirm = tab === 'url' ? (url.trim() && !imgError) : !!preview
 
   return (
-    <div className="input-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="media-dialog" role="dialog">
+    <div className="dialog-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="dialog dialog--wide" role="dialog" aria-label="Изображение">
 
-        <div className="input-dialog-header">
-          <span className="input-dialog-title">Изображение</span>
-          <button className="input-dialog-close" onClick={onClose}><IconClose size={12} /></button>
+        <div className="dialog__header">
+          <span className="dialog__title">Изображение</span>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
-        <div className="media-tabs">
-          <button className={`media-tab${tab === 'url'  ? ' media-tab--active' : ''}`} onClick={() => { setTab('url');  setImgError(false) }}>По ссылке</button>
-          <button className={`media-tab${tab === 'file' ? ' media-tab--active' : ''}`} onClick={() => setTab('file')}>Загрузить</button>
-        </div>
+        <div className="dialog__body">
+          <div className="seg media-tabs" role="radiogroup" aria-label="Откуда взять">
+            <button className="seg__opt" role="radio" aria-checked={tab === 'url'} onClick={() => { setTab('url');  setImgError(false) }}>По ссылке</button>
+            <button className="seg__opt" role="radio" aria-checked={tab === 'file'} onClick={() => setTab('file')}>Загрузить</button>
+          </div>
 
-        <div className="media-body">
           {tab === 'url' && (
             <>
               <input
                 ref={urlRef}
-                className="input-dialog-field"
+                className="field"
                 type="url"
                 value={url}
                 onChange={e => { setUrl(e.target.value); setImgError(false) }}
@@ -100,9 +100,9 @@ export default function MediaDialog({ onConfirm, onClose }) {
           )}
         </div>
 
-        <div className="input-dialog-footer">
-          <button className="input-dialog-btn" onClick={onClose}>Отмена</button>
-          <button className="input-dialog-btn input-dialog-btn--primary" onClick={confirm} disabled={!canConfirm}>
+        <div className="dialog__footer">
+          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn--primary" onClick={confirm} disabled={!canConfirm}>
             Вставить
           </button>
         </div>

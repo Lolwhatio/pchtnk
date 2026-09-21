@@ -1,291 +1,268 @@
-/* Люблинско-Дмитровская линия — тёмный лес
+/* Токены дизайн-системы Печатников.
  *
- * Значения подобраны так, чтобы проходили все проверки npm run check:contrast
- * в обеих темах. Правя цвет, прогоняйте скрипт: пороги связаны между собой
- * (например, подложка «включено» должна и отличаться от панели, и оставлять
- * акцентному значку не меньше 3:1). */
-
-:root {
-  --bg-primary:   #0f1810;
-  --bg-secondary: #131d14;
-  --bg-panel:     #0c1510;
-  --bg-hover:     #213423;
-  --bg-active:    #2a432c;
-
-  --accent:       #62a030;
-  --accent-hover: #73bb38;
-  --accent-dim:   #41701e;
-
-  --text-primary:  #cce0cc;
-  --text-secondary:#6d9470;
-  --text-muted:    #618b63;
-  --text-inverse:  #0f1810;
-
-  --border:       #1f3822;
-  --border-light: #2e4a33;
-
-  /* Ошибки и разрушающие действия. Отдельный токен, а не акцент:
-     зелёным «удалить» и «неверный пароль» не покажешь. */
-  --danger:       #d9705a;
-
-  /* Считаем из акцента, а не задаём числом: раньше здесь лежал зелёный rgba,
-     и каждая новая палитра забывала его переопределить — текст выделялся
-     зелёным при синей теме. Теперь подтягивается сам. */
-  --selection-bg: color-mix(in srgb, var(--accent) 22%, transparent);
-
-  --font-editor: 'Georgia', 'Times New Roman', serif;
-  --font-ui:     -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-
-  /* Шкала кеглей интерфейса. Ничего мельче 12px: в приложении сидят часами. */
-  --fs-xs: 12px;  /* подписи, значения в панелях  */
-  --fs-sm: 13px;  /* пункты меню, кнопки, поля    */
-  --fs-md: 15px;  /* заголовки панелей, имя файла */
-  --fs-lg: 17px;  /* заголовки диалогов           */
-  --fs-xl: 22px;  /* крупные числа                */
-
-  /* Ширина колонки — дело вкуса и монитора, поэтому она настраивается
-     (Настройки → Письмо → Ширина колонки) и переопределяется на :root
-     из localStorage. Здесь только значение по умолчанию.
-
-     Справочно, при кегле 18px и средней ширине знака кириллицы 9,05px:
-     600px — 66 знаков, 720px — 80, 840px — 93. Типографский оптимум
-     лежит в районе 66–75, но на широком мониторе он многим тесен. */
-  --editor-width: 720px;
-  --font-size:    18px;
-
-  /* 1.75 при отбивке 0.75em давали отношение 1,43 — граница абзаца
-     почти не читалась. 1.6 при 1.2em дают 1,75. */
-  --line-height:  1.6;
-
-  --transition: 0.15s ease;
-}
-
-/* Светлая тема обязана переопределять акцентную триаду: без этого она
- * наследует зелёный тёмной темы, и ссылки в тексте дают 2,93:1. */
-[data-theme="light"] {
-  --bg-primary:   #f2f7ee;
-  --bg-secondary: #e8f0e2;
-  --bg-panel:     #ddebd5;
-  --bg-hover:     #b7d2a9;
-  --bg-active:    #accc9c;
-
-  --accent:       #487623;
-  --accent-hover: #3a5e1c;
-  --accent-dim:   #5c9d2b;
-
-  --text-primary:  #111d12;
-  --text-secondary:#2e5232;
-  --text-muted:    #4c704f;
-  --text-inverse:  #f2f7ee;
-
-  --border:       #a9cb98;
-  --border-light: #c2dcb4;
-
-  --danger:       #b23b36;
-
-  /* На светлом фоне подсветка бледнее, поэтому доля выше */
-  --selection-bg: color-mix(in srgb, var(--accent) 28%, transparent);
-}
-
-/* ── Палитры по линиям метро ────────────────────────────────────────────────
+ * Источник — design_handoff_pechatniki/README.md, раздел «Дизайн-токены».
+ * Одна тема = одна ветка метро. Шесть веток и светлый режим — это один
+ * набор токенов, а не шесть тем целиком: ветка задаёт тональность фона
+ * и цвет акцента, светлый режим подменяет только бумагу (фоны, границы
+ * и текст) и одинаков для всех веток.
  *
- * Устройство: фоны и текст повторяют ЯРКОСТЬ токенов «тёмного леса», меняя
- * оттенок и насыщенность, — поэтому все проверки, не касающиеся акцента,
- * проходят по построению. Насыщенность фона при этом можно поднимать сколько
- * угодно: контраст зависит только от яркости, и цвет достаётся даром.
- *
- * Акцент, наоборот, не приравнивается к эталону, а отталкивается от фирменного
- * цвета линии и сдвигается ровно настолько, чтобы пройти пороги. Первая версия
- * приравнивала и его — оранжевый с жёлтым были обязаны иметь яркость зелёного
- * и уходили в коричневый.
- *
- * Почему в светлой теме жёлтый — густое золото, а не жёлтый. --accent несёт
- * ссылки и текст, а тексту нужно 4.5:1 к почти белой странице. Жёлтый #ffcd1c
- * даёт там 1.5:1: это не вопрос подбора, ярче него на светлом фоне читаемого
- * жёлтого не существует. Цвет линии в светлой теме держат фоны, не акцент.
- *
- * --danger уводим по оттенку от акцента: у оранжевой линии красный «удалить»
- * сливался бы с акцентом, поэтому там он малиновый.
- *
- * Правя значения, прогоняйте npm run check:contrast.
+ * Правя цвет, прогоняйте npm run check:contrast.
  */
 
+:root {
+  /* ── Бумага: ветка 10, тёмная ─────────────────────────────────────── */
+  --bg:            #0F1810;  /* холст приложения                        */
+  --surface:       #0C1510;  /* панели, шапка, статус-бар, карточки      */
+  --border-soft:   #1B2A1F;  /* разделители внутри панели                */
+  --border:        #24352A;  /* контур панели, кнопки                    */
+  --border-strong: #3A5240;  /* контур secondary-кнопки, ховер границы   */
+  --rail-off:      #2C4431;  /* линия ветки, непройденный участок        */
+  --faint:         #7FA381;  /* третий план: даты, мелкие подписи        */
+  --muted:         #8FA991;  /* второй план: описания                    */
+  --text:          #CCDFCC;  /* основной текст                           */
+  --ink:           #F2F6EF;  /* заголовки, активные элементы             */
+  --syntax:        #567E5E;  /* символы markdown-разметки                */
+  --row-active:    #16241A;  /* выбранная строка списка, ховер ghost     */
+
+  /* Перемычка контурной капсулы. В спеке её цвет дан только для ветки 10;
+     в остальных ветках он выводится из соседей — см. блоки ниже. */
+  --bridge:        #4A6650;
+
+  /* ── Ветка ─────────────────────────────────────────────────────────── */
+  --accent:        #B0D23F;  /* цвет ветки: действие, прогресс           */
+  --accent-hover:  #C3E053;  /* primary-кнопка под курсором: светлее ~6% */
+  --on-accent:     #0C1510;  /* текст на акценте                         */
+  --transfer:      #46C3D6;  /* цвет пересадки: ссылки на документы      */
+
+  /* Акцент, которым набран текст: ссылки, выбранный пункт меню.
+     В тёмной теме это сам цвет ветки. В светлой спека акцент не меняет,
+     а салатовый на бумаге даёт 1,6:1 — поэтому для текста там свой,
+     потемнее (светлая тема ниже). Заливки — точки, линия, кнопка —
+     остаются цветом ветки в обеих темах. */
+  --accent-ink:    var(--accent);
+  /* То же для цвета пересадки: инлайн-код и значки ссылок на документы */
+  --transfer-ink:  var(--transfer);
+
+  /* ── Ошибка ────────────────────────────────────────────────────────── */
+  --error:         #E8336B;  /* единственное применение — ошибка         */
+  --error-ink:     #F08AA8;  /* текст ошибки на тёмном                   */
+
+  /* ── Знак. Не перекрашивается никогда ──────────────────────────────── */
+  --eye-left:      #B0D23F;
+  --eye-right:     #46C3D6;
+  --capsule-fill:  #F2F6EF;  /* залитая капсула (основной локап)         */
+  --capsule-name:  #111A15;
+  --capsule-bridge:#9DB09B;
+
+  /* Подсветка выделенных ячеек таблицы. Сплошной акцент, как у обычного
+     выделения, закрыл бы содержимое ячейки целиком */
+  --cell-selection: color-mix(in srgb, var(--accent) 22%, transparent);
+
+  /* ── Шрифты ────────────────────────────────────────────────────────── */
+  /* Все четыре лежат в сборке, а не на Google Fonts: CSP пускает только
+     свой адрес, а режим самоизоляции обещает, что приложение не ходит
+     в интернет вовсе. Unifix SP подключается отдельно — utils/logoFont.js */
+  --font-ui:     'Onest Variable', 'Onest', system-ui, sans-serif;
+  --font-editor: 'Literata Variable', 'Literata', Georgia, serif;
+  --font-mono:   'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --font-logo:   'Unifix SP', 'Onest Variable', 'Onest', sans-serif;
+
+  /* ── Шкала кеглей интерфейса ───────────────────────────────────────── */
+  /* Прежнее правило «ничего мельче 12px» спека сознательно нарушает
+     в двух местах: даты в списках и номера в кружках веток — 10px,
+     статус в шапке — 11px. Это третий план, его не читают подряд. */
+  --fs-tiny:    10px;  /* даты, номер линии в кружке      */
+  --fs-caption: 11px;  /* статус, ярлыки                  */
+  --fs-label:   12px;  /* подписи, кнопки 30px            */
+  --fs-row:     13px;  /* строка списка, станция, меню    */
+  --fs-title:   14px;  /* заголовок панели, поле, кнопка 38px */
+
+  /* ── Отступы: шаг 4px, набор 4 / 8 / 14 / 22 / 34 / 56 ─────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 14px;
+  --sp-4: 22px;
+  --sp-5: 34px;
+  --sp-6: 56px;
+
+  /* ── Радиусы ───────────────────────────────────────────────────────── */
+  /* Всё, что можно нажать, — капсула (радиус в половину высоты).
+     Всё, что можно читать, — 6 или 8. Не смешивать. */
+  --r-block: 6px;   /* блок кода, строка списка, врезка   */
+  --r-panel: 8px;   /* панель, карточка, уведомление      */
+
+  /* ── Полоса набора ─────────────────────────────────────────────────── */
+  /* Мера строки — не шире 720px. Ширина при этом настраивается
+     (Настройки → Письмо) и переопределяется на :root из localStorage;
+     здесь только значение по умолчанию. */
+  --editor-width: 720px;
+  --font-size:    17.5px;
+  --line-height:  1.78;
+  /* Между блоками документа — как в макете, gap колонки 26px */
+  --block-gap:    26px;
+
+  /* ── Движение ──────────────────────────────────────────────────────── */
+  --transition: 0.15s ease;
+  --ease-slot:  cubic-bezier(.2, .7, .3, 1);
+  --ease-blink: cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ── Светлая тема ─────────────────────────────────────────────────────────
+ * Бумага одна для всех веток. Акцент и пересадка не меняются — кроме
+ * акцента для текста (--accent-ink), который задают блоки веток ниже. */
+[data-theme="light"] {
+  --bg:            #F3F4EF;
+  --surface:       #FBFBF7;
+  --border-soft:   #E7E9E2;
+  --border:        #DFE2D9;
+  --rail-off:      #D2D7CB;
+  --faint:         #5A6857;
+  --muted:         #5C6A58;
+  --text:          #2B3328;
+  --ink:           #13180F;
+  --syntax:        #6B7867;
+
+  /* Этих значений в спеке для светлой бумаги нет — выведены из соседей
+     той же формулой, что даёт эталонные значения ветки 10 в тёмной */
+  --border-strong: color-mix(in srgb, var(--syntax) 42%, var(--border));
+  --row-active:    color-mix(in srgb, var(--border-soft) 65%, var(--bg));
+  --bridge:        color-mix(in srgb, var(--syntax) 66%, var(--rail-off));
+
+  /* Светлый вариант ошибки: розовый текст #F08AA8 на бумаге даёт 2,1:1 */
+  --error-ink:     #C2185B;
+
+  /* Залитая капсула на светлом — тёмная (макет экрана, capsule/connector) */
+  --capsule-fill:  #13180F;
+  --capsule-name:  #F2F6EF;
+  --capsule-bridge:#6E7C6A;
+
+  --accent-ink:    #487623;
+  --transfer-ink:  #0F7282;
+  --cell-selection: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* ── Ветки ────────────────────────────────────────────────────────────────
+ * Фон тёмной темы — почти чёрный с примесью тона ветки. В спеке у каждой
+ * ветки четырнадцать значений; три недостающих (border-strong, row-active,
+ * перемычка) выводятся из соседей: формулы подобраны так, что на ветке 10
+ * дают её эталонные #3A5240, #16241A и #4A6650.
+ *
+ * Ветка 10 (Люблинско-Дмитровская) — это :root, отдельного блока у неё нет.
+ */
+
+[data-palette="arbatskaya"] {
+  --accent:       #3C87D0;
+  --accent-hover: #5098DE;
+  --on-accent:    #FFFFFF;
+  --transfer:     #FFCB31;
+}
 [data-theme="dark"][data-palette="arbatskaya"] {
-  --bg-primary:     #0e171f;
-  --bg-secondary:   #121b25;
-  --bg-panel:       #0a141d;
-  --bg-hover:       #1f3144;
-  --bg-active:      #273f58;
-  --accent:         #398cdf;
-  --accent-hover:   #5ca0e4;
-  --accent-dim:     #1465b6;
-  --text-primary:   #cedceb;
-  --text-secondary: #708eab;
-  --text-muted:     #5f84aa;
-  --text-inverse:   #0e171f;
-  --border:         #1b344e;
-  --border-light:   #2a4661;
-  --danger:         #d87157;
+  --bg:          #0C1119;
+  --surface:     #090D14;
+  --border:      #1F2A38;
+  --border-soft: #161F2A;
+  --rail-off:    #26374B;
+  --ink:         #EEF3F9;
+  --text:        #C6D4E2;
+  --muted:       #93A6BC;
+  --faint:       #8195AC;
+  --syntax:      #5A7290;
 }
+[data-theme="light"][data-palette="arbatskaya"] { --accent-ink: #1B5FA3; --transfer-ink: #846406; }
 
-[data-theme="light"][data-palette="arbatskaya"] {
-  --bg-primary:     #f1f6fc;
-  --bg-secondary:   #e6eef7;
-  --bg-panel:       #dbe8f6;
-  --bg-hover:       #b3cde8;
-  --bg-active:      #a8c6e5;
-  --accent:         #1b5fa3;
-  --accent-hover:   #134678;
-  --accent-dim:     #1879d9;
-  --text-primary:   #0f1b28;
-  --text-secondary: #284c71;
-  --text-muted:     #486a8d;
-  --text-inverse:   #f1f6fc;
-  --border:         #a4c5e5;
-  --border-light:   #bfd7f0;
-  --danger:         #a44932;
+[data-palette="kaluzhskaya"] {
+  --accent:       #EF7F1A;
+  --accent-hover: #F99032;
+  --on-accent:    #1A1006;
+  --transfer:     #79CDCD;
 }
-
 [data-theme="dark"][data-palette="kaluzhskaya"] {
-  --bg-primary:     #1a150f;
-  --bg-secondary:   #201914;
-  --bg-panel:       #18120c;
-  --bg-hover:       #3a2d22;
-  --bg-active:      #4b3a2b;
-  --accent:         #f18424;
-  --accent-hover:   #f5a45e;
-  --accent-dim:     #d36504;
-  --text-primary:   #e4d9cf;
-  --text-secondary: #9d8773;
-  --text-muted:     #977c64;
-  --text-inverse:   #1a150f;
-  --border:         #402f20;
-  --border-light:   #534030;
-  --danger:         #dd6a7d;
+  --bg:          #15100A;
+  --surface:     #110C07;
+  --border:      #32251A;
+  --border-soft: #241A12;
+  --rail-off:    #453120;
+  --ink:         #F8F1E9;
+  --text:        #DFD0BE;
+  --muted:       #B9A288;
+  --faint:       #A78F74;
+  --syntax:      #7A6249;
 }
+[data-theme="light"][data-palette="kaluzhskaya"] { --accent-ink: #A5520B; --transfer-ink: #15756E; }
 
-[data-theme="light"][data-palette="kaluzhskaya"] {
-  --bg-primary:     #f9f5f1;
-  --bg-secondary:   #f4ece6;
-  --bg-panel:       #f0e5db;
-  --bg-hover:       #dcc6b4;
-  --bg-active:      #d7bfa9;
-  --accent:         #a5520b;
-  --accent-hover:   #914909;
-  --accent-dim:     #e06b05;
-  --text-primary:   #211912;
-  --text-secondary: #5e4530;
-  --text-muted:     #7b634e;
-  --text-inverse:   #f9f5f1;
-  --border:         #d7bda6;
-  --border-light:   #e5d1bf;
-  --danger:         #b4364b;
+[data-palette="kalininskaya"] {
+  --accent:       #FFCB31;
+  --accent-hover: #FFD453;
+  --on-accent:    #181405;
+  --transfer:     #3C87D0;
 }
-
 [data-theme="dark"][data-palette="kalininskaya"] {
-  --bg-primary:     #18160e;
-  --bg-secondary:   #1d1b12;
-  --bg-panel:       #15130b;
-  --bg-hover:       #352f1f;
-  --bg-active:      #443d27;
-  --accent:         #f6c225;
-  --accent-hover:   #f8d260;
-  --accent-dim:     #dea600;
-  --text-primary:   #e0dbc9;
-  --text-secondary: #958a68;
-  --text-muted:     #8c805d;
-  --text-inverse:   #18160e;
-  --border:         #39321c;
-  --border-light:   #4b432c;
-  --danger:         #dc6d69;
+  --bg:          #15120A;
+  --surface:     #110E07;
+  --border:      #322C14;
+  --border-soft: #242010;
+  --rail-off:    #463D1C;
+  --ink:         #F8F4E8;
+  --text:        #DFD8BE;
+  --muted:       #BBB289;
+  --faint:       #A99F74;
+  --syntax:      #7C7349;
 }
+[data-theme="light"][data-palette="kalininskaya"] { --accent-ink: #846406; --transfer-ink: #1B5FA3; }
 
-[data-theme="light"][data-palette="kalininskaya"] {
-  --bg-primary:     #f8f5ee;
-  --bg-secondary:   #f1ede2;
-  --bg-panel:       #ede6d4;
-  --bg-hover:       #d5caa6;
-  --bg-active:      #d0c29a;
-  --accent:         #846406;
-  --accent-hover:   #755905;
-  --accent-dim:     #b28600;
-  --text-primary:   #1d1a10;
-  --text-secondary: #54492b;
-  --text-muted:     #716749;
-  --text-inverse:   #f8f5ee;
-  --border:         #cfc195;
-  --border-light:   #dfd4b1;
-  --danger:         #b33a36;
+[data-palette="koltsevaya"] {
+  --accent:       #79CDCD;
+  --accent-hover: #8CDCDC;
+  --on-accent:    #071414;
+  --transfer:     #DE64A1;
 }
-
 [data-theme="dark"][data-palette="koltsevaya"] {
-  --bg-primary:     #0b1818;
-  --bg-secondary:   #0f1d1d;
-  --bg-panel:       #081515;
-  --bg-hover:       #193433;
-  --bg-active:      #1f4341;
-  --accent:         #63e3db;
-  --accent-hover:   #97ede7;
-  --accent-dim:     #25e4d7;
-  --text-primary:   #bde2df;
-  --text-secondary: #5a9591;
-  --text-muted:     #4e8b87;
-  --text-inverse:   #0b1818;
-  --border:         #153835;
-  --border-light:   #224a48;
-  --danger:         #d87157;
+  --bg:          #0A1414;
+  --surface:     #071010;
+  --border:      #16302F;
+  --border-soft: #102322;
+  --rail-off:    #1D403F;
+  --ink:         #ECF6F6;
+  --text:        #C3DBDB;
+  --muted:       #8FB3B3;
+  --faint:       #7DA2A2;
+  --syntax:      #4F7676;
 }
+[data-theme="light"][data-palette="koltsevaya"] { --accent-ink: #15756E; --transfer-ink: #C6236F; }
 
-[data-theme="light"][data-palette="koltsevaya"] {
-  --bg-primary:     #e7f9f8;
-  --bg-secondary:   #d9f3f1;
-  --bg-panel:       #c5efec;
-  --bg-hover:       #88d8d2;
-  --bg-active:      #75d2cc;
-  --accent:         #15756e;
-  --accent-hover:   #126862;
-  --accent-dim:     #139c93;
-  --text-primary:   #0c1d1c;
-  --text-secondary: #1f524e;
-  --text-muted:     #3c706d;
-  --text-inverse:   #e7f9f8;
-  --border:         #6cd2cb;
-  --border-light:   #93e2dd;
-  --danger:         #a44932;
+[data-palette="nekrasovskaya"] {
+  --accent:       #DE64A1;
+  --accent-hover: #EA7AB2;
+  --on-accent:    #1A0A12;
+  --transfer:     #79CDCD;
 }
-
 [data-theme="dark"][data-palette="nekrasovskaya"] {
-  --bg-primary:     #211118;
-  --bg-secondary:   #27151e;
-  --bg-panel:       #1f0e16;
-  --bg-hover:       #482435;
-  --bg-active:      #5d2e44;
-  --accent:         #e35f9d;
-  --accent-hover:   #ec93bd;
-  --accent-dim:     #e4217c;
-  --text-primary:   #ebd5df;
-  --text-secondary: #ac7d93;
-  --text-muted:     #aa708b;
-  --text-inverse:   #211118;
-  --border:         #522239;
-  --border-light:   #66334b;
-  --danger:         #d5744a;
+  --bg:          #160C12;
+  --surface:     #12090E;
+  --border:      #321A29;
+  --border-soft: #25131E;
+  --rail-off:    #452539;
+  --ink:         #F8ECF3;
+  --text:        #E0C7D5;
+  --muted:       #BC94AA;
+  --faint:       #AA8296;
+  --syntax:      #7B5468;
 }
+[data-theme="light"][data-palette="nekrasovskaya"] { --accent-ink: #C6236F; --transfer-ink: #15756E; }
 
-[data-theme="light"][data-palette="nekrasovskaya"] {
-  --bg-primary:     #fbf3f7;
-  --bg-secondary:   #f7eaf1;
-  --bg-panel:       #f6e1eb;
-  --bg-hover:       #e7bfd2;
-  --bg-active:      #e4b6cc;
-  --accent:         #c6236f;
-  --accent-hover:   #ae1f62;
-  --accent-dim:     #ea559b;
-  --text-primary:   #2a131d;
-  --text-secondary: #773253;
-  --text-muted:     #945371;
-  --text-inverse:   #fbf3f7;
-  --border:         #e4b4ca;
-  --border-light:   #efcbdb;
-  --danger:         #9b502f;
+/* --transfer-ink в светлой теме — это --accent-ink той ветки, чей цвет
+   служит пересадкой: у Арбатско-Покровской пересадка жёлтая, и читаемый
+   жёлтый на бумаге — тот же, что у Калининской. */
+
+/* Производные, которые в каждой ветке считаются заново. В :root для
+   ветки 10 стоят эталонные числа, а здесь формулы — на ветке 10 они дали
+   бы то же самое с точностью до единицы. */
+[data-theme="dark"]:is(
+  [data-palette="arbatskaya"], [data-palette="kaluzhskaya"],
+  [data-palette="kalininskaya"], [data-palette="koltsevaya"],
+  [data-palette="nekrasovskaya"]
+) {
+  --border-strong: color-mix(in srgb, var(--syntax) 42%, var(--border));
+  --row-active:    color-mix(in srgb, var(--border-soft) 65%, var(--bg));
+  --bridge:        color-mix(in srgb, var(--syntax) 66%, var(--rail-off));
 }

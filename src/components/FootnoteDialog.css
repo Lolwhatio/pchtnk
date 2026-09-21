@@ -1,46 +1,5 @@
-.fn-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.fn-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.fn-optional {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-.fn-textarea {
-  resize: vertical;
-  min-height: 52px;
-  line-height: 1.5;
-  font-family: var(--font-ui);
-}
-
-.fn-hint {
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.fn-delete {
-  margin-right: auto;
-  color: var(--danger);
-}
-.fn-delete:hover {
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
-}
+/* «Удалить» уходит влево, подальше от «Сохранить» */
+.fn-delete { margin-right: auto; }
 
 /* ── Повторное использование источника ───────────── */
 
@@ -52,74 +11,61 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  background: var(--bg-active);
-  color: var(--text-secondary);
+  height: 38px;
+  padding: 0 8px 0 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 19px;
+  color: var(--text);
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  transition: background var(--transition), color var(--transition);
+  font-size: var(--fs-row);
+  font-weight: 500;
+  transition: border-color var(--transition), color var(--transition);
 }
-.fn-reuse__toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
-.fn-reuse__toggle--open { border-color: var(--accent-dim); }
+.fn-reuse__toggle:hover,
+.fn-reuse__toggle--open { border-color: var(--accent); color: var(--ink); }
 
 .fn-reuse__count {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 100px;
-  background: var(--bg-panel);
-  color: var(--accent);
-  font-size: var(--fs-xs);
-  font-weight: 600;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
+/* Вид — общий .menu; здесь место и строки в два ряда */
 .fn-reuse__list {
-  position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 10;
-  max-height: 220px;
+  max-height: 240px;
   overflow-y: auto;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: 7px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-  padding: 4px;
 }
 
 .fn-reuse__item {
-  width: 100%;
-  display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 2px;
-  text-align: left;
-  padding: 8px 10px;
-  border-radius: 5px;
-  font-family: var(--font-ui);
-  color: var(--text-primary);
-  transition: background var(--transition);
 }
-.fn-reuse__item:hover { background: var(--bg-hover); }
 
 .fn-reuse__note {
-  font-size: var(--fs-xs);
-  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  white-space: normal;
 }
 .fn-reuse__url {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
+  font-size: var(--fs-label);
+  color: var(--faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

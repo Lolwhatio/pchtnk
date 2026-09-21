@@ -1,78 +1,26 @@
+/* Панель документов. Шапка — общий .panel-head из styles/controls.css. */
+
 .docs-panel {
-  width: 220px;
-  flex-shrink: 0;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border);
+  flex: 0 1 280px;
+  min-width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* ── Шапка ─────────────────────────────────────── */
+/* ── Поиск ──────────────────────────────────────── */
 
-.docs-panel__header {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 6px 0 12px;
-  border-bottom: 1px solid var(--border);
-  gap: 2px;
+.docs-panel__search {
+  padding: 14px 14px 8px;
   flex-shrink: 0;
 }
 
-.docs-panel__title {
-  flex: 1;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-}
-
-.docs-panel__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  color: var(--text-muted);
-  transition: color var(--transition), background var(--transition);
-}
-.docs-panel__btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
-/* ── Перетаскивание документов между проектами ──── */
-
-.docs-panel__item[draggable] {
-  cursor: grab;
-}
-.docs-panel__item[draggable]:active {
-  cursor: grabbing;
-}
-
-/* Куда встанет строка: линия по верхней или нижней границе соседа */
-.docs-panel__item--drop-before::before,
-.docs-panel__item--drop-after::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
-  pointer-events: none;
-}
-.docs-panel__item--drop-before::before { top: -1px; }
-.docs-panel__item--drop-after::after  { bottom: -1px; }
-
-.docs-panel__project--dragover {
-  background: var(--bg-hover);
-  outline: 1px dashed var(--accent-dim);
-  outline-offset: -1px;
-  border-radius: 6px;
+.docs-panel__search-input {
+  height: 34px;
+  border-radius: 17px;
+  font-size: var(--fs-row);
 }
 
 /* ── Список ─────────────────────────────────────── */
@@ -80,54 +28,178 @@
 .docs-panel__list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 6px 8px 14px;
 }
 
 .docs-panel__empty {
   padding: 24px 12px;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
+  font-size: var(--fs-row);
+  color: var(--faint);
   text-align: center;
+}
+
+/* ── Строка документа ───────────────────────────────────────────────────
+   По спеке: паддинг 9/12, радиус 6, зазор 12, точка 10px — цветом ветки
+   у выбранной строки и цветом непройденной линии у остальных. Название
+   Onest 13/500, дата справа — 10px третьим планом.
+
+   Под названием — начало текста. В макете строка однострочная, но без
+   второго ряда девять строк «Без названия» ничем не отличаются. */
+
+.docs-panel__item {
+  position: relative;
+  border-radius: var(--r-block);
+  transition: background var(--transition);
+}
+.docs-panel__item + .docs-panel__item { margin-top: 2px; }
+.docs-panel__item:hover { background: var(--row-active); }
+.docs-panel__item--active { background: var(--row-active); }
+
+.docs-panel__item-main {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 9px 12px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-block);
+}
+
+.docs-panel__item-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;           /* по середине первой строки названия */
+  border-radius: 50%;
+  background: var(--rail-off);
+  flex: none;
+}
+.docs-panel__item--active .docs-panel__item-dot { background: var(--accent); }
+
+.docs-panel__item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.docs-panel__item-title {
+  font-family: var(--font-ui);
+  font-size: var(--fs-row);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docs-panel__item--active .docs-panel__item-title { color: var(--ink); }
+
+.docs-panel__item-snippet {
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  line-height: 1.4;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-panel__item-date {
+  flex: none;
+  margin-top: 2px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-tiny);
+  line-height: 1.6;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* Действия появляются на месте даты, когда строка под курсором */
+.docs-panel__item-actions {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition);
+}
+.docs-panel__item:hover .docs-panel__item-actions,
+.docs-panel__item:focus-within .docs-panel__item-actions {
+  opacity: 1;
+  visibility: visible;
+}
+.docs-panel__item:hover .docs-panel__item-date,
+.docs-panel__item:focus-within .docs-panel__item-date { visibility: hidden; }
+
+.docs-panel__item-btn { width: 26px; height: 26px; }
+.docs-panel__item-btn:hover { background: var(--border-soft); }
+.docs-panel__item-btn--del:hover { color: var(--error-ink); }
+
+/* ── Перетаскивание ─────────────────────────────── */
+
+.docs-panel__item[draggable] { cursor: grab; }
+.docs-panel__item[draggable]:active { cursor: grabbing; }
+
+/* Куда встанет строка: линия по верхней или нижней границе соседа —
+   отрезок ветки, 4px цветом акцента */
+.docs-panel__item--drop-before::before,
+.docs-panel__item--drop-after::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 1;
+}
+.docs-panel__item--drop-before::before { top: -3px; }
+.docs-panel__item--drop-after::after  { bottom: -3px; }
+
+.docs-panel__project--dragover {
+  background: var(--row-active);
+  outline: 1px dashed var(--border-strong);
+  outline-offset: -1px;
+  border-radius: var(--r-panel);
 }
 
 /* ── Проект ─────────────────────────────────────── */
 
-.docs-panel__project {
-  border-bottom: 1px solid var(--border);
-}
+.docs-panel__project + .docs-panel__project,
+.docs-panel__project + .docs-panel__noproj { margin-top: 8px; }
 
 .docs-panel__project-header {
   display: flex;
   align-items: center;
-  height: 32px;
+  gap: 2px;
+  min-height: 34px;
   padding: 0 4px 0 2px;
-  gap: 1px;
 }
 
 .docs-panel__project-toggle {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
-  border-radius: 4px;
+  color: var(--faint);
+  border-radius: 12px;
   flex-shrink: 0;
 }
-.docs-panel__project-toggle:hover { background: var(--bg-hover); }
+.docs-panel__project-toggle:hover { background: var(--row-active); color: var(--text); }
 
 .docs-panel__project-arrow {
-  display: inline-block;
-  font-size: 14px;
-  line-height: 1;
-  color: var(--text-muted);
+  display: flex;
   transform: rotate(0deg);
   transition: transform var(--transition);
-  user-select: none;
 }
-.docs-panel__project-arrow--open {
-  transform: rotate(90deg);
-}
+.docs-panel__project-arrow--open { transform: rotate(90deg); }
 
 /* Обрезается название, а не вся строка: text-overflow не работает
    на флекс-контейнере, и счётчик рядом с длинным именем срезался */
@@ -136,14 +208,13 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: var(--fs-xs);
+  gap: 8px;
+  padding: 0 4px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
   font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--muted);
   text-align: left;
-  padding: 0 2px;
 }
 
 .docs-panel__project-label {
@@ -154,150 +225,66 @@
 }
 
 .docs-panel__project-count {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-muted);
-  background: var(--bg-hover);
-  border-radius: 8px;
-  padding: 0 5px;
-  letter-spacing: 0;
   flex-shrink: 0;
-  text-transform: none;
+  font-size: var(--fs-tiny);
+  font-weight: 600;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .docs-panel__project-input {
   flex: 1;
-  background: var(--bg-hover);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: 2px 6px;
-  outline: none;
   min-width: 0;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: var(--fs-label);
+  font-weight: 600;
 }
 
-.docs-panel__project-add,
-.docs-panel__project-del {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  border-radius: 4px;
+.docs-panel__project-btn {
+  width: 26px;
+  height: 26px;
   opacity: 0;
   transition: opacity var(--transition), color var(--transition), background var(--transition);
-  flex-shrink: 0;
 }
-.docs-panel__project-header:hover .docs-panel__project-add,
-.docs-panel__project-header:hover .docs-panel__project-del {
-  opacity: 1;
-}
-.docs-panel__project-add:hover { background: var(--bg-hover); color: var(--text-primary); }
-.docs-panel__project-del:hover { background: var(--bg-hover); color: var(--text-primary); }
+.docs-panel__project-header:hover .docs-panel__project-btn,
+.docs-panel__project-header:focus-within .docs-panel__project-btn { opacity: 1; }
 
-.docs-panel__project-docs {
-  padding: 2px 0 4px;
-}
+.docs-panel__project-docs { padding: 2px 0 4px 10px; }
 
 .docs-panel__project-empty {
-  padding: 6px 12px 6px 28px;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  font-style: italic;
+  padding: 6px 12px 8px 26px;
+  font-size: var(--fs-label);
+  color: var(--faint);
 }
 
 /* ── Без проекта ─────────────────────────────────── */
 
 .docs-panel__noproj-label {
-  padding: 8px 12px 4px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-}
-
-/* ── Элемент ─────────────────────────────────────── */
-
-.docs-panel__item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  transition: background var(--transition);
-}
-.docs-panel__item:hover {
-  background: var(--bg-hover);
-}
-.docs-panel__item--active {
-  background: var(--bg-active);
-}
-
-.docs-panel__item-main {
-  flex: 1;
-  text-align: left;
-  padding: 7px 6px 7px 12px;
-  min-width: 0;
-  cursor: pointer;
-}
-
-.docs-panel__project-docs .docs-panel__item-main {
-  padding-left: 22px;
-}
-
-.docs-panel__item-title {
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.4;
-}
-
-/* Второй ряд: начало текста. Без него девять строк «Без названия»
-   ничем не отличаются друг от друга. */
-.docs-panel__item-snippet {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.4;
-  margin-top: 1px;
-}
-
-.docs-panel__item-date {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-/* ── Поиск ──────────────────────────────────────── */
-
-.docs-panel__search {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.docs-panel__search-input {
-  width: 100%;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  padding: 10px 12px 6px;
   font-family: var(--font-ui);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--faint);
 }
-.docs-panel__search-input::placeholder { color: var(--text-muted); }
-.docs-panel__search-input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-  border-color: transparent;
+
+/* ── Попап перемещения в проект ─────────────────── */
+
+.docs-panel__mover-wrap { position: relative; }
+
+.docs-panel__mover {
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  max-width: 240px;
+  z-index: 100;
+}
+.docs-panel__mover-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Отмена удаления ────────────────────────────── */
@@ -306,110 +293,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 9px 10px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-secondary);
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-soft);
   flex-shrink: 0;
 }
 
 .docs-panel__undo-text {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.docs-panel__undo-btn {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border-radius: 5px;
-  background: var(--bg-active);
-  color: var(--accent);
+  min-width: 0;
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  transition: background var(--transition);
-}
-.docs-panel__undo-btn:hover { background: var(--bg-hover); }
-
-/* ── Кнопки действий у элемента ─────────────────── */
-
-.docs-panel__item-actions {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  padding-right: 4px;
-  opacity: 0;
-  transition: opacity var(--transition);
-  flex-shrink: 0;
-}
-.docs-panel__item:hover .docs-panel__item-actions {
-  opacity: 1;
-}
-
-.docs-panel__item-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  transition: color var(--transition), background var(--transition);
-}
-.docs-panel__item-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-/* ── Попап перемещения в проект ─────────────────── */
-
-.docs-panel__mover-wrap {
-  position: relative;
-}
-
-.docs-panel__mover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-  min-width: 140px;
-  max-width: 180px;
-  z-index: 100;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.docs-panel__mover-item {
-  width: 100%;
-  text-align: left;
-  padding: 6px 10px;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background var(--transition), color var(--transition);
+  font-size: var(--fs-label);
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.docs-panel__mover-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-.docs-panel__mover-item--active {
-  color: var(--accent);
-  font-weight: 500;
 }
 
 /* ── Футер: экспорт / импорт ─────────────────────── */
@@ -417,33 +314,14 @@
 .docs-panel__footer {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--border);
+  gap: 6px;
+  padding: 14px;
+  border-top: 1px solid var(--border-soft);
   flex-shrink: 0;
 }
 
-.docs-panel__footer-btn {
+.docs-panel__footer-row {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 34px;
-  padding: 0 14px;
-  font-size: var(--fs-sm);
-  text-align: left;
-  white-space: nowrap;
-  color: var(--text-secondary);
-  transition: color var(--transition), background var(--transition);
-}
-.docs-panel__footer-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-.docs-panel__footer-btn:not(:last-child) {
-  border-bottom: 1px solid var(--border);
-}
-.docs-panel__footer-btn--kb {
-  color: var(--accent);
-}
-.docs-panel__footer-btn--kb:hover {
-  color: var(--accent);
-  background: var(--bg-active);
+  justify-content: center;
+  gap: 6px;
 }

@@ -1,21 +1,20 @@
-// Палитры названы по линиям метро — так была названа и тема по умолчанию
-// («Люблинско-Дмитровская линия — тёмный лес» в variables.css). Сами токены
-// лежат там же; здесь только список для интерфейса.
+// Палитры — ветки метро. Одна тема = одна ветка: сами токены лежат
+// в styles/variables.css, здесь только список для интерфейса.
 //
-// dot — фирменный цвет линии со схемы метро, а не акцент палитры. В списке
-// нужен узнаваемый знак линии; акцент интерфейса приглушён до контрастных
-// 4.5:1 и в кружке читался бы как грязь.
+// color — цвет ветки, он же акцент темы. fg — номер в кружке (on-accent
+// этой ветки): на синей Арбатско-Покровской он белый, на остальных тёмный.
+// Значения из спеки — design_handoff_pechatniki/README.md, «Темы по веткам».
 //
-// fg — цвет числа в кружке. На схеме метро он всегда белый, но на жёлтой
-// и бирюзовой линиях белое по светлому не читается, поэтому там тёмное.
+// id остались прежними, хотя цвета сменились: по ним в localStorage лежит
+// выбор человека, и переименование молча сбросило бы его на ветку 10.
 
 export const PALETTES = [
-  { id: 'forest',        num: 10, name: 'Люблинско-Дмитровская', dot: '#b1d332', fg: '#1b2410' },
-  { id: 'arbatskaya',    num: 3,  name: 'Арбатско-Покровская',   dot: '#0078be', fg: '#ffffff' },
-  { id: 'kaluzhskaya',   num: 6,  name: 'Калужско-Рижская',      dot: '#f58220', fg: '#ffffff' },
-  { id: 'kalininskaya',  num: 8,  name: 'Калининская',           dot: '#ffcd1c', fg: '#2a2205' },
-  { id: 'koltsevaya',    num: 11, name: 'Большая кольцевая',     dot: '#79cdcd', fg: '#0e2526' },
-  { id: 'nekrasovskaya', num: 15, name: 'Некрасовская',          dot: '#de64a1', fg: '#ffffff' },
+  { id: 'forest',        num: 10, name: 'Люблинско-Дмитровская', color: '#B0D23F', fg: '#0C1510' },
+  { id: 'arbatskaya',    num: 3,  name: 'Арбатско-Покровская',   color: '#3C87D0', fg: '#FFFFFF' },
+  { id: 'kaluzhskaya',   num: 6,  name: 'Калужско-Рижская',      color: '#EF7F1A', fg: '#1A1006' },
+  { id: 'kalininskaya',  num: 8,  name: 'Калининская',           color: '#FFCB31', fg: '#181405' },
+  { id: 'koltsevaya',    num: 11, name: 'Большая кольцевая',     color: '#79CDCD', fg: '#071414' },
+  { id: 'nekrasovskaya', num: 15, name: 'Некрасовская',          color: '#DE64A1', fg: '#1A0A12' },
 ]
 
 // Тема по умолчанию живёт в :root и своего блока [data-palette] не имеет:
@@ -24,3 +23,5 @@ export const PALETTES = [
 export const DEFAULT_PALETTE = 'forest'
 
 export const isPalette = (id) => PALETTES.some(p => p.id === id)
+
+export const paletteById = (id) => PALETTES.find(p => p.id === id) || PALETTES[0]

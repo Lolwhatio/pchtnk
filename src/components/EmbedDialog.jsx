@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { IconClose, IconEmbedSlides, IconEmbedSheets, IconEmbedDocs, IconEmbedYoutube, IconEmbedFigma, IconEmbedGeneric } from './icons'
-import './InputDialog.css'
 import './EmbedDialog.css'
 
 const SERVICES = [
@@ -31,18 +30,18 @@ export default function EmbedDialog({ onConfirm, onClose }) {
   const confirm = () => { if (url.trim()) { onConfirm(url.trim()); onClose() } }
 
   return (
-    <div className="input-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="input-dialog" role="dialog" style={{ width: 400 }}>
+    <div className="dialog-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="dialog dialog--wide" role="dialog" aria-label="Встроить контент">
 
-        <div className="input-dialog-header">
-          <span className="input-dialog-title">Встроить контент</span>
-          <button className="input-dialog-close" onClick={onClose}><IconClose size={12} /></button>
+        <div className="dialog__header">
+          <span className="dialog__title">Встроить контент</span>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
-        <div className="input-dialog-body" style={{ paddingBottom: 8 }}>
+        <div className="dialog__body">
           <input
             ref={inputRef}
-            className="input-dialog-field"
+            className="field"
             type="url"
             value={url}
             onChange={e => setUrl(e.target.value)}
@@ -58,7 +57,7 @@ export default function EmbedDialog({ onConfirm, onClose }) {
               </div>
             : url && (
                 <div className="embed-detected embed-detected--generic">
-                  <IconEmbedGeneric size={13} />
+                  <IconEmbedGeneric size={14} />
                   <span>Будет вставлен как iframe</span>
                 </div>
               )
@@ -67,16 +66,16 @@ export default function EmbedDialog({ onConfirm, onClose }) {
           <div className="embed-services">
             {SERVICES.map(s => (
               <span key={s.key} className="embed-service-tag">
-                {s.icon} {s.label}
+                {s.icon}{s.label}
               </span>
             ))}
           </div>
         </div>
 
-        <div className="input-dialog-footer">
-          <button className="input-dialog-btn" onClick={onClose}>Отмена</button>
+        <div className="dialog__footer">
+          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
           <button
-            className="input-dialog-btn input-dialog-btn--primary"
+            className="btn btn--primary"
             onClick={confirm}
             disabled={!url.trim()}
           >

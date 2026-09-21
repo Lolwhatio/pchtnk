@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { IconClose } from './icons'
-import './InputDialog.css'
 import './FootnoteDialog.css'
 
 // Диалог сноски: описание источника + необязательная ссылка.
@@ -40,17 +39,17 @@ export default function FootnoteDialog({ existing, number, sources = [], onConfi
   }
 
   return (
-    <div className="input-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="input-dialog" role="dialog" aria-label="Сноска" style={{ width: 420 }}>
+    <div className="dialog-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="dialog dialog--wide" role="dialog" aria-label="Сноска">
 
-        <div className="input-dialog-header">
-          <span className="input-dialog-title">
+        <div className="dialog__header">
+          <span className="dialog__title">
             {existing ? `Сноска ${number}` : 'Новая сноска'}
           </span>
-          <button className="input-dialog-close" onClick={onClose}><IconClose size={12} /></button>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
-        <div className="input-dialog-body fn-body">
+        <div className="dialog__body">
           {sources.length > 0 && (
             <div className="fn-reuse" ref={reuseRef}>
               <button
@@ -62,12 +61,13 @@ export default function FootnoteDialog({ existing, number, sources = [], onConfi
                 <span className="fn-reuse__count">{sources.length}</span>
               </button>
               {reuseOpen && (
-                <div className="fn-reuse__list">
+                <div className="menu fn-reuse__list" role="menu">
                   {sources.map((s, i) => (
                     <button
                       type="button"
                       key={i}
-                      className="fn-reuse__item"
+                      role="menuitem"
+                      className="menu-item fn-reuse__item"
                       onClick={() => pickSource(s)}
                     >
                       <span className="fn-reuse__note">{s.note || s.url}</span>
@@ -79,11 +79,11 @@ export default function FootnoteDialog({ existing, number, sources = [], onConfi
             </div>
           )}
 
-          <label className="fn-label">
+          <label className="dialog__label">
             Источник
             <textarea
               ref={noteRef}
-              className="input-dialog-field fn-textarea"
+              className="field"
               value={note}
               onChange={e => setNote(e.target.value)}
               onKeyDown={onKeyDown}
@@ -92,10 +92,10 @@ export default function FootnoteDialog({ existing, number, sources = [], onConfi
             />
           </label>
 
-          <label className="fn-label">
-            Ссылка <span className="fn-optional">(необязательно)</span>
+          <label className="dialog__label">
+            <span>Ссылка <span className="dialog__optional">(необязательно)</span></span>
             <input
-              className="input-dialog-field"
+              className="field"
               type="url"
               value={url}
               onChange={e => setUrl(e.target.value)}
@@ -105,20 +105,20 @@ export default function FootnoteDialog({ existing, number, sources = [], onConfi
             />
           </label>
 
-          <p className="fn-hint">
+          <p className="dialog__hint">
             Номер проставится сам и пересчитается, если вставить сноску выше.
           </p>
         </div>
 
-        <div className="input-dialog-footer">
+        <div className="dialog__footer">
           {existing && (
-            <button className="input-dialog-btn fn-delete" onClick={() => { onDelete?.(); onClose() }}>
+            <button className="btn btn--danger fn-delete" onClick={() => { onDelete?.(); onClose() }}>
               Удалить
             </button>
           )}
-          <button className="input-dialog-btn" onClick={onClose}>Отмена</button>
+          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
           <button
-            className="input-dialog-btn input-dialog-btn--primary"
+            className="btn btn--primary"
             onClick={confirm}
             disabled={!note.trim() && !url.trim()}
           >

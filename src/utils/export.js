@@ -177,19 +177,36 @@ function docToHtml(doc, ctx) {
 //
 // Заодно сюда попадает и светлая тема: сохранённый из светлой файл
 // открывается светлым.
-const KB_TOKENS = [
-  'bg-primary', 'bg-secondary', 'bg-panel', 'bg-hover', 'bg-active',
-  'accent', 'accent-hover', 'accent-dim',
-  'text-primary', 'text-secondary', 'text-muted',
-  'border', 'border-light', 'danger',
-]
+//
+// Имена переменных внутри выгрузки остались прежними — стили файла ниже
+// написаны на них, — а берутся из токенов нынешней дизайн-системы.
+// Акцент для выгрузки — тот, которым набирают текст (accent-ink): ссылки
+// и заголовки там — текст, а салатовый на светлой бумаге не читается.
+const KB_TOKENS = {
+  'bg-primary':     'bg',
+  'bg-secondary':   'surface',
+  'bg-panel':       'surface',
+  'bg-hover':       'row-active',
+  'bg-active':      'row-active',
+  'accent':         'accent-ink',
+  'accent-hover':   'accent-ink',
+  'accent-dim':     'syntax',
+  'text-primary':   'text',
+  'text-secondary': 'muted',
+  'text-muted':     'faint',
+  'border':         'border',
+  'border-light':   'border-strong',
+  'danger':         'error-ink',
+}
 
 function paletteVars() {
   const cs = getComputedStyle(document.documentElement)
   const val = (t, fallback) => (cs.getPropertyValue('--' + t) || '').trim() || fallback
-  const rows = KB_TOKENS.map(t => `  --${t}:${val(t, '#000')};`).join('\n')
+  // Часть токенов — color-mix(); getPropertyValue отдаёт его с уже
+  // подставленными цветами, и открывший выгрузку браузер досчитает сам
+  const rows = Object.entries(KB_TOKENS).map(([name, token]) => `  --${name}:${val(token, '#000')};`).join('\n')
   // Подсветку выделения собираем из акцента: rgba в токенах не лежит
-  const [r, g, b] = (val('accent', '#62a030').replace('#', '').match(/../g) || [])
+  const [r, g, b] = (val('accent', '#B0D23F').replace('#', '').match(/../g) || [])
     .map(h => parseInt(h, 16))
   return { rows, selection: `rgba(${r},${g},${b},.22)` }
 }
