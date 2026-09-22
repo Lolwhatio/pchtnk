@@ -43,6 +43,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--block-gap);
+  /* Лист не короче 60% окна: щелчок под последней строкой попадает
+     в текст, а не в пустоту. От этой высоты считается и место лаунчера
+     недавних под пустым листом (RecentDocs.css) */
+  --sheet-min-height: 60vh;
 }
 
 /* Строка над текстом: число в кружке, рядом месяц и проект —
@@ -159,7 +163,7 @@
   color: var(--text);
   caret-color: var(--accent);
   text-wrap: pretty;
-  min-height: 60vh;
+  min-height: var(--sheet-min-height);
 }
 
 /* Между блоками — 26px, как gap колонки в макете. Внутри списков и ячеек

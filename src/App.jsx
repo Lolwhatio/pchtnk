@@ -1381,12 +1381,13 @@ export default function App() {
 
   const recentVisible = !hasTyped && (editor?.isEmpty ?? true)
 
-  // Недавние документы для лаунчера: не текущий, с осмысленным названием
+  // Недавние документы для лаунчера: не текущий, с осмысленным названием,
+  // пять последних — остальные в панели «Документы»
   const recentDocs = useMemo(() => (
     [...docs]
       .filter(d => d.id !== currentDocId && d.title && d.title !== 'Без названия')
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 6)
+      .slice(0, 5)
   ), [docs, currentDocId])
 
   // Лаунчер держим в DOM (для плавного затухания), а видимостью правит recentVisible
