@@ -1504,12 +1504,14 @@ export default function App() {
       {!showPreview && (
         <header className="app-header">
           {/* Знак — логотип и индикатор состояния, не кнопка. В покое между
-              глазами перемычка; при запуске знак печатает своё имя и стирает */}
+              глазами перемычка; при запуске знак печатает своё имя и стирает.
+              По щелчку подмигивает — просто так */}
           <Capsule
             className="app-header__logo"
             size={36}
             intro="pchtnk"
             eyes={headerEyes}
+            winkOnClick
             role="img"
             aria-label="Печатники"
           />

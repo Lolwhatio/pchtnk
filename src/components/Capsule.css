@@ -21,6 +21,9 @@
   line-height: 1;
   white-space: nowrap;
   user-select: none;
+  /* Просвет меняется вместе с шириной слота: у перемычки он плотнее,
+     вокруг имени — шире */
+  transition: gap 240ms var(--ease-slot);
 }
 
 /* Контурный локап — версия для интерфейса: прозрачная заливка, обводка
@@ -44,9 +47,13 @@
 
 .capsule--button {
   cursor: pointer;
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), gap 240ms var(--ease-slot);
 }
 .capsule--outline.capsule--button:hover { border-color: var(--border-strong); }
+
+/* Знак, который подмигивает по щелчку: рука, как у логотипа в макете
+   шапки, но без подсветки кнопки — щелчок здесь реакция, а не действие */
+.capsule--pokable { cursor: pointer; }
 
 /* ── Слот ─────────────────────────────────────────────────────────────── */
 /* Ширину ставит Capsule.jsx по метрикам набранного текста; двигаются
@@ -192,6 +199,7 @@
 /* «Уменьшить движение»: остаётся только смена высоты глаз,
    слот переключается мгновенно */
 @media (prefers-reduced-motion: reduce) {
+  .capsule { transition: none; }
   .capsule__eye {
     animation: none !important;
     transform: none !important;

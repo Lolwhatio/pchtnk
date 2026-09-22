@@ -177,9 +177,11 @@
 html:not(.is-fullscreen) .app--electron .app-header {
   padding-left: 88px;
 }
-/* кнопки и интерактивные элементы внутри шапки — не тащат */
+/* кнопки и интерактивные элементы внутри шапки — не тащат. Знак тоже:
+   по щелчку он подмигивает, а в области перетаскивания щелчок не доходит */
 .app--electron .app-header button,
 .app--electron .app-header input,
-.app--electron .app-header a {
+.app--electron .app-header a,
+.app--electron .app-header__logo {
   -webkit-app-region: no-drag;
 }

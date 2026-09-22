@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './Capsule.css'
 
 // Капсула пересадки — знак Печатников. Логотип, маскот и индикатор
-// состояния — это один компонент в двух местах: шапка и уведомление. Всё движение интерфейса живёт здесь; больше в приложении
-// ничего не двигается (design_handoff_pechatniki/README.md, «Движение»).
+// состояния — это один компонент в двух местах: шапка и уведомление.
+// Всё движение интерфейса живёт здесь; больше в приложении ничего
+// не двигается (design_handoff_pechatniki/README.md, «Движение»).
 //
 //   size    — высота капсулы H, от неё считается вся геометрия
 //   variant — 'outline' (интерфейс) | 'filled' (основной локап, маскот)
@@ -14,39 +15,49 @@ import './Capsule.css'
 //   intro   — текст, который знак один раз печатает при появлении
 //             и стирает обратно (в шапке — имя поверх перемычки)
 //   blink   — моргать в покое раз в 4–7 с
+//   winkOnClick — подмигнуть в ответ на щелчок. Кнопкой знак от этого
+//             не становится: ни фокуса, ни роли — это реакция, а не действие
 //
 // Если передан onClick, капсула становится кнопкой.
 
 // Эталонные размеры из спеки. Пропорции «0,44 · H» и прочие соблюдаются
 // в таблице не везде — там, где размер проверен в макетах, берём его.
+// gap — просвет вокруг имени в слоте, из локапов с именем.
 const REFERENCE = {
-  124: { eye: 56, bridge: [40, 12], gap: 24, pad: 28, stroke: 5,   font: 44 },
-  84:  { eye: 40, bridge: [28, 9],  gap: 16, pad: 22, stroke: 4,   font: 30 },
-  68:  { eye: 30, bridge: [22, 8],  gap: 14, pad: 16, stroke: 3,   font: 23 },
-  64:  { eye: 30, bridge: [20, 7],  gap: 10, pad: 16, stroke: 2,   font: 23 },
-  36:  { eye: 15, bridge: [11, 4],  gap: 11, pad: 13, stroke: 2,   font: 16 },
-  24:  { eye: 10, bridge: [8, 3],   gap: 8,  pad: 9,  stroke: 1.5, font: 12 },
-  20:  { eye: 9,  bridge: null,     gap: 5,  pad: 5,  stroke: 1.5, font: 9 },
-  16:  { eye: 7,  bridge: null,     gap: 3,  pad: 3,  stroke: 1.5, font: 7 },
+  124: { eye: 56, bridge: [40, 12], gap: 24, stroke: 5,   font: 44 },
+  84:  { eye: 40, bridge: [28, 9],  gap: 16, stroke: 4,   font: 30 },
+  68:  { eye: 30, bridge: [22, 8],  gap: 14, stroke: 3,   font: 23 },
+  64:  { eye: 30, bridge: [20, 7],  gap: 10, stroke: 2,   font: 23 },
+  36:  { eye: 15, bridge: [11, 4],  gap: 11, stroke: 2,   font: 16 },
+  24:  { eye: 10, bridge: [8, 3],   gap: 8,  stroke: 1.5, font: 12 },
+  20:  { eye: 9,  bridge: null,     gap: 5,  stroke: 1.5, font: 9 },
+  16:  { eye: 7,  bridge: null,     gap: 3,  stroke: 1.5, font: 7 },
 }
 
+// Знак в покое — перемычка между глазами — собран плотнее локапа с именем.
+// В макетах дизайн-системы он шириной около двух высот (32 → 66, 64 → 130,
+// 84 → 172): поле и просвет у перемычки — 0,19·H, и глаз почти соосен
+// со скруглением капсулы. Табличные «просвет 11, паддинг 13» для H = 36
+// взяты из шапки, где между глазами имя, — с перемычкой они раздвигали
+// лицо до 2,6 высоты. Поле одно на оба состояния: когда печатается имя,
+// растут только просветы, и левый глаз стоит на месте.
 function geometry(H) {
-  if (REFERENCE[H]) return REFERENCE[H]
-  return {
+  const ref = REFERENCE[H] ?? {
     eye: Math.round(0.44 * H),
     // Ниже 24px перемычка не читается — остаются два кружка
     bridge: H < 24 ? null : [Math.round(0.31 * H), Math.max(2, Math.round(0.11 * H))],
     gap: Math.round(0.18 * H),
-    pad: Math.round(0.36 * H),
     stroke: Math.max(1.5, 0.055 * H),
     font: Math.round(0.44 * H),
   }
+  return { ...ref, snug: Math.round(0.19 * H) }
 }
 
 const TYPE_STEP = 110           // набор и стирание — мс на знак
 const HOLD = 2100               // пауза перед стиранием, 2,0–2,2 с
 const INTRO_DELAY = 350         // знак успевает появиться, прежде чем заговорить
 const BLINK = 130               // моргание
+const WINK = 450                // подмигнуть: закрыть за 130 мс, держать 320
 const BLINK_EVERY = [4000, 7000]
 
 const REDUCED = '(prefers-reduced-motion: reduce)'
@@ -71,6 +82,7 @@ export default function Capsule({
   eyes = 'rest',
   intro = null,
   blink = true,
+  winkOnClick = false,
   className = '',
   onClick,
   ...rest
@@ -149,11 +161,28 @@ export default function Capsule({
     if (w != null) slotEl.style.width = `${Math.ceil(w)}px`
   }, [shown, speaking, showBridge, bridgeW, fontsTick])
 
+  // ── Подмигивание по щелчку ──────────────────────────────────────────────
+  // Только из спокойных глаз — покоя и сна (спящий знак приоткрывает глаз).
+  // Ошибку, ожидание и набор щелчок не перебивает: одна анимация за раз,
+  // и состояние приложения важнее.
+  const [winking, setWinking] = useState(false)
+  const winkTimer = useRef(null)
+  useEffect(() => () => clearTimeout(winkTimer.current), [])
+
+  const calm = eyes === 'rest' || eyes === 'sleep'
+  const poke = () => {
+    if (!calm) return
+    clearTimeout(winkTimer.current)
+    setWinking(true)
+    winkTimer.current = setTimeout(() => setWinking(false), WINK)
+  }
+  const shownEyes = winking && calm ? 'wink' : eyes
+
   // ── Моргание ────────────────────────────────────────────────────────────
   // Только в покое и только когда слот молчит: одна анимация за раз.
   // Интервал случайный — иначе моргание читается как таймер.
   const [blinking, setBlinking] = useState(false)
-  const canBlink = blink && eyes === 'rest' && !speaking
+  const canBlink = blink && shownEyes === 'rest' && !speaking
 
   useEffect(() => {
     if (!canBlink) return
@@ -173,8 +202,10 @@ export default function Capsule({
   const style = {
     '--H': `${size}px`,
     '--eye': `${g.eye}px`,
-    '--gap': `${g.gap}px`,
-    '--pad': `${g.pad}px`,
+    // У перемычки просвет плотный, вокруг имени — табличный. Переход между
+    // ними CSS ведёт вместе с шириной слота
+    '--gap': `${showBridge ? g.snug : g.gap}px`,
+    '--pad': `${g.snug}px`,
     '--stroke': `${g.stroke}px`,
     '--font': `${g.font}px`,
     ...(g.bridge ? { '--bridge-w': `${g.bridge[0]}px`, '--bridge-h': `${g.bridge[1]}px` } : null),
@@ -183,17 +214,24 @@ export default function Capsule({
   const cls = [
     'capsule',
     `capsule--${variant}`,
-    `capsule--eyes-${eyes}`,
+    `capsule--eyes-${shownEyes}`,
     blinking && 'capsule--blink',
     !hasSlot && 'capsule--bare',
     onClick && 'capsule--button',
+    !onClick && winkOnClick && 'capsule--pokable',
     className,
   ].filter(Boolean).join(' ')
 
   const Tag = onClick ? 'button' : 'span'
 
   return (
-    <Tag className={cls} style={style} onClick={onClick} type={onClick ? 'button' : undefined} {...rest}>
+    <Tag
+      className={cls}
+      style={style}
+      onClick={onClick ?? (winkOnClick ? poke : undefined)}
+      type={onClick ? 'button' : undefined}
+      {...rest}
+    >
       <span className="capsule__eye capsule__eye--l" aria-hidden="true" />
       {hasSlot && (
         <span className="capsule__slot" ref={slotRef} aria-hidden="true">
