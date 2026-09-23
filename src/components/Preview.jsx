@@ -339,7 +339,6 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
 
       {showTypograf && (
         <TypografPanel
-          typograf={typograf}
           enabled={typografEnabled}
           onToggle={onTypografToggle}
           onClose={() => setShowTypograf(false)}

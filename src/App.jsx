@@ -21,7 +21,7 @@ import {
   IconDocs, IconTOC, IconSettings, IconTools, IconExport, IconShare,
   IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible,
 } from './components/icons'
-import Typograf from 'typograf'
+import { tp } from './utils/typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
 import { useTooltips } from './hooks/useTooltips'
@@ -34,7 +34,6 @@ import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/shar
 import './App.css'
 import './styles/mobile.css' // последним — перекрывает стили компонентов
 
-const tp = new Typograf({ locale: ['ru', 'en-US'] })
 
 // ── Хранилище документов ──────────────────────────────────────────────────────
 
@@ -1697,7 +1696,6 @@ export default function App() {
 
         {showTypograf && !showPreview && (
           <Settings
-            typograf={tp}
             typografEnabled={typografEnabled}
             onToggle={handleTypografToggle}
             isolationMode={isolationMode}
