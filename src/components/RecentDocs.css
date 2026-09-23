@@ -1,70 +1,91 @@
+/* Лаунчер стоит в колонке текста, под пустым листом: при открытой
+   структуре колонка сдвинута, и лаунчер по центру окна от неё бы отъезжал.
+
+   Пустой лист — одна строка с подсказкой, но высотой он в 60% окна
+   (--sheet-min-height в Editor.css), и под ним лаунчер уезжал к нижнему
+   краю: пять документов приходилось докручивать. Поэтому лаунчер поднят
+   к строке — на высоту листа без одной строки и поля.
+
+   В раскладке он места не занимает (высота 0, сдвиг через top): под
+   длинным документом, где лаунчер спрятан, не остаётся ни его невидимой
+   высоты, ни, наоборот, съеденного поля под последней строкой. Лист под
+   лаунчером никуда не делся — щелчок мимо списка попадает в текст,
+   поэтому клики ловит только сам список. */
 .recent {
-  position: fixed;
-  left: 50%;
-  bottom: 68px;
-  transform: translateX(-50%);
-  width: min(var(--editor-width), calc(100vw - 48px));
-  z-index: 5;
+  position: relative;
+  top: calc(var(--font-size) * var(--line-height) + var(--sp-5) - var(--sheet-min-height));
+  z-index: 1;
+  height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  opacity: 1;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-/* Тает при наборе текста — и не перехватывает клики */
-.recent--hidden {
-  opacity: 0;
-  transform: translateX(-50%) translateY(8px);
+  gap: 10px;
   pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.4s ease;
 }
+.recent__list { pointer-events: auto; }
+
+/* Тает при наборе текста — и не перехватывает клики. Только прозрачность:
+   кроме капсулы, в интерфейсе ничего не движется */
+.recent--hidden { opacity: 0; }
+.recent--hidden .recent__list { pointer-events: none; }
 
 .recent__label {
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-label);
   font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding-left: 2px;
+  color: var(--faint);
 }
 
 .recent__list {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-panel);
-  overflow: hidden;
+  border-radius: var(--r-panel);
+  background: var(--surface);
 }
 
 .recent__item {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 11px 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-block);
   text-align: left;
   font-family: var(--font-ui);
-  color: var(--text-primary);
   transition: background var(--transition);
 }
-.recent__item + .recent__item { border-top: 1px solid var(--border); }
-.recent__item:hover { background: var(--bg-hover); }
+.recent__item:hover { background: var(--row-active); }
+
+.recent__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rail-off);
+  flex: none;
+}
+.recent__item:hover .recent__dot { background: var(--accent); }
 
 .recent__title {
-  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-row);
+  font-weight: 500;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.recent__item:hover .recent__title { color: var(--ink); }
 
 .recent__time {
   flex: none;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
+  font-size: var(--fs-tiny);
+  color: var(--faint);
 }
 
-@media (max-width: 700px) {
-  .recent { bottom: 24px; width: calc(100vw - 32px); }
+@media (prefers-reduced-motion: reduce) {
+  .recent { transition: none; }
 }

@@ -1,0 +1,176 @@
+/* Ветка — левая панель структуры.
+ *
+ * В макете колонка шириной minmax(200px, 268px) стоит прямо на холсте,
+ * а правая граница тянется ровно на высоту содержимого: ветка висит,
+ * как табличка, а не отчёркивает полэкрана. Поэтому граница — на
+ * внутреннем блоке, а прокручивается вся колонка. */
+
+.rail {
+  flex: 0 1 268px;
+  min-width: 200px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.rail__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-5) 28px;
+  border-right: 1px solid var(--border-soft);
+  min-width: 0;
+}
+
+/* ── Шапка ──────────────────────────────────────────────────────────────── */
+
+.rail__head {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+}
+
+.rail__title {
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--faint);
+}
+
+.rail__empty {
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  line-height: 1.55;
+  color: var(--faint);
+  text-wrap: pretty;
+}
+
+/* ── Станции ──────────────────────────────────────────────────────────── */
+
+.rail__stations {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Линия: вся — цветом непройденного пути, поверх — пройденный участок.
+   Вертикаль и длину ставит Rail.jsx по центрам точек. */
+.rail__track,
+.rail__progress {
+  position: absolute;
+  left: 10px;
+  top: 14px;
+  width: 4px;
+  border-radius: 2px;
+}
+.rail__track    { background: var(--rail-off); }
+.rail__progress { background: var(--accent); }
+
+.rail__station {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px 6px 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail__dotcol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex: none;
+  z-index: 1;
+}
+
+/* Поле 5px цветом холста — им точка «прорезает» линию */
+.rail__dot {
+  display: block;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: var(--rail-off);
+  box-shadow: 0 0 0 5px var(--bg);
+}
+.rail__station--h1 .rail__dot { width: 18px; height: 18px; }
+.rail__station--h2 .rail__dot { width: 14px; height: 14px; }
+/* H3 — полустанок: контур вместо заливки */
+.rail__station--h3 .rail__dot {
+  width: 10px;
+  height: 10px;
+  background: var(--bg);
+  border: 3px solid var(--rail-off);
+}
+
+/* Пройденные станции и текущая — цветом ветки, впереди — цветом линии
+   (справочник, «Перегон»). Выделена подписью только текущая. */
+.rail__station--passed .rail__dot,
+.rail__station--active .rail__dot { background: var(--accent); }
+.rail__station--h3.rail__station--passed .rail__dot,
+.rail__station--h3.rail__station--active .rail__dot {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+.rail__label {
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-row);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  transition: color var(--transition);
+}
+.rail__station--h1 .rail__label { font-weight: 700; }
+.rail__station--h3 .rail__label { padding-left: 10px; color: var(--faint); }
+
+.rail__station--active .rail__label { color: var(--ink); font-weight: 600; }
+.rail__station--h1.rail__station--active .rail__label { font-weight: 700; }
+
+.rail__station:hover .rail__label { color: var(--ink); }
+
+/* ── Ссылки на другие документы ───────────────────────────────────────── */
+
+.rail__transfers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.rail__transfer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail__transfer-label {
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--transition);
+}
+.rail__transfer:hover .rail__transfer-label { color: var(--ink); }
+
+/* Документ, на который ведёт ссылка, удалили — ссылка закрыта */
+.rail__transfer:disabled { cursor: default; }
+.rail__transfer:disabled .glyph-ring { border-color: var(--rail-off); }
+.rail__transfer:disabled .rail__transfer-label {
+  color: var(--faint);
+  text-decoration: line-through;
+}

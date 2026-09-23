@@ -1,61 +1,3 @@
-.kb-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(2px);
-}
-
-.kb-dialog {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  width: 360px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.kb-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.kb-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: var(--font-ui);
-}
-
-.kb-close {
-  color: var(--text-muted);
-  font-size: 14px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: color var(--transition), background var(--transition);
-}
-.kb-close:hover { color: var(--text-primary); background: var(--bg-hover); }
-
-.kb-body {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  font-family: var(--font-ui);
-}
-
-.kb-desc {
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
 /* ── Список проектов ── */
 
 .kb-groups {
@@ -64,47 +6,50 @@
   gap: 2px;
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 7px;
   padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-panel);
+  background: var(--bg);
 }
 
 .kb-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 5px;
-  font-size: var(--fs-xs);
-  color: var(--text-primary);
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-block);
+  font-family: var(--font-ui);
+  font-size: var(--fs-row);
+  font-weight: 500;
+  color: var(--text);
   cursor: pointer;
   transition: background var(--transition);
 }
-.kb-group:hover { background: var(--bg-hover); }
+.kb-group:hover { background: var(--row-active); }
 .kb-group--empty { opacity: 0.45; cursor: default; }
 
 .kb-group input[type="checkbox"] {
   accent-color: var(--accent);
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
   cursor: inherit;
 }
 
 .kb-group-name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .kb-group-count {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  background: var(--bg-active);
-  border-radius: 8px;
-  padding: 1px 7px;
   flex-shrink: 0;
+  font-size: var(--fs-tiny);
+  font-weight: 600;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Название ── */
@@ -112,47 +57,5 @@
 .kb-name {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
-
-.kb-name-label {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.kb-name-input {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: var(--fs-sm);
-  font-family: var(--font-ui);
-  color: var(--text-primary);
-  outline: none;
-  transition: border-color var(--transition);
-}
-.kb-name-input:focus { border-color: var(--accent-dim); }
-.kb-name-input::placeholder { color: var(--text-muted); }
-
-.kb-name-hint {
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-  color: var(--text-muted);
-  margin: 0;
-}
-
-/* ── Кнопка ── */
-
-.kb-btn {
-  background: var(--accent);
-  color: var(--text-inverse);
-  border-radius: 7px;
-  padding: 9px 0;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  font-family: var(--font-ui);
-  transition: background var(--transition), opacity var(--transition);
-}
-.kb-btn:hover:not(:disabled) { background: var(--accent-hover); }
-.kb-btn:disabled { opacity: 0.4; cursor: default; }

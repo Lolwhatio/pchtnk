@@ -118,7 +118,7 @@ function EmojiPicker({ editor }) {
         <IconSmiley />
       </button>
       {open && (
-        <div className="emoji-menu">
+        <div className="menu emoji-menu">
           {groups.map(group => (
             <div key={group.label} className="emoji-group">
               <div className="emoji-group-label">{group.label}</div>
@@ -167,20 +167,23 @@ function HeadingDropdown({ editor, direction = 'up' }) {
         <div
           ref={menuRef}
           role="menu"
-          className={`toolbar-heading-menu${direction === 'down' ? ' toolbar-heading-menu--down' : ''}`}
+          className={`menu toolbar-menu${direction === 'down' ? ' toolbar-menu--down' : ''}`}
         >
           <button
-            className={`toolbar-heading-item${!activeLevel ? ' toolbar-heading-item--active' : ''}`}
+            className={`menu-item${!activeLevel ? ' menu-item--active' : ''}`}
+            role="menuitem"
             onClick={() => { editor.chain().focus().setParagraph().run(); setOpen(false) }}
           >
-            Обычный текст
+            Обычный текст <kbd>⌘⌥0</kbd>
           </button>
           {HEADING_LEVELS.map(level => (
             <button
               key={level}
-              className={`toolbar-heading-item${activeLevel === level ? ' toolbar-heading-item--active' : ''}`}
+              role="menuitem"
+              className={`menu-item${activeLevel === level ? ' menu-item--active' : ''}`}
               onClick={() => { editor.chain().focus().toggleHeading({ level }).run(); setOpen(false) }}
             >
+              <span className="toolbar-menu__md" aria-hidden="true">H{level}</span>
               Заголовок {level} <kbd>⌘⌥{level}</kbd>
             </button>
           ))}
@@ -242,13 +245,14 @@ function TableControl({ editor }) {
         <IconTable />
       </button>
       {open && (
-        <div className="toolbar-heading-menu" ref={menuRef} role="menu">
+        <div className="menu toolbar-menu" ref={menuRef} role="menu">
           {items.map((it, i) => it.sep
-            ? <div key={i} className="toolbar-menu-sep" />
+            ? <div key={i} className="menu-sep" />
             : (
               <button
                 key={i}
-                className={`toolbar-heading-item${it.danger ? ' toolbar-heading-item--danger' : ''}`}
+                role="menuitem"
+                className={`menu-item${it.danger ? ' menu-item--danger' : ''}`}
                 onClick={() => run(it.fn)}
               >
                 {it.label}

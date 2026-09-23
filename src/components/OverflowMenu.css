@@ -2,55 +2,34 @@
   position: relative;
 }
 
+/* Сам вид — общий .menu из styles/controls.css; здесь только место */
 .overflow-menu {
-  position: absolute;
-  top: 34px;
+  top: calc(100% + 8px);
   right: 0;
-  min-width: 200px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  z-index: 50;
+  min-width: 250px;
 }
 
-.overflow-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
-  border-radius: 5px;
-  font-size: var(--fs-xs);
-  font-family: var(--font-ui);
-  color: var(--text-primary);
-  text-align: left;
-  transition: background var(--transition), color var(--transition);
-}
-.overflow-menu-item:hover:not(:disabled),
-.overflow-menu-item:focus-visible:not(:disabled) { background: var(--bg-hover); }
-.overflow-menu-item--active { color: var(--accent); background: var(--bg-active); }
-/* Без opacity: поверх --text-muted она уводила подпись ниже порога.
-   Приглушённого цвета и курсора достаточно. */
-.overflow-menu-item:disabled { color: var(--text-muted); cursor: not-allowed; }
+/* Пункт — одной строкой: перенесённая подпись читалась как два пункта */
+.overflow-menu .menu-item { white-space: nowrap; }
 
-.overflow-menu-item-icon {
+.overflow-menu__icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   width: 16px;
+  color: var(--muted);
 }
+.menu-item--active .overflow-menu__icon { color: var(--accent-ink); }
+.menu-item:disabled .overflow-menu__icon { color: var(--faint); }
 
-.overflow-menu-item-label { flex: 1; }
+.overflow-menu__label { flex: 1; }
 
 /* Причина недоступности — прямо в пункте, а не только в подсказке
    при наведении: иначе серый пункт выглядит сломанным */
-.overflow-menu-item-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
+.overflow-menu__hint {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--faint);
   white-space: nowrap;
 }

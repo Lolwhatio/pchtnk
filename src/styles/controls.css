@@ -1,0 +1,515 @@
+/* Элементы управления дизайн-системы — один набор на всё приложение.
+ *
+ * Кнопки, поля, переключатели, ярлыки, меню, диалоги и шапки панелей.
+ * Компоненты берут классы отсюда и своих кнопок не заводят: раньше у каждого
+ * диалога была своя «главная кнопка» со своими отступами, и выглядели они
+ * вшестеро по-разному.
+ *
+ * Главное правило спеки: всё, что можно нажать, — капсула (радиус
+ * в половину высоты); всё, что можно читать, — радиус 6–8.
+ */
+
+/* ── Кнопки: высота 38 (основная) или 30 (шапка, тулбар) ──────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 22px;
+  border-radius: 19px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.btn--sm {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  font-size: var(--fs-label);
+}
+.btn--block { width: 100%; }
+
+/* Primary — одна на экран */
+.btn--primary { background: var(--accent); color: var(--on-accent); }
+.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn--secondary { border-color: var(--border-strong); color: var(--text); }
+.btn--secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+
+/* Ghost — фон появляется только под курсором */
+.btn--ghost { padding: 0 18px; color: var(--muted); font-weight: 500; }
+.btn--sm.btn--ghost { padding: 0 12px; }
+.btn--ghost:hover:not(:disabled) { background: var(--row-active); color: var(--text); }
+
+/* Danger — заливается только под курсором */
+.btn--danger { border-color: var(--error); color: var(--error-ink); }
+.btn--danger:hover:not(:disabled) { background: var(--error); color: #FFFFFF; }
+
+/* В Некрасовской ошибка совпадает по цвету с акцентом, поэтому там она
+   показывается обводкой, а не заливкой */
+[data-palette="nekrasovskaya"] .btn--danger:hover:not(:disabled) {
+  background: none;
+  color: var(--error-ink);
+  box-shadow: inset 0 0 0 1px var(--error);
+}
+
+.btn:disabled { opacity: 0.45; cursor: default; }
+
+.btn kbd {
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  opacity: 0.65;
+}
+
+/* ── Иконочная кнопка 30×30 ───────────────────────────────────────────────
+ * Одна на шапку, тулбар и панели. По умолчанию без обводки — в тулбаре их
+ * полтора десятка подряд, и ряд обведённых кружков читался бы пузырчатой
+ * плёнкой. Обведённая (--outline) — одиночная кнопка из спеки.
+ *
+ * Включённое состояние передаётся через aria-pressed (переключатели) или
+ * aria-expanded (кнопки, раскрывающие меню), а не классом — так его видит
+ * и скринридер. Два канала: подложка и цвет значка — подложка светлой темы
+ * сама по себе от бумаги почти не отличается. */
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  position: relative;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  line-height: 1;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+.btn-icon:hover { background: var(--row-active); color: var(--text); }
+
+.btn-icon--outline { border-color: var(--border); }
+.btn-icon--outline:hover { background: none; border-color: var(--border-strong); }
+
+.btn-icon[aria-pressed="true"] {
+  background: var(--row-active);
+  color: var(--accent-ink);
+}
+.btn-icon[aria-expanded="true"] {
+  background: var(--row-active);
+  color: var(--ink);
+}
+.btn-icon--outline[aria-pressed="true"],
+.btn-icon--outline[aria-expanded="true"] { border-color: var(--border-strong); }
+
+.btn-icon:disabled {
+  color: var(--faint);
+  opacity: 0.6;
+  cursor: default;
+}
+.btn-icon:disabled:hover { background: none; }
+
+.btn-icon svg, .btn-icon img { pointer-events: none; }
+
+/* Кнопка с подписью вместо значка («Заголовок ▾») */
+.btn-icon--label {
+  width: auto;
+  padding: 0 10px 0 12px;
+  gap: 4px;
+  font-weight: 600;
+}
+
+/* ── Кнопка-капсула с подписью: «Ветка», «Фокус» в шапке ───────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.chip:hover { border-color: var(--border-strong); color: var(--text); }
+.chip[aria-pressed="true"] { color: var(--ink); }
+
+/* Значки-примитивы из спеки: в дизайне нет иконочного шрифта, эти два
+   значка — круги и прямоугольники. Живут здесь, а не в icons/index.jsx:
+   они цветные и принадлежат знаку (линия ветки, кольцо пересадки),
+   а не набору контурных пиктограмм. */
+
+/* Структура — линия ветки: три полоски 2px высотой, ширины 12 / 8 / 10,
+   первая — цвет ветки */
+.glyph-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: none;
+}
+.glyph-rail i {
+  display: block;
+  height: 2px;
+  background: var(--rail-off);
+}
+.glyph-rail i:nth-child(1) { width: 12px; background: var(--accent); }
+.glyph-rail i:nth-child(2) { width: 8px; }
+.glyph-rail i:nth-child(3) { width: 10px; }
+
+/* Кольцо пересадки: 12px, обводка 3px цветом пересадки */
+.glyph-ring {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid var(--transfer);
+  flex: none;
+}
+
+/* ── Сегментный переключатель ─────────────────────────────────────────── */
+
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  flex-shrink: 0;
+}
+.seg__opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+.seg__opt:hover { color: var(--text); }
+.seg__opt[aria-checked="true"] {
+  background: var(--border);
+  color: var(--ink);
+}
+
+/* ── Переключатель 56×30 ──────────────────────────────────────────────── */
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 56px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--border);
+  transition: background var(--transition);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: transform 0.15s var(--ease-slot), background var(--transition);
+}
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after {
+  transform: translateX(26px);
+  background: var(--surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch::after { transition: none; }
+}
+
+/* ── Поле ввода: 40px, капсула ────────────────────────────────────────── */
+
+.field {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-title);
+  caret-color: var(--accent);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color var(--transition), color var(--transition);
+}
+.field::placeholder { color: var(--faint); }
+.field:focus { border-color: var(--accent); color: var(--ink); }
+.field:read-only { color: var(--muted); }
+
+/* Многострочное поле читают, поэтому радиус панели, а не капсула */
+textarea.field {
+  height: auto;
+  min-height: 76px;
+  padding: 10px 16px;
+  border-radius: var(--r-panel);
+  line-height: 1.55;
+  resize: vertical;
+}
+
+/* ── Ярлык: 26px, точка 7px, строчными ────────────────────────────────── */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  flex-shrink: 0;
+  background: var(--row-active);
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  line-height: 1;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+.tag::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex: none;
+}
+.tag--accent {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  color: var(--accent-ink);
+}
+.tag--accent::before { background: var(--accent); }
+.tag--error {
+  background: color-mix(in srgb, var(--error) 14%, var(--bg));
+  color: var(--error-ink);
+}
+.tag--error::before { background: var(--error); }
+button.tag { cursor: pointer; }
+button.tag:hover { color: var(--text); }
+
+/* ── Меню ─────────────────────────────────────────────────────────────── */
+/* Пункты — строки списка: паддинг 9/12, радиус 6 */
+
+.menu {
+  position: absolute;
+  z-index: 50;
+  min-width: 200px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--r-block);
+  font-family: var(--font-ui);
+  font-size: var(--fs-row);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--transition), color var(--transition);
+}
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible:not(:disabled) {
+  background: var(--row-active);
+  color: var(--ink);
+  outline: none;
+}
+.menu-item--active { color: var(--accent-ink); }
+.menu-item--active:hover:not(:disabled) { color: var(--accent-ink); }
+.menu-item--danger { color: var(--error-ink); }
+.menu-item--danger:hover:not(:disabled) { color: var(--error-ink); }
+.menu-item:disabled { color: var(--faint); cursor: not-allowed; }
+
+.menu-item kbd {
+  margin-left: auto;
+  padding-left: 14px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--faint);
+}
+
+.menu-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border-soft);
+}
+
+.menu-label {
+  padding: 9px 12px 4px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--faint);
+}
+
+/* ── Диалоги ──────────────────────────────────────────────────────────── */
+
+/* На тёмной теме полупрозрачный чёрный почти ничего не делает: фон и так
+   тёмный, а текст под ним спорит с диалогом. Поэтому расфокус —
+   слой становится слоем. */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.dialog {
+  width: 380px;
+  max-width: 100%;
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-ui);
+  overflow: hidden;
+}
+.dialog--wide { width: 440px; }
+
+.dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 12px 22px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.dialog__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-title);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.dialog__body {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 0 22px 22px;
+  flex-shrink: 0;
+}
+
+.dialog__desc {
+  font-size: var(--fs-row);
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.dialog__label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--muted);
+}
+.dialog__optional { font-weight: 500; color: var(--faint); }
+
+.dialog__hint {
+  font-size: var(--fs-label);
+  line-height: 1.55;
+  color: var(--faint);
+}
+
+.dialog__error {
+  font-size: var(--fs-label);
+  line-height: 1.5;
+  color: var(--error-ink);
+}
+
+/* ── Шапка боковой панели ─────────────────────────────────────────────── */
+/* Заголовок панели по шкале — Onest 14/600, без капса и разрядки */
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 54px;
+  padding: 12px 12px 12px 22px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.panel-head__title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Тач-цели ─────────────────────────────────────────────────────────── */
+/* На пальце 30×30 без зазоров — гарантированные промахи. Apple
+   рекомендует 44; капсула остаётся капсулой, растёт только высота. */
+@media (pointer: coarse) {
+  .btn-icon { width: 44px; height: 44px; border-radius: 22px; }
+  .btn-icon--label { width: auto; }
+  .chip, .btn--sm { height: 40px; border-radius: 20px; }
+}

@@ -1,377 +1,106 @@
-/* Колонка в общем ряду, как остальные боковые панели. Раньше здесь стоял
-   position: fixed с z-index: 20 — единственная панель, выпавшая из потока, —
-   и Настройки не вставали рядом с Черновиком, а накрывали его. Заодно
-   уходит привязка к top: 40px / bottom: 40px: в Дзене шапки нет,
-   на телефоне нет нижней панели, а отступы оставались. */
+/* Колонка в общем ряду, как остальные боковые панели: Настройки встают
+   рядом с Черновиком, а не накрывают его. Шапка — общий .panel-head. */
 .settings {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
-  background: var(--bg-panel);
-  border-left: 1px solid var(--border);
+  background: var(--surface);
+  border-left: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.settings-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.settings-close {
-  font-size: 14px;
-  color: var(--text-muted);
-  padding: 2px 5px;
-  border-radius: 3px;
-  line-height: 1;
-}
-.settings-close:hover { background: var(--bg-hover); color: var(--text-primary); }
-
 .settings-body {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 16px;
+  padding-bottom: var(--sp-4);
 }
 
+/* Подпись раздела — Onest 12/600 третьим планом: капс и разрядка
+   в системе не используются нигде */
 .settings-section-label {
-  font-size: var(--fs-xs);
+  padding: var(--sp-4) var(--sp-4) 6px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
   font-weight: 600;
-  color: var(--accent);
-  padding: 14px 16px 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--faint);
 }
 
-/* ── Строка с тогглом ─────────────────────────── */
+/* ── Строка с переключателем ─────────────────────── */
 
 .settings-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: var(--sp-3);
+  padding: 10px var(--sp-4);
 }
 
-/* Переключатель из трёх вариантов не помещается рядом с подписью —
+/* Переключатель из нескольких вариантов не помещается рядом с подписью —
    ставим его под ней */
 .settings-row--stack {
   flex-direction: column;
   align-items: stretch;
-  gap: 9px;
+  gap: 10px;
 }
 
-.settings-seg {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-}
-
-.settings-seg-btn {
+.settings-row-text {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 6px 4px;
-  border-radius: 5px;
+  gap: 4px;
+}
+
+.settings-row-name {
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  transition: background var(--transition), color var(--transition);
-}
-.settings-seg-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.settings-seg-btn--on {
-  background: var(--bg-active);
-  color: var(--accent);
-  font-weight: 600;
+  font-size: var(--fs-row);
+  font-weight: 500;
+  color: var(--text);
 }
 
-.settings-seg-hint {
-  font-size: var(--fs-xs);
-  font-weight: 400;
-  color: var(--text-muted);
+.settings-row-desc {
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  line-height: 1.55;
+  color: var(--faint);
 }
-.settings-seg-btn--on .settings-seg-hint { color: var(--accent); }
 
-/* ── Палитры: знаки линий метро ─────────────────── */
+.settings-row .switch { margin-top: 2px; }
+
+/* Сегменты на всю ширину строки */
+.seg--wide { display: flex; }
+.seg--wide .seg__opt { flex: 1; }
+.settings-row--stack > .seg { align-self: flex-start; }
+.settings-row--stack > .seg--wide { align-self: stretch; }
+
+/* ── Ветки: кружки с номером, как на схеме метро ─── */
 
 .settings-lines {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0 2px 4px;
 }
 
 .settings-line {
-  padding: 2px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  line-height: 0;
-  transition: border-color var(--transition), transform var(--transition);
-}
-.settings-line:hover { transform: scale(1.08); }
-/* Обводка акцентом, а не самим цветом линии: выбранная должна читаться
-   и когда цвет линии почти сливается с фоном светлой темы */
-.settings-line--on { border-color: var(--accent); }
-
-.settings-line-dot {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: 13px;
+  background: var(--line);
+  color: var(--line-fg);
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: 700;
   line-height: 1;
-}
-
-.settings-lines-name {
-  margin-top: 8px;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
-.settings-row-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.settings-row-name {
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-}
-
-.settings-row-desc {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-/* ── Переключатель ────────────────────────────── */
-
-.settings-toggle {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: 10px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s;
-  margin-top: 1px;
-}
-
-.settings-toggle--on {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.settings-toggle-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  transition: transform 0.2s, background 0.2s;
-}
-
-.settings-toggle--on .settings-toggle-knob {
-  transform: translateX(16px);
-  background: #fff;
-}
-
-/* ── API ключ ─────────────────────────────────── */
-
-.settings-api {
-  padding: 8px 16px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.settings-api-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.settings-api-badge {
-  font-size: var(--fs-xs);
-  color: var(--accent);
-  background: var(--bg-active);
-  padding: 1px 6px;
-  border-radius: 10px;
-}
-
-.settings-api-row {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.settings-api-input {
-  flex: 1;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: var(--fs-xs);
-  font-family: 'SF Mono', 'Menlo', monospace;
-  color: var(--text-primary);
-  outline: none;
-  min-width: 0;
-  transition: border-color 0.15s;
-}
-.settings-api-input:focus {
-  border-color: var(--accent);
-}
-.settings-api-input::placeholder {
-  color: var(--text-muted);
-  font-family: var(--font-ui);
-}
-
-.settings-api-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-  transition: color var(--transition), background var(--transition);
-}
-.settings-api-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
-.settings-api-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-/* ── Заглушка изоляции ───────────────────────────── */
-
-.settings-isolation-note {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  padding: 4px 16px 10px;
-  line-height: 1.5;
-  font-style: italic;
-}
-
-/* ── Список провайдеров ───────────────────────────── */
-
-.settings-providers {
-  padding: 4px 16px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.settings-provider {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 6px 8px;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.settings-provider:hover {
-  background: var(--bg-hover);
-}
-
-.settings-provider--active {
-  background: var(--bg-active);
-  border-color: var(--border);
-}
-
-.settings-provider-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  margin-bottom: 6px;
-}
-
-.settings-provider-radio {
-  accent-color: var(--accent);
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
   cursor: pointer;
 }
-
-.settings-provider-name {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-primary);
-  flex: 1;
+.settings-line[aria-checked="true"] {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--line);
 }
-
-.settings-provider-free {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: #4caf7d;
-  background: rgba(76, 175, 80, 0.12);
-  padding: 1px 6px;
-  border-radius: 10px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-/* ── Стоп-слова ───────────────────────────────── */
-
-.settings-row--column {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.settings-stopwords {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  line-height: 1.6;
+.settings-line:focus-visible {
   outline: none;
-  padding: 8px 10px;
-  resize: vertical;
-  transition: border-color var(--transition);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.settings-stopwords:focus {
-  border-color: var(--accent);
-}
-
-.settings-stopwords::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink);
 }

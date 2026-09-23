@@ -12,13 +12,13 @@ export default function BufferPanel({ onClose }) {
 
   return (
     <div className="buffer-panel">
+      <div className="panel-head">
+        <span className="panel-head__title">Черновик</span>
+        <button className="btn-icon" onClick={handleClear} title="Очистить" aria-label="Очистить"><IconTrash /></button>
+        <button className="btn-icon" onClick={onClose} title="Закрыть" aria-label="Закрыть"><IconClose /></button>
+      </div>
       {/* Пояснение — отдельной строкой под заголовком: в одну строку с
           кнопками оно ужималось в три и ломало шапку */}
-      <div className="buffer-header">
-        <span className="buffer-title">Буфер</span>
-        <button className="buffer-clear" onClick={handleClear} title="Очистить"><IconTrash size={12} /> Очистить</button>
-        <button className="buffer-close" onClick={onClose} title="Закрыть" aria-label="Закрыть"><IconClose size={12} /></button>
-      </div>
       <p className="buffer-hint" title="Форматирование снимается намеренно — только голый текст, без HTML-мусора из нейросети">
         Не сохраняется, форматирование сбрасывается
       </p>

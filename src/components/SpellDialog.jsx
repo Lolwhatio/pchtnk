@@ -38,7 +38,7 @@ export default function SpellDialog({ errors, idx, onFix, onFixAll, onSkip, onCl
       <div className="spell-header">
         <span className="spell-title">Орфография</span>
         <span className="spell-counter">{idx + 1} / {errors.length}</span>
-        <button className="spell-close" onClick={onClose} title="Закрыть (Esc)"><IconClose size={12} /></button>
+        <button className="btn-icon" onClick={onClose} title="Закрыть (Esc)" aria-label="Закрыть"><IconClose /></button>
       </div>
 
       <div className="spell-word-row">
@@ -48,11 +48,13 @@ export default function SpellDialog({ errors, idx, onFix, onFixAll, onSkip, onCl
       </div>
 
       {suggestions.length > 1 && (
-        <div className="spell-suggestions">
+        <div className="spell-suggestions" role="radiogroup" aria-label="Варианты">
           {suggestions.map((s, i) => (
             <button
               key={i}
-              className={`spell-sugg${i === selIdx ? ' spell-sugg--active' : ''}`}
+              className="seg__opt spell-sugg"
+              role="radio"
+              aria-checked={i === selIdx}
               onClick={() => setSelIdx(i)}
             >{s}</button>
           ))}
@@ -60,15 +62,15 @@ export default function SpellDialog({ errors, idx, onFix, onFixAll, onSkip, onCl
       )}
 
       <div className="spell-footer">
-        <button className="spell-btn" onClick={onSkip}>
+        <button className="btn btn--sm btn--ghost" onClick={onSkip}>
           Пропустить <kbd>Tab</kbd>
         </button>
         {errors.length > 1 && (
-          <button className="spell-btn spell-btn--fix-all" onClick={onFixAll} title="Заменить все ошибки первым предложением">
+          <button className="btn btn--sm btn--secondary" onClick={onFixAll} title="Заменить все ошибки первым предложением">
             Все ({errors.length})
           </button>
         )}
-        <button className="spell-btn spell-btn--primary" onClick={() => onFix(chosen)}>
+        <button className="btn btn--sm btn--primary" onClick={() => onFix(chosen)}>
           Заменить <kbd>↵</kbd>
         </button>
       </div>

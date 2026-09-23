@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconClose, IconPencil } from './icons'
 import { numberFootnotes } from '../utils/footnotes'
-import './TOC.css'
 import './FootnotesPanel.css'
 
 // Список использованных сносок с номерами. Клик — переход к месту в тексте.
@@ -19,15 +18,15 @@ export default function FootnotesPanel({ editor, onEdit, onInsertSources, onClos
   const jumpTo = (pos) => editor.chain().focus().setTextSelection(pos + 1).run()
 
   return (
-    <div className="toc fn-panel">
-      <div className="toc-header">
-        <span>Сноски</span>
-        <button className="toc-close" onClick={onClose}><IconClose size={12} /></button>
+    <div className="fn-panel">
+      <div className="panel-head">
+        <span className="panel-head__title">Сноски</span>
+        <button className="btn-icon" onClick={onClose} title="Закрыть" aria-label="Закрыть сноски"><IconClose /></button>
       </div>
 
-      <div className="toc-list">
+      <div className="fn-panel__list">
         {items.length === 0 && (
-          <p className="toc-empty">Сносок пока нет</p>
+          <p className="fn-panel__empty">Сносок пока нет</p>
         )}
         {items.map((it) => (
           <div className="fn-item" key={`${it.number}-${it.pos}`}>
@@ -43,18 +42,19 @@ export default function FootnotesPanel({ editor, onEdit, onInsertSources, onClos
               </span>
             </button>
             <button
-              className="fn-item__edit"
+              className="btn-icon fn-item__edit"
               onClick={() => onEdit(it, it.number)}
               title="Изменить источник (обновит все ссылки)"
+              aria-label="Изменить источник"
             >
-              <IconPencil />
+              <IconPencil size={14} />
             </button>
           </div>
         ))}
       </div>
 
       <div className="fn-panel__footer">
-        <button className="fn-panel__btn" onClick={onInsertSources}>
+        <button className="btn btn--sm btn--secondary btn--block" onClick={onInsertSources}>
           Вставить список источников
         </button>
       </div>

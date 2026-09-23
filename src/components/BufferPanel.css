@@ -1,77 +1,40 @@
 .buffer-panel {
   width: 320px;
   flex-shrink: 0;
-  border-left: 1px solid var(--border);
-  background: var(--bg-panel);
+  border-left: 1px solid var(--border-soft);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.buffer-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.buffer-title {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-family: var(--font-ui);
-}
-
-.buffer-title { flex: 1; }
-
 .buffer-hint {
   margin: 0;
-  padding: 6px 10px 8px;
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  color: var(--text-muted);
+  padding: 12px var(--sp-4);
   font-family: var(--font-ui);
-  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-label);
+  line-height: 1.45;
+  color: var(--faint);
+  border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
 }
 
-.buffer-clear,
-.buffer-close {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: color var(--transition), background var(--transition);
-}
-.buffer-clear:hover { color: var(--text-secondary); background: var(--bg-hover); }
-.buffer-close:hover { color: var(--text-primary); background: var(--bg-hover); }
-
+/* Черновик — тоже текст, но рабочий, не чистовой: набран интерфейсным
+   шрифтом, чтобы не путался с документом */
 .buffer-textarea {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
   resize: none;
-  padding: 14px 14px;
-  font-size: var(--fs-sm);
-  line-height: 1.65;
-  color: var(--text-secondary);
+  padding: 18px var(--sp-4);
   font-family: var(--font-ui);
+  font-size: var(--fs-title);
+  line-height: 1.65;
+  color: var(--text);
   caret-color: var(--accent);
 }
 
 .buffer-textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.7;
+  color: var(--faint);
 }

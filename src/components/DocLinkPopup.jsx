@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { IconArrowUpRight } from './icons'
 import './DocLinkPopup.css'
 
 export default function DocLinkPopup({ query, coords, docs, selectedIdx, onSelect }) {
@@ -29,11 +28,11 @@ export default function DocLinkPopup({ query, coords, docs, selectedIdx, onSelec
 
   return (
     <div
-      className="dl-popup"
+      className="menu dl-popup"
       style={style}
       onMouseDown={e => e.preventDefault()} /* не снимаем фокус с редактора */
     >
-      <div className="dl-popup__hint">[[название документа]] — ссылка</div>
+      <div className="dl-popup__hint">Ссылка на документ — выберите какой</div>
       {docs.length === 0 ? (
         <div className="dl-popup__empty">
           {query ? 'Нет совпадений' : 'Нет других документов'}
@@ -43,10 +42,10 @@ export default function DocLinkPopup({ query, coords, docs, selectedIdx, onSelec
           {docs.map((doc, i) => (
             <button
               key={doc.id}
-              className={`dl-popup__item${i === selectedIdx ? ' dl-popup__item--sel' : ''}`}
+              className={`menu-item dl-popup__item${i === selectedIdx ? ' dl-popup__item--sel' : ''}`}
               onMouseDown={e => { e.preventDefault(); onSelect(doc) }}
             >
-              <span className="dl-popup__arrow"><IconArrowUpRight size={11} /></span>
+              <span className="glyph-ring" aria-hidden="true" />
               <span className="dl-popup__title">{doc.title || 'Без названия'}</span>
             </button>
           ))}

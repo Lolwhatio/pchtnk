@@ -129,26 +129,33 @@ const DocItem = memo(function DocItem({ doc, isActive, onSelect, onDelete, onMov
         if (id) onReorder(id, doc.id, edgeAt(e))
       }}
     >
-      <button className="docs-panel__item-main" onClick={() => onSelect(doc.id)}>
-        <div className="docs-panel__item-title">{doc.title || 'Без названия'}</div>
-        {snippet && <div className="docs-panel__item-snippet">{snippet}</div>}
-        <div className="docs-panel__item-date">{formatDate(doc.updatedAt)}</div>
+      <button className="docs-panel__item-main" onClick={() => onSelect(doc.id)} aria-current={isActive ? 'true' : undefined}>
+        <span className="docs-panel__item-dot" aria-hidden="true" />
+        <span className="docs-panel__item-text">
+          <span className="docs-panel__item-title">{doc.title || 'Без названия'}</span>
+          {snippet && <span className="docs-panel__item-snippet">{snippet}</span>}
+        </span>
+        <span className="docs-panel__item-date">{formatDate(doc.updatedAt)}</span>
       </button>
 
       <div className="docs-panel__item-actions">
         {/* Кнопка перемещения в проект */}
         <div className="docs-panel__mover-wrap" ref={moverRef}>
           <button
-            className="docs-panel__item-btn"
+            className="btn-icon docs-panel__item-btn"
             title="Переместить в проект"
+            aria-label="Переместить в проект"
+            aria-expanded={showMover}
             onClick={() => setShowMover(v => !v)}
           >
-            <IconFolderIn />
+            <IconFolderIn size={14} />
           </button>
           {showMover && (
-            <div className="docs-panel__mover">
+            <div className="menu docs-panel__mover" role="menu">
+              <div className="menu-label">Переместить в проект</div>
               <button
-                className={`docs-panel__mover-item${!doc.projectId ? ' docs-panel__mover-item--active' : ''}`}
+                role="menuitem"
+                className={`menu-item${!doc.projectId ? ' menu-item--active' : ''}`}
                 onClick={() => { onMove(doc.id, null); setShowMover(false) }}
               >
                 Без проекта
@@ -156,10 +163,11 @@ const DocItem = memo(function DocItem({ doc, isActive, onSelect, onDelete, onMov
               {projects.map(p => (
                 <button
                   key={p.id}
-                  className={`docs-panel__mover-item${doc.projectId === p.id ? ' docs-panel__mover-item--active' : ''}`}
+                  role="menuitem"
+                  className={`menu-item${doc.projectId === p.id ? ' menu-item--active' : ''}`}
                   onClick={() => { onMove(doc.id, p.id); setShowMover(false) }}
                 >
-                  {p.title}
+                  <span className="docs-panel__mover-name">{p.title}</span>
                 </button>
               ))}
             </div>
@@ -168,10 +176,11 @@ const DocItem = memo(function DocItem({ doc, isActive, onSelect, onDelete, onMov
 
         {canDelete && (
           <button
-            className="docs-panel__item-btn docs-panel__item-btn--del"
+            className="btn-icon docs-panel__item-btn docs-panel__item-btn--del"
             onClick={(e) => { e.stopPropagation(); onDelete(doc.id) }}
             title="Удалить"
-          ><IconTrash size={12} /></button>
+            aria-label="Удалить"
+          ><IconTrash size={14} /></button>
         )}
       </div>
     </div>
@@ -220,14 +229,19 @@ const ProjectSection = memo(function ProjectSection({ project, docs, currentId, 
       }}
     >
       <div className="docs-panel__project-header">
-        <button className="docs-panel__project-toggle" onClick={() => setCollapsed(c => !c)}>
+        <button
+          className="docs-panel__project-toggle"
+          onClick={() => setCollapsed(c => !c)}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Развернуть проект' : 'Свернуть проект'}
+        >
           <span className={`docs-panel__project-arrow${collapsed ? '' : ' docs-panel__project-arrow--open'}`}><IconChevronRight size={10} /></span>
         </button>
 
         {editing ? (
           <input
             ref={inputRef}
-            className="docs-panel__project-input"
+            className="field docs-panel__project-input"
             value={title}
             onChange={e => setTitle(e.target.value)}
             onBlur={commitRename}
@@ -240,21 +254,21 @@ const ProjectSection = memo(function ProjectSection({ project, docs, currentId, 
           </button>
         )}
 
-        <button className="docs-panel__project-add" title="Переименовать проект" onClick={() => { setTitle(project.title); setEditing(true) }}>
-          <IconPencil />
+        <button className="btn-icon docs-panel__project-btn" title="Переименовать проект" aria-label="Переименовать проект" onClick={() => { setTitle(project.title); setEditing(true) }}>
+          <IconPencil size={14} />
         </button>
-        <button className="docs-panel__project-add" title="Новый документ в проекте" onClick={() => onNewInProject(project.id)}>
-          <IconPlus />
+        <button className="btn-icon docs-panel__project-btn" title="Новый документ в проекте" aria-label="Новый документ в проекте" onClick={() => onNewInProject(project.id)}>
+          <IconPlus size={14} />
         </button>
         {/* Без подтверждения: удаление проекта ничего не теряет — документы
             остаются без проекта, — а вернуть его можно кнопкой «Вернуть» */}
         <button
-          className="docs-panel__project-del"
+          className="btn-icon docs-panel__project-btn"
           title="Удалить проект"
           aria-label={`Удалить проект «${project.title}»`}
           onClick={() => onDeleteProject(project.id)}
         >
-          <IconClose />
+          <IconClose size={14} />
         </button>
       </div>
 
@@ -322,17 +336,17 @@ export default function DocsPanel({
 
   return (
     <div className="docs-panel">
-      <div className="docs-panel__header">
-        <span className="docs-panel__title">Документы</span>
-        <button className="docs-panel__btn" onClick={() => onNew()} title="Новый документ"><IconPlus /></button>
-        <button className="docs-panel__btn" onClick={() => onCreateProject()} title="Новый проект" aria-label="Новый проект"><IconFolderPlus /></button>
-        <button className="docs-panel__btn" onClick={onClose} title="Закрыть" aria-label="Закрыть панель документов"><IconClose /></button>
+      <div className="panel-head">
+        <span className="panel-head__title">Документы</span>
+        <button className="btn-icon" onClick={() => onNew()} title="Новый документ" aria-label="Новый документ"><IconPlus /></button>
+        <button className="btn-icon" onClick={() => onCreateProject()} title="Новый проект" aria-label="Новый проект"><IconFolderPlus /></button>
+        <button className="btn-icon" onClick={onClose} title="Закрыть" aria-label="Закрыть панель документов"><IconClose /></button>
       </div>
 
       <div className="docs-panel__search">
         <input
           type="search"
-          className="docs-panel__search-input"
+          className="field docs-panel__search-input"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Поиск по названию и тексту"
@@ -408,28 +422,30 @@ export default function DocsPanel({
       {pendingDelete && (
         <div className="docs-panel__undo" role="status">
           <span className="docs-panel__undo-text">{pendingDelete.label}</span>
-          <button className="docs-panel__undo-btn" onClick={onUndoDelete}>Вернуть</button>
+          <button className="btn btn--sm btn--secondary" onClick={onUndoDelete}>Вернуть</button>
         </div>
       )}
 
-      {/* Столбцом, а не строкой: подписи вроде «Скачать проект» в треть
-          ширины панели не помещались и обрезались */}
+      {/* «Скачать проект» — во всю ширину: подпись в треть панели не помещалась.
+          Бэкап и импорт — парой под ней */}
       <div className="docs-panel__footer">
         <button
-          className="docs-panel__footer-btn docs-panel__footer-btn--kb"
+          className="btn btn--sm btn--secondary btn--block"
           onClick={onExportKb}
           title="Выбранные проекты — в один HTML-файл с оглавлением"
         >Скачать проект</button>
-        <button
-          className="docs-panel__footer-btn"
-          onClick={onExport}
-          title="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
-        >Бэкап</button>
-        <button
-          className="docs-panel__footer-btn"
-          onClick={onImport}
-          title="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
-        >Импорт</button>
+        <div className="docs-panel__footer-row">
+          <button
+            className="btn btn--sm btn--ghost"
+            onClick={onExport}
+            title="ZIP со всеми документами: Markdown для чтения, архив для восстановления"
+          >Бэкап</button>
+          <button
+            className="btn btn--sm btn--ghost"
+            onClick={onImport}
+            title="ZIP-бэкап, HTML, .docx, Markdown или текст — можно несколько сразу"
+          >Импорт</button>
+        </div>
       </div>
     </div>
   )

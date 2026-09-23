@@ -2,7 +2,7 @@ import { IconClose } from './icons'
 import './ShortcutsDialog.css'
 
 const GENERAL = [
-  { keys: '⌘⇧D', label: 'Дзен-режим' },
+  { keys: '⌘⇧D', label: 'Режим фокуса' },
   { keys: '⌘⇧T', label: 'Применить типограф' },
   { keys: '⌘⇧Y', label: 'Яндекс.Спеллер' },
   { keys: '⌘⇧N', label: 'Новый документ' },
@@ -27,11 +27,11 @@ const EDITOR = [
 
 export default function ShortcutsDialog({ onClose }) {
   return (
-    <div className="input-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="shortcuts-dialog" role="dialog" aria-label="Горячие клавиши">
-        <div className="input-dialog-header">
-          <span className="input-dialog-title">Горячие клавиши</span>
-          <button className="input-dialog-close" onClick={onClose}><IconClose size={12} /></button>
+    <div className="dialog-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="dialog dialog--wide shortcuts-dialog" role="dialog" aria-label="Горячие клавиши">
+        <div className="dialog__header">
+          <span className="dialog__title">Горячие клавиши</span>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
         <div className="shortcuts-body">

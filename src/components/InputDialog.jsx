@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { IconClose } from './icons'
-import './InputDialog.css'
 
+// Оболочка, поле и кнопки — общие классы из styles/controls.css
 export default function InputDialog({
   title, placeholder, defaultValue, description, error,
   type = 'text', confirmLabel = 'Ок',
@@ -34,20 +34,20 @@ export default function InputDialog({
 
   return (
     <div
-      className="input-overlay"
+      className="dialog-overlay"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="input-dialog" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="input-dialog-header">
-          <span className="input-dialog-title">{title}</span>
-          <button className="input-dialog-close" onClick={onClose} aria-label="Закрыть"><IconClose size={12} /></button>
+      <div className="dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="dialog__header">
+          <span className="dialog__title">{title}</span>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
-        <div className="input-dialog-body">
-          {description && <p className="input-dialog-desc">{description}</p>}
+        <div className="dialog__body">
+          {description && <p className="dialog__desc">{description}</p>}
           <input
             ref={inputRef}
-            className={`input-dialog-field${error ? ' input-dialog-field--error' : ''}`}
+            className="field"
             type={type}
             value={value}
             onChange={e => setValue(e.target.value)}
@@ -61,13 +61,15 @@ export default function InputDialog({
               if (e.key === 'Escape') { e.preventDefault(); onClose() }
             }}
           />
-          {error && <p className="input-dialog-error" id="input-dialog-error" role="alert">{error}</p>}
+          {/* Красным только сообщение. Рамка, текст и подпись разом — это три
+              сигнала об одной ошибке, и они кричат громче всего на экране. */}
+          {error && <p className="dialog__error" id="input-dialog-error" role="alert">{error}</p>}
         </div>
 
-        <div className="input-dialog-footer">
-          <button className="input-dialog-btn" onClick={onClose}>Отмена</button>
+        <div className="dialog__footer">
+          <button className="btn btn--ghost" onClick={onClose}>Отмена</button>
           <button
-            className="input-dialog-btn input-dialog-btn--primary"
+            className="btn btn--primary"
             onClick={confirm}
             disabled={!value.trim()}
           >{confirmLabel}</button>

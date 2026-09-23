@@ -119,21 +119,24 @@ export default function TypografPanel({ typograf, enabled, onToggle, embedded })
   return (
     <div className={`typograf-panel${embedded ? ' typograf-panel--embedded' : ''}`}>
       <div className="typograf-header">
-        <label className="typograf-master">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={e => onToggle(e.target.checked)}
+        <div className="typograf-master">
+          <span className="typograf-master__label">Применять при предпросмотре и экспорте</span>
+          <button
+            className="switch"
+            role="switch"
+            aria-checked={enabled}
+            aria-label="Применять типограф при предпросмотре и экспорте"
+            onClick={() => onToggle(!enabled)}
+            onMouseDown={e => e.preventDefault()}
           />
-          Применять при предпросмотре и экспорте
-        </label>
-        <div className="typograf-lang">
-          <span>Язык:</span>
-          <select value={lang} onChange={e => setLang(e.target.value)}>
+        </div>
+        <label className="typograf-lang">
+          <span>Язык</span>
+          <select className="typograf-lang__select" value={lang} onChange={e => setLang(e.target.value)}>
             <option value="ru">Русский</option>
             <option value="en">English</option>
           </select>
-        </div>
+        </label>
       </div>
 
       <div className="typograf-rules">
@@ -158,7 +161,7 @@ export default function TypografPanel({ typograf, enabled, onToggle, embedded })
       </div>
 
       <div className="typograf-footer">
-        <button className="typograf-reset" onClick={reset}>Сбросить настройки</button>
+        <button className="btn btn--sm btn--ghost" onClick={reset}>Сбросить настройки</button>
         <a
           href="https://github.com/typograf/typograf"
           target="_blank"

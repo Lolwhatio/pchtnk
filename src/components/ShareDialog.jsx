@@ -40,15 +40,15 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
   }
 
   return (
-    <div className="share-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="share-dialog">
-        <div className="share-header">
-          <span className="share-title">Поделиться заметкой</span>
-          <button className="share-close" onClick={onClose}><IconClose size={12} /></button>
+    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="dialog" role="dialog" aria-label="Поделиться заметкой">
+        <div className="dialog__header">
+          <span className="dialog__title">Поделиться заметкой</span>
+          <button className="btn-icon" onClick={onClose} aria-label="Закрыть"><IconClose /></button>
         </div>
 
-        <div className="share-body">
-          <p className="share-desc">
+        <div className="dialog__body">
+          <p className="dialog__desc">
             Вы получите ссылку на документ — без облачного хранения.
             Отправьте её кому нужно, и заметка откроется в Печатниках.
           </p>
@@ -62,11 +62,12 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
           </div>
 
           <div className="share-password">
-            <label className="share-password-label">
-              Пароль <span className="share-password-optional">(необязательно)</span>
+            <label className="dialog__label" htmlFor="share-password">
+              <span>Пароль <span className="dialog__optional">(необязательно)</span></span>
             </label>
             <input
-              className="share-password-input"
+              id="share-password"
+              className="field"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -81,7 +82,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
           </div>
 
           {status === 'idle' && (
-            <button className="share-btn" onClick={handleShare}>
+            <button className="btn btn--primary btn--block" onClick={handleShare}>
               Создать ссылку
             </button>
           )}
@@ -93,7 +94,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
           {(status === 'done' || status === 'done_noshort') && (
             <>
               <div className="share-status share-status--done">
-                ✓ Ссылка скопирована в буфер обмена
+                Ссылка скопирована в буфер обмена
               </div>
               {status === 'done_noshort' && (
                 <p className="share-status share-status--error">
@@ -101,7 +102,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
                 </p>
               )}
               <input
-                className="share-password-input"
+                className="field"
                 readOnly
                 value={link}
                 onFocus={e => e.target.select()}
@@ -115,7 +116,7 @@ export default function ShareDialog({ onShare, isolationMode, onClose }) {
                 Не удалось скопировать автоматически. Скопируйте ссылку вручную:
               </p>
               <input
-                className="share-password-input"
+                className="field"
                 readOnly
                 value={link}
                 onFocus={e => e.target.select()}

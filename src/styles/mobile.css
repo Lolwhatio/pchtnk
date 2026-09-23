@@ -1,7 +1,7 @@
 /* ── Мобильная вёрстка ────────────────────────────────────────────────────────
-   Главная причина «мелкого масштаба» на телефоне — контент шире экрана
-   (тулбар, отступ под метки H1–H6), из-за чего браузер отдаляет страницу.
-   Здесь всё ужимается до ширины экрана. */
+   Главная причина «мелкого масштаба» на телефоне — контент шире экрана,
+   из-за чего браузер отдаляет страницу. Здесь всё ужимается до ширины
+   экрана. Подключается последним и перекрывает стили компонентов. */
 
 @media (max-width: 700px) {
 
@@ -11,109 +11,82 @@
   }
 
   /* ── Шапка ──
-     Кнопок теперь четыре, а не девять: форматирование ушло во всплывающее
-     меню над выделением. Раньше при 320px содержимое занимало 316 из 320,
-     а с кнопкой «Назад» — 359, и меню «Инструменты» уезжало за экран. */
+     Знак, «Документы», название и два инструмента. «Структура», «Фокус»
+     и тема на телефон не помещаются: структура и остальное — в меню
+     инструментов, тема — в настройках. Статус уходит: на узком экране
+     место — названию. */
   .app-header {
-    padding: 0 4px;
+    gap: 10px;
+    padding: 8px 10px;
   }
-  .header-left,
-  .header-right {
-    gap: 2px;
-  }
-  .file-name,
-  .file-name--editing {
-    padding: 0 6px;
-    font-size: var(--fs-xs);
-    min-width: 0;
-  }
-  /* Крайний случай: очень узкий экран плюс кнопка «Назад».
-     Имя файла ужимается первым, кнопки не уезжают. */
-  .file-name { flex: 1 1 0; }
+  .app-header__status { display: none; }
+  .app-header__doc { flex: 1 1 0; }
+  .app-header__title--editing { width: 100%; }
+  .app-header__tools { gap: 2px; }
 
-  /* ── Редактор ── */
-  /* Отступы 10px вместо 14: при 375px это добавляет к строке два знака,
+  /* ── Полоса набора ── */
+  /* Поля 14px вместо 28: при 375px это добавляет к строке несколько знаков,
      а на 320px решает, рвутся слова или нет */
   .editor-wrap {
-    padding: 20px 10px calc(32px + env(safe-area-inset-bottom, 0px));
+    padding: 22px 14px calc(34px + env(safe-area-inset-bottom, 0px));
   }
-  .editor-content .ProseMirror h1::before,
-  .editor-content .ProseMirror h2::before,
-  .editor-content .ProseMirror h3::before,
-  .editor-content .ProseMirror h4::before,
-  .editor-content .ProseMirror h5::before,
-  .editor-content .ProseMirror h6::before {
-    display: none;
-  }
+  .editor-column { gap: 22px; }
 
-  /* ── Нижний тулбар скрыт: его закрывает клавиатура.
-        Инструменты редактуры — в шапке, остальное — под гаечным ключом ── */
-  .toolbar {
-    display: none;
-  }
+  /* Шкала заголовков на ступень мельче: 38px на экране в 375 — это
+     два слова в строке. Меток H1–H6 здесь нет: в поля 14px метка
+     с зазором (24px) не помещается */
+  .editor-content .ProseMirror h1 { font-size: 30px; }
+  .editor-content .ProseMirror h2 { font-size: 22px; }
+  .editor-content .ProseMirror h3 { font-size: 18px; }
+  .editor-content .ProseMirror :is(h1, h2, h3, h4, h5, h6)::before { display: none; }
 
-  /* Шапка: инструменты редактуры + меню, всё в один ряд */
-  .app-header {
-    gap: 0;
-  }
-  .header-right .toolbar-btn {
-    flex-shrink: 0;
-    color: var(--text-muted);
-  }
-  .header-right .toolbar-btn.active {
-    color: var(--accent);
-  }
-  .header-right .toolbar-btn--label {
-    padding: 0 4px 0 6px;
-  }
+  /* ── Боковые панели → слои поверх текста ──
+     Слой занимает тело приложения под шапкой, какой бы высоты она ни была
+     (на пальце кнопки растут до 44px, а с ними и шапка) */
+  .app-body { position: relative; }
 
-  /* ── Боковые панели → оверлеи поверх текста ── */
-  .docs-panel {
-    position: fixed;
-    top: 40px;
+  .docs-panel,
+  .rail,
+  .fn-panel {
+    position: absolute;
+    top: 0;
     bottom: 0;
     left: 0;
-    width: min(300px, 86vw);
+    width: min(320px, 88vw);
     z-index: 30;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.35);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-  .buffer-panel {
-    position: fixed;
-    top: 40px;
-    bottom: 0;
-    right: 0;
-    width: min(320px, 86vw);
-    z-index: 30;
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
+  /* Ветка на холсте прозрачна по краю — поверх текста ей нужен свой фон
+     и граница во всю высоту */
+  .rail { background: var(--bg); border-right: 1px solid var(--border-soft); }
+  .rail__inner { border-right: none; }
+
+  .buffer-panel,
   .settings {
-    position: fixed;
-    top: 40px;
+    position: absolute;
+    top: 0;
     bottom: 0;
     right: 0;
-    width: min(300px, 86vw);
+    width: min(340px, 88vw);
     z-index: 30;
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.35);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   /* ── Диалоги по ширине экрана ── */
-  .share-dialog,
-  .shortcuts-dialog,
-  .input-dialog,
-  .media-dialog,
-  .spell-dialog,
-  .kb-dialog {
+  .dialog,
+  .spell-dialog {
     width: calc(100vw - 24px);
-    max-width: 400px;
+    max-width: 440px;
   }
+  .spell-dialog,
+  .notice { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
 
   /* iOS Safari зумит страницу при фокусе на поле с шрифтом < 16px */
   input,
   textarea,
   select {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 }

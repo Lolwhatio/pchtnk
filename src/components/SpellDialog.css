@@ -1,161 +1,91 @@
+/* Плавающая карточка над нижними панелями: текст под ней остаётся виден,
+   и исправление видно на месте */
 .spell-dialog {
   position: fixed;
-  bottom: 72px; /* над тулбаром */
+  bottom: 64px; /* над нижней панелью форматирования */
   left: 50%;
   transform: translateX(-50%);
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.25);
-  min-width: 260px;
-  max-width: 400px;
-  width: max-content;
   z-index: 200;
+  min-width: 280px;
+  max-width: min(440px, calc(100vw - 32px));
+  width: max-content;
   overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
   font-family: var(--font-ui);
 }
-
-/* ── Header ─────────────────────────────── */
 
 .spell-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px 8px;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  padding: 8px 8px 8px 18px;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .spell-title {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   flex: 1;
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .spell-counter {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
-.spell-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: var(--fs-xs);
-  padding: 2px 5px;
-  border-radius: 4px;
-  line-height: 1;
-  transition: color var(--transition), background var(--transition);
-}
-.spell-close:hover { color: var(--text-primary); background: var(--bg-hover); }
-
-/* ── Word row ───────────────────────────── */
+/* ── Слово ──────────────────────────────── */
 
 .spell-word-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px 10px;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  font-family: var(--font-editor);
 }
 
 .spell-error-word {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--danger);
-  text-decoration: underline;
-  text-decoration-style: wavy;
-  text-decoration-color: var(--danger);
-  text-underline-offset: 3px;
+  font-size: 17.5px;
+  color: var(--error-ink);
+  text-decoration: underline wavy var(--error);
+  text-underline-offset: 4px;
 }
 
 .spell-arrow {
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-row);
+  color: var(--syntax);
   flex-shrink: 0;
 }
 
 .spell-fix-word {
-  font-size: 15px;
+  font-size: 17.5px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--ink);
 }
 
-/* ── Suggestions ────────────────────────── */
+/* ── Варианты — сегментами ──────────────── */
 
 .spell-suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  padding: 0 14px 10px;
+  gap: 4px;
+  padding: 0 18px 14px;
 }
+.spell-sugg { border: 1px solid var(--border); }
+.spell-sugg[aria-checked="true"] { border-color: var(--border); }
 
-.spell-sugg {
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text-primary);
-  font-size: var(--fs-xs);
-  font-family: var(--font-ui);
-  padding: 3px 9px;
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition);
-}
-.spell-sugg:hover { background: var(--bg-active); border-color: var(--border-light); }
-.spell-sugg--active {
-  background: var(--bg-active);
-  border-color: var(--accent-dim);
-  color: var(--accent);
-}
-
-/* ── Footer ─────────────────────────────── */
+/* ── Кнопки ─────────────────────────────── */
 
 .spell-footer {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--border);
-}
-
-.spell-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: var(--fs-xs);
-  font-family: var(--font-ui);
-  padding: 5px 11px;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-.spell-btn:hover { background: var(--bg-active); }
-
-.spell-btn--primary {
-  background: var(--accent-dim);
-  border-color: var(--accent-dim);
-  color: var(--accent);
-  font-weight: 600;
-}
-.spell-btn--primary:hover { background: var(--bg-active); }
-
-.spell-btn--fix-all {
-  border-color: var(--border-light);
-  color: var(--text-secondary);
-}
-.spell-btn--fix-all:hover { background: var(--bg-active); color: var(--accent); }
-
-.spell-btn kbd {
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  opacity: 0.55;
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  padding: 0 3px;
-  line-height: 1.5;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border-soft);
 }

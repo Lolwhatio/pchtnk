@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import Editor from './components/Editor'
 import Toolbar from './components/Toolbar'
 import Preview from './components/Preview'
-import TOC from './components/TOC'
+import Rail from './components/Rail'
+import Capsule from './components/Capsule'
 import Settings from './components/Settings'
 import DocsPanel from './components/DocsPanel'
 import SpellDialog from './components/SpellDialog'
@@ -17,13 +18,14 @@ import OverflowMenu from './components/OverflowMenu'
 import Notice from './components/Notice'
 import {
   IconSpellcheck, IconTypograf, IconKeyboard, IconSwapLetter, IconEmbedGeneric,
-  IconDocs, IconTOC, IconZen, IconSettings, IconTools, IconExport, IconShare,
-  IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible, IconClose,
+  IconDocs, IconTOC, IconSettings, IconTools, IconExport, IconShare,
+  IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible,
 } from './components/icons'
 import Typograf from 'typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
 import { useTooltips } from './hooks/useTooltips'
+import { useMascot } from './hooks/useMascot'
 import { markdownToHtml, editorToMarkdown, jsonToMarkdown } from './utils/markdown'
 import { stripInvisibles, pluralInvisible } from './utils/invisibles'
 import { isPalette, DEFAULT_PALETTE } from './utils/palettes'
@@ -106,7 +108,8 @@ const WELCOME_MD = `# Добро пожаловать в Печатники
 - **Типограф** — расставит правильные кавычки, тире и неразрывные пробелы (кнопка в шапке или ⌘⇧T).
 - **Проверка орфографии** через Яндекс.Спеллер (в меню инструментов, ⌘⇧Y).
 - **Деёизация** — заменит ё на е для текстов, где принята буква е.
-- **Документы и проекты** — все ваши тексты живут в панели слева (кнопка ≡).
+- **Структура** — заголовки документа слева, как станции на линии метро: линия показывает, где вы сейчас.
+- **Документы и проекты** — все ваши тексты живут в панели слева (кнопка «Документы» в шапке).
 - **Поделиться заметкой** — документ превращается в ссылку без облачного хранения, при желании с паролем.
 - **Экспорт** — Markdown, PDF или вся база знаний одним файлом.
 
@@ -124,7 +127,7 @@ const WELCOME_MD = `# Добро пожаловать в Печатники
 
 У Печатников нет серверов, и они нам не нужны. Все, что вы пишете, хранится только на вашем устройстве — в памяти браузера. Мы не обрабатываем, не храним и не передаем ваши тексты — и уж точно не отдаем их на обучение нейросетей.
 
-Единственное исключение — проверка орфографии: при запуске текст отправляется в сервис Яндекс.Спеллер. Не хотите даже этого — включите режим самоизоляции в настройках (⚙), и приложение перестанет обращаться в интернет совсем.
+Единственное исключение — проверка орфографии: при запуске текст отправляется в сервис Яндекс.Спеллер. Не хотите даже этого — включите режим самоизоляции в настройках, и приложение перестанет обращаться в интернет совсем.
 
 Этот документ можно удалить — или начать писать прямо в нем.`
 
@@ -189,11 +192,38 @@ function bootstrap() {
   return { docs: [doc], currentId: id, content, title }
 }
 
+// ── Где стоял курсор ─────────────────────────────────────────────────────────
+// Вернувшись к документу, человек попадает туда же, где писал. Отдельным
+// ключом, а не полем документа: курсор двигается куда чаще, чем меняется
+// текст, и переписывать ради него весь список документов незачем.
+const CURSORS_KEY = 'pechatniki-cursors'
+
+function loadCursors() { try { return JSON.parse(localStorage.getItem(CURSORS_KEY) || '{}') } catch { return {} } }
+function storeCursors(map) { try { localStorage.setItem(CURSORS_KEY, JSON.stringify(map)) } catch { /* ignore */ } }
+
+// ── Ветка открыта или нет ────────────────────────────────────────────────────
+// На десктопе по умолчанию открыта — это структура документа, её видно
+// сразу. На телефоне она ложится поверх текста, поэтому каждый запуск
+// начинается с закрытой, что бы ни было в прошлый раз.
+const RAIL_KEY = 'pechatniki-rail'
+
 // Синглтон — вычисляем один раз при загрузке модуля
 let _bootstrap = null
 function getBootstrap() {
   if (!_bootstrap) _bootstrap = bootstrap()
   return _bootstrap
+}
+
+// ── Дата над текстом ─────────────────────────────────────────────────────────
+// Число — в кружок, остальное — рядом: «(21) сентября», а для прошлых
+// лет — «(20) августа 2025»
+function docDate(ts) {
+  const d = new Date(ts)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  const month = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) })
+    .replace(/^\d+\s*/, '')
+    .replace(/\s*г\.$/, '')
+  return { day: d.getDate(), month }
 }
 
 // ── Мобильный экран ──────────────────────────────────────────────────────────
@@ -277,9 +307,14 @@ export default function App() {
     const saved = localStorage.getItem('pechatniki-palette')
     return isPalette(saved) ? saved : DEFAULT_PALETTE
   })
-  const [zenMode,      setZenMode]      = useState(false)
+  // Режим фокуса — бывший Дзен. Ветка прячется, поля растут, всё, кроме
+  // текущего абзаца, гаснет; знак в шапке закрывает глаза.
+  const [focusMode,    setFocusMode]    = useState(false)
   const [showPreview,  setShowPreview]  = useState(false)
-  const [showTOC,      setShowTOC]      = useState(false)
+  const [railOpen,     setRailOpen]     = useState(() => (
+    !window.matchMedia(MOBILE_QUERY).matches &&
+    (localStorage.getItem(RAIL_KEY) ?? '1') === '1'
+  ))
   const [showDocs,     setShowDocs]     = useState(false)
   const [showTypograf, setShowTypograf] = useState(false)
   const [typografEnabled, setTypografEnabled] = useState(
@@ -341,6 +376,32 @@ export default function App() {
     setDocs(updated)
     return storeDocs(updated)
   }, [])
+
+  // ── Знак: глаза и подпись статуса ─────────────────────────────────────────
+  // Чистый лист, которого ещё нет в истории, «Сохранено» не показывает:
+  // сохранять в нём пока нечего
+  const isStored = docs.some(d => d.id === currentDocId)
+  const mascot = useMascot({ idleStatus: isStored ? 'Сохранено' : '' })
+
+  // ── Курсор в каждом документе ─────────────────────────────────────────────
+  const cursorsRef = useRef(null)
+
+  const rememberCursor = useCallback(() => {
+    if (!editor || !curIdRef.current) return
+    const map = (cursorsRef.current ??= loadCursors())
+    map[curIdRef.current] = editor.state.selection.from
+    // Удалённые документы из карты выметаем, чтобы она не росла вечно
+    const alive = new Set(docsRef.current.map(d => d.id))
+    for (const id of Object.keys(map)) if (!alive.has(id) && id !== curIdRef.current) delete map[id]
+    storeCursors(map)
+  }, [editor])
+
+  // Открыли документ — ставим курсор, где он был, и показываем это место
+  const restoreCursor = useCallback((id) => {
+    const pos = (cursorsRef.current ??= loadCursors())[id]
+    if (!editor || pos == null) return
+    try { editor.chain().setTextSelection(pos).scrollIntoView().run() } catch { /* ignored */ }
+  }, [editor])
 
   // ── Проекты ───────────────────────────────────────────────────────────────
   const handleCreateProject = useCallback((title = 'Новый проект') => {
@@ -545,22 +606,14 @@ export default function App() {
     }
   }, [isEditingName])
 
-  // ── Индикатор сохранения ──────────────────────────────────────────────────
-  // Документ уходит в localStorage сам, поэтому тревожная звёздочка не нужна:
-  // после автосейва коротко показываем «Сохранено» и гасим. Звёздочка остаётся
-  // только для файла на диске — и только если файл вообще открывали.
-  const [savedFlash, setSavedFlash] = useState(false)
-  const savedTimerRef = useRef(null)
-  const flashSaved = useCallback(() => {
-    setSavedFlash(true)
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
-    savedTimerRef.current = setTimeout(() => setSavedFlash(false), 1600)
-  }, [])
-  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current) }, [])
-
   // ── Запись текущего документа ────────────────────────────────────────────
+  // Документ уходит в localStorage сам, поэтому тревожная звёздочка не нужна:
+  // итог записи показывает знак в шапке (см. hooks/useMascot). Звёздочка
+  // остаётся только для файла на диске — и только если файл вообще открывали.
+  //
   // Нетронутый стартовый холст не сохраняем — иначе каждое открытие
   // приложения оставляло бы пустышку в списке недавних.
+  const { saved: markSaved } = mascot
   const persistCurrent = useCallback(() => {
     if (!editor || !curIdRef.current) return
     const ok = isScratch()
@@ -571,13 +624,15 @@ export default function App() {
             : d
         ))
     if (ok === null) return          // пустой холст — сохранять нечего
-    if (ok) { flashSaved(); return }
+    rememberCursor()
+    markSaved(ok)
+    if (ok) return
     // Место кончилось. Молчать нельзя: текст сейчас есть только во вкладке
     setNotice({
       kind: 'error',
       text: 'Не удалось сохранить: в хранилище браузера кончилось место. Выгрузите документ (Экспорт) и удалите лишние — чаще всего место занимают вставленные картинки.',
     })
-  }, [editor, flushDocs, isScratch, materializeCurrent, flashSaved])
+  }, [editor, flushDocs, isScratch, materializeCurrent, markSaved, rememberCursor])
 
   // ── Сохранить текущий документ (дебаунс 600 мс) ──────────────────────────
   const scheduleSave = useCallback(() => {
@@ -590,6 +645,16 @@ export default function App() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
     persistCurrent()
   }, [persistCurrent])
+
+  // Открыли другой документ: прошлый набор и прошлая ошибка к нему не
+  // относятся, курсор встаёт туда, где стоял, а знак оглядывается —
+  // заметно, что текст сменился
+  const { reset: resetMascot, react: reactMascot } = mascot
+  const afterOpen = useCallback((id) => {
+    resetMascot()
+    if (id) restoreCursor(id)
+    reactMascot('look')
+  }, [resetMascot, reactMascot, restoreCursor])
 
   const handleNewInProject = useCallback((projectId) => {
     saveNow?.()
@@ -604,7 +669,8 @@ export default function App() {
     setFileName('Без названия')
     setIsDirty(false)
     setShowDocs(false)
-  }, [editor, flushDocs, saveNow])
+    afterOpen(null)
+  }, [editor, flushDocs, saveNow, afterOpen])
 
   // ── История навигации по @-ссылкам ───────────────────────────────────────
   const [navCanBack, setNavCanBack] = useState(false)
@@ -630,7 +696,8 @@ export default function App() {
     setIsDirty(false)
     setShowDocs(false)
     setNavCanBack(navHistoryRef.current.length > 0)
-  }, [editor, saveNow])
+    afterOpen(id)
+  }, [editor, saveNow, afterOpen])
 
   const handleNavBack = useCallback(() => {
     const stack = navHistoryRef.current
@@ -647,7 +714,8 @@ export default function App() {
     setFileName(doc.title || 'Без названия')
     setIsDirty(false)
     setNavCanBack(navHistoryRef.current.length > 0)
-  }, [editor, saveNow])
+    afterOpen(prevId)
+  }, [editor, saveNow, afterOpen])
 
   // ── Новый документ ────────────────────────────────────────────────────────
   const handleNewDoc = useCallback(() => {
@@ -663,7 +731,8 @@ export default function App() {
     setFileName('Без названия')
     setIsDirty(false)
     setShowDocs(false)
-  }, [editor, saveNow, flushDocs])
+    afterOpen(null)
+  }, [editor, saveNow, flushDocs, afterOpen])
 
   // ── Удалить документ ─────────────────────────────────────────────────────
   // Мягко: документ уходит из списка, но семь секунд его можно вернуть.
@@ -713,6 +782,7 @@ export default function App() {
       localStorage.setItem(CUR_KEY, latest.id)
       setFileName(latest.title || 'Без названия')
       setIsDirty(false)
+      afterOpen(latest.id)
     }
 
     scheduleUndo(`Удалён «${doc.title || 'Без названия'}»`, () => {
@@ -722,7 +792,7 @@ export default function App() {
       next.splice(Math.min(index, next.length), 0, doc)
       flushDocs(next)
     })
-  }, [editor, flushDocs, scheduleUndo])
+  }, [editor, flushDocs, scheduleUndo, afterOpen])
 
   const handleUndoDelete = useCallback(() => {
     const cur = pendingRef.current
@@ -757,7 +827,8 @@ export default function App() {
   useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current) }, [])
 
   // ── Экспорт всех документов в ZIP ────────────────────────────────────────
-  const handleExportDocs = useCallback(async () => {
+  const { track } = mascot
+  const handleExportDocs = useCallback(() => track('Собираем архив…', async () => {
     const { default: JSZip } = await import('jszip')
     const zip = new JSZip()
 
@@ -783,7 +854,7 @@ export default function App() {
     })
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }, [])
+  }), [track])
 
   // ── Экспорт базы знаний (HTML) ────────────────────────────────────────────
   const [showKbExport, setShowKbExport] = useState(false)
@@ -821,7 +892,7 @@ export default function App() {
     input.type     = 'file'
     input.multiple = true
     input.accept   = '.zip,.docx,.html,.htm,.md,.markdown,.txt'
-    input.onchange = async (e) => {
+    input.onchange = (e) => track('Читаем файлы…', async () => {
       const files = [...e.target.files]
       if (!files.length) return
       try {
@@ -856,9 +927,9 @@ export default function App() {
       } catch (err) {
         setNotice({ kind: 'error', text: `Не удалось открыть файл: ${err.message}` })
       }
-    }
+    })
     input.click()
-  }, [flushDocs])
+  }, [flushDocs, track])
 
   // ── Файловые операции ─────────────────────────────────────────────────────
   // Предупреждать здесь не о чем: handleNewDoc начинается с saveNow(),
@@ -1071,19 +1142,31 @@ export default function App() {
     editor.commands.setContent(processed, false)
     try { editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size)) } catch { /* ignored */ }
     setIsDirty(true)
-  }, [editor])
+    reactMascot('wink')
+  }, [editor, reactMascot])
 
   // ── Запуск проверки орфографии ────────────────────────────────────────────
+  // Запрос идёт в сеть и может занять секунды — пока он идёт, знак ждёт
+  // (глаз-кольцо). Раньше проверка молчала в обоих исходах: и когда
+  // ошибок нет, и когда Спеллер не ответил, — нажатие выглядело пропавшим.
   const checkSpelling = useCallback(async () => {
     if (!editor || isolationMode) return
     const text = editor.getText()
     let raw
-    try { raw = await fetchSpellerErrors(text) } catch { return }
-    if (!raw.length) return
+    try {
+      raw = await track('Проверяем орфографию…', () => fetchSpellerErrors(text))
+    } catch {
+      setNotice({ kind: 'error', text: 'Яндекс.Спеллер не ответил. Проверьте интернет и попробуйте еще раз' })
+      return
+    }
+    if (!raw.length) {
+      setNotice({ kind: 'info', text: 'Ошибок не нашлось' })
+      return
+    }
     // Храним только текстовые позиции; PM-позиции считаем свежо каждый раз
     setSpellErrors(raw.map(e => ({ ...e, word: text.slice(e.pos, e.pos + e.len) })))
     setSpellIdx(0)
-  }, [editor, isolationMode])
+  }, [editor, isolationMode, track])
 
   // Получить PM-позиции текущей ошибки по актуальному состоянию документа
   const getSpellPmRange = useCallback((err) => {
@@ -1189,6 +1272,57 @@ export default function App() {
     setLinkDialog(null)
   }, [editor])
 
+  // ── Структура, фокус, документы ───────────────────────────────────────────
+  // Фокус прячет структуру, а открыть её из фокуса — значит из него выйти:
+  // так в макете. Открыта ли она, помнится, и после фокуса она возвращается.
+  const rememberRail = useCallback((open) => {
+    if (!isMobile) localStorage.setItem(RAIL_KEY, open ? '1' : '0')
+  }, [isMobile])
+
+  const toggleRail = useCallback(() => {
+    if (focusMode) {
+      setFocusMode(false)
+      setRailOpen(true)
+      rememberRail(true)
+      return
+    }
+    // На телефоне ветка и документы ложатся поверх текста в одно место —
+    // вдвоём им там тесно
+    if (isMobile) setShowDocs(false)
+    setRailOpen(v => !v)
+    rememberRail(!railOpen)
+  }, [focusMode, isMobile, railOpen, rememberRail])
+
+  const toggleFocus = useCallback(() => setFocusMode(f => !f), [])
+
+  const toggleDocs = useCallback(() => {
+    if (isMobile) setRailOpen(false)
+    setShowDocs(s => !s)
+  }, [isMobile])
+
+  const railVisible = railOpen && !focusMode && !showPreview
+
+  // ── Знак следит за набором ────────────────────────────────────────────────
+  // Нажатие, которое меняет текст, — «Печатаете…», гипножаба. Стрелки
+  // и сочетания с ⌘ набором не считаются (см. isTypingKey).
+  const { typed: markTyped } = mascot
+  useEffect(() => {
+    if (!editor) return
+    const dom = editor.view.dom
+    const onKey = (e) => { if (isTypingKey(e)) markTyped() }
+    dom.addEventListener('keydown', onKey)
+    return () => dom.removeEventListener('keydown', onKey)
+  }, [editor, markTyped])
+
+  // В фокусе знак спит — глаза-чёрточки. Будят его только ошибка
+  // и фоновый процесс: о них надо знать и в фокусе.
+  const headerEyes = focusMode && mascot.eyes !== 'error' && mascot.eyes !== 'waiting'
+    ? 'sleep'
+    : mascot.eyes
+
+  // Чистый лист датируется началом сессии: он и заведён в этот момент
+  const [sessionStart] = useState(() => Date.now())
+
   // ── Глобальные горячие клавиши ────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
@@ -1197,21 +1331,22 @@ export default function App() {
         if (e.key === 'Escape') {
           // Слои закрываются сверху вниз: сначала то, что лежит поверх текста,
           // потом режимы. Диалоги закрывают себя сами через useDismiss.
+          // Ветку на десктопе Esc не трогает: это не слой, а часть экрана.
           if (showPreview)        setShowPreview(false)
           else if (showShortcuts) setShowShortcuts(false)
           else if (showTypograf)  setShowTypograf(false)
           else if (showFootnotes) setShowFootnotes(false)
           else if (showBuffer)    setShowBuffer(false)
           else if (showDocs)      setShowDocs(false)
-          else if (showTOC)       setShowTOC(false)
-          else if (zenMode)       setZenMode(false)
+          else if (isMobile && railOpen) setRailOpen(false)
+          else if (focusMode)     setFocusMode(false)
         }
         return
       }
       // Сравниваем физическую клавишу, а не букву: e.key в русской раскладке
       // отдаёт кириллицу ('В' вместо 'D'), и сочетания переставали работать
       // ровно тогда, когда пользователь пишет по-русски.
-      if (e.shiftKey && e.code === 'KeyD') { e.preventDefault(); setZenMode(z => !z);   return }
+      if (e.shiftKey && e.code === 'KeyD') { e.preventDefault(); toggleFocus();        return }
       if (e.shiftKey && e.code === 'KeyT') { e.preventDefault(); handleApplyTypograf(); return }
       if (e.shiftKey && e.code === 'KeyN') { e.preventDefault(); handleNew();           return }
       if (e.shiftKey && e.code === 'KeyY') { e.preventDefault(); if (!isolationMode) checkSpelling(); return }
@@ -1221,16 +1356,18 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [editor, fileHandle, isDirty, zenMode, showDocs, showTOC, showShortcuts, isolationMode,
-      showPreview, showTypograf, showFootnotes, showBuffer,
+  }, [editor, fileHandle, isDirty, focusMode, showDocs, railOpen, isMobile, showShortcuts, isolationMode,
+      showPreview, showTypograf, showFootnotes, showBuffer, toggleFocus,
       checkSpelling, handleNew, handleOpen, handleSave, handleSaveAs, handleApplyTypograf])
 
   // ── Рендер ────────────────────────────────────────────────────────────────
-  // Интерфейс не тает, пока открыта любая панель или диалог
-  const uiBusy = showDocs || showTOC || showBuffer || showTypograf || showPreview ||
+  // Интерфейс не тает, пока открыта любая панель или диалог. Ветка к ним
+  // не относится: она открыта почти всегда, и с ней затухание не включалось бы
+  // никогда.
+  const uiBusy = showDocs || showBuffer || showTypograf || showPreview ||
     showShare || showShortcuts || showKbExport || showFootnotes || isEditingName ||
     !!linkDialog || spellErrors.length > 0
-  const uiFaded = useTypingFade(editor, fadeEnabled && !zenMode && !isMobile && !uiBusy)
+  const uiFaded = useTypingFade(editor, fadeEnabled && !isMobile && !uiBusy)
 
   // Лаунчер недавних — приветствие в начале сессии, а не подсказка: он ждёт на
   // чистом листе, но с первым же символом уходит насовсем. Стёрли всё обратно,
@@ -1244,218 +1381,245 @@ export default function App() {
 
   const recentVisible = !hasTyped && (editor?.isEmpty ?? true)
 
-  // Недавние документы для лаунчера: не текущий, с осмысленным названием
+  // Недавние документы для лаунчера: не текущий, с осмысленным названием,
+  // пять последних — остальные в панели «Документы»
   const recentDocs = useMemo(() => (
     [...docs]
       .filter(d => d.id !== currentDocId && d.title && d.title !== 'Без названия')
       .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 6)
+      .slice(0, 5)
   ), [docs, currentDocId])
 
   // Лаунчер держим в DOM (для плавного затухания), а видимостью правит recentVisible
-  const mountRecent = !zenMode && !showPreview && !showDocs && recentDocs.length > 0
+  const mountRecent = !focusMode && !showPreview && !showDocs && recentDocs.length > 0
+
+  // Строка над текстом: число, когда заведён документ, — в кружке, рядом
+  // месяц и проект. У нового листа это сегодняшний день
+  const currentDoc = docs.find(d => d.id === currentDocId)
+  const project = currentDoc?.projectId ? projects.find(p => p.id === currentDoc.projectId) : null
+  const metaDate = docDate(currentDoc?.createdAt ?? sessionStart)
+  const docMeta = `${metaDate.month} · ${project?.title || 'без проекта'}`
+
+  const startRename = () => { nameEditStartRef.current = fileName; setIsEditingName(true) }
+
+  const toolsMenu = (
+    <OverflowMenu
+      icon={<IconTools />}
+      title="Инструменты"
+      outline={!isMobile}
+      items={[
+        {
+          key: 'spell',
+          icon: <IconSpellcheck />,
+          label: 'Яндекс.Спеллер',
+          title: isolationMode ? 'Отключено в режиме самоизоляции' : 'Проверить орфографию (⌘⇧Y)',
+          // Причина недоступности видна сразу, а не только при наведении:
+          // иначе серый пункт выглядит сломанным
+          hint: isolationMode ? 'самоизоляция' : undefined,
+          disabled: isolationMode,
+          onClick: checkSpelling,
+        },
+        {
+          key: 'deyo',
+          icon: <IconSwapLetter />,
+          label: 'Убрать точки над ё',
+          title: 'Заменить ё на е во всем тексте',
+          onClick: handleDeyo,
+        },
+        {
+          key: 'invisibles',
+          icon: <IconInvisible />,
+          label: 'Убрать невидимые символы',
+          title: 'Символы нулевой ширины и прочие невидимки — их не видно, но они ломают поиск по тексту',
+          onClick: handleStripInvisibles,
+        },
+        {
+          key: 'footnotes',
+          icon: <IconFootnote />,
+          label: 'Сноски и источники',
+          title: 'Список использованных сносок',
+          active: showFootnotes,
+          onClick: () => setShowFootnotes(v => !v),
+        },
+        ...(isMobile ? [
+          {
+            key: 'image',
+            icon: <IconImage />,
+            label: 'Изображение',
+            onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image')),
+          },
+          {
+            key: 'embed',
+            icon: <IconEmbedGeneric />,
+            label: 'Встроить (YouTube, Slides…)',
+            onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed')),
+          },
+          {
+            key: 'rail',
+            icon: <IconTOC />,
+            label: 'Структура',
+            active: railOpen,
+            onClick: toggleRail,
+          },
+          {
+            key: 'buffer',
+            icon: <IconDrafts />,
+            label: 'Черновик',
+            active: showBuffer,
+            onClick: toggleBuffer,
+          },
+          {
+            key: 'share',
+            icon: <IconShare />,
+            label: 'Поделиться заметкой',
+            onClick: () => setShowShare(true),
+          },
+          {
+            key: 'export',
+            icon: <IconExport />,
+            label: 'Экспорт',
+            onClick: () => setShowPreview(true),
+          },
+          {
+            key: 'settings',
+            icon: <IconSettings />,
+            label: 'Настройки',
+            active: showTypograf,
+            onClick: toggleSettings,
+          },
+        ] : [
+          {
+            key: 'shortcuts',
+            icon: <IconKeyboard />,
+            label: 'Горячие клавиши',
+            title: 'Список горячих клавиш (⌘/)',
+            onClick: () => setShowShortcuts(true),
+          },
+        ]),
+      ]}
+    />
+  )
 
   return (
-    <div className={`app${zenMode ? ' app--zen' : ''}${uiFaded ? ' app--faded' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
-      {!zenMode && !showPreview && (
-        <div className="app-header">
-          <div className="header-left">
-            {/* ≡ — история документов */}
-            <button
-              className="btn-icon"
-              onClick={() => setShowDocs(s => !s)}
-              title="Документы"
-              aria-label="Документы"
-              aria-pressed={showDocs}
-            >
-              <IconDocs />
+    <div className={`app${focusMode ? ' app--focus' : ''}${uiFaded ? ' app--faded' : ''}${import.meta.env.VITE_IS_ELECTRON ? ' app--electron' : ''}`}>
+      {!showPreview && (
+        <header className="app-header">
+          {/* Знак — логотип и индикатор состояния, не кнопка. В покое между
+              глазами перемычка; при запуске знак печатает своё имя и стирает.
+              По щелчку подмигивает — просто так */}
+          <Capsule
+            className="app-header__logo"
+            size={36}
+            intro="pchtnk"
+            eyes={headerEyes}
+            winkOnClick
+            role="img"
+            aria-label="Печатники"
+          />
+
+          {/* Документы и структура — рядом со знаком, у левого края:
+              обе панели открываются слева */}
+          <nav className="app-header__nav" aria-label="Панели">
+            <button className="chip" onClick={toggleDocs} aria-pressed={showDocs} title="Все документы и проекты">
+              <IconDocs size={14} />
+              <span className="chip__label">Документы</span>
             </button>
-            {/* § — оглавление (на мобильном — в меню инструментов) */}
             {!isMobile && (
-              <button
-                className="btn-icon"
-                onClick={() => setShowTOC(t => !t)}
-                title="Оглавление"
-                aria-label="Оглавление"
-                aria-pressed={showTOC}
-              >
-                <IconTOC />
+              <button className="chip" onClick={toggleRail} aria-pressed={railVisible} title="Заголовки документа и ссылки на другие">
+                <span className="glyph-rail" aria-hidden="true"><i /><i /><i /></span>
+                <span className="chip__label">Структура</span>
               </button>
             )}
-            {/* Самоизоляция меняет поведение приложения — держим на виду.
-                Раньше единственным признаком был серый пункт «Яндекс.Спеллер»
-                внутри закрытого меню, и забывший о режиме решал, что спеллер сломался. */}
-            {isolationMode && !isMobile && (
-              <button
-                className="badge-isolation"
-                onClick={openSettings}
-                title="Приложение не обращается в интернет. Нажмите, чтобы открыть настройки"
+          </nav>
+
+          <div className="app-header__doc">
+            {isEditingName ? (
+              <input
+                ref={nameInputRef}
+                className="app-header__title app-header__title--editing"
+                value={fileName}
+                onChange={e => setFileName(e.target.value)}
+                onBlur={commitNameEdit}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { commitNameEdit(); e.preventDefault() }
+                  if (e.key === 'Escape') {
+                    // Отмена — возвращаем название, каким оно было
+                    setFileName(nameEditStartRef.current)
+                    setIsEditingName(false)
+                    e.preventDefault()
+                  }
+                }}
+              />
+            ) : (
+              <span
+                className="app-header__title"
+                onClick={startRename}
+                title="Нажмите, чтобы переименовать"
               >
-                Самоизоляция
-              </button>
+                {fileName}
+                {fileHandle && isDirty && <span className="file-flag" title="Есть изменения, не выгруженные в файл"> *</span>}
+              </span>
             )}
-            {/* ← Назад — появляется при навигации по @-ссылкам.
-                На узком экране только значок: с подписью шапка переполняется. */}
-            {navCanBack && (
-              <button
-                className="btn-back"
-                onClick={handleNavBack}
-                title="Назад"
-                aria-label="Назад"
-              >
-                <IconBack />
-                {!isMobile && <span className="btn-back__label">Назад</span>}
-              </button>
-            )}
+            <span className="app-header__status" role="status">{mascot.status}</span>
           </div>
 
-          {/* Имя файла помещается и на телефоне: инструменты редактуры
-              уехали во всплывающее меню и шапку больше не распирают */}
-          {isEditingName ? (
-            <input
-              ref={nameInputRef}
-              className="file-name file-name--editing"
-              value={fileName}
-              onChange={e => setFileName(e.target.value)}
-              onBlur={commitNameEdit}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { commitNameEdit(); e.preventDefault() }
-                if (e.key === 'Escape') {
-                  // Отмена — возвращаем название, каким оно было
-                  setFileName(nameEditStartRef.current)
-                  setIsEditingName(false)
-                  e.preventDefault()
-                }
-              }}
-            />
-          ) : (
-            <span
-              className="file-name"
-              onClick={() => { nameEditStartRef.current = fileName; setIsEditingName(true) }}
-              title="Нажмите, чтобы переименовать"
+          {/* Самоизоляция меняет поведение приложения — держим на виду.
+              Раньше единственным признаком был серый пункт «Яндекс.Спеллер»
+              внутри закрытого меню, и забывший о режиме решал, что спеллер сломался. */}
+          {isolationMode && !isMobile && (
+            <button
+              className="tag tag--accent"
+              onClick={openSettings}
+              title="Приложение не обращается в интернет. Нажмите, чтобы открыть настройки"
             >
-              {fileName}
-              {fileHandle && isDirty && <span className="file-flag" title="Есть изменения, не выгруженные в файл"> *</span>}
-              <span className={`file-saved${savedFlash ? ' file-saved--on' : ''}`}>Сохранено</span>
-            </span>
+              самоизоляция
+            </button>
           )}
 
-          <div className="header-right">
-            {/* Обработка текста. Форматирование живёт во всплывающем меню
-                над выделением, поэтому в шапке его нет — и на телефоне
-                она больше не переполняется. */}
-            <button className="btn-icon" onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)" aria-label="Применить типограф"><IconTypograf /></button>
-            <OverflowMenu
-              icon={<IconTools />}
-              title="Инструменты"
-              items={[
-                {
-                  key: 'spell',
-                  icon: <IconSpellcheck />,
-                  label: 'Яндекс.Спеллер',
-                  title: isolationMode ? 'Отключено в режиме самоизоляции' : 'Проверить орфографию (⌘⇧Y)',
-                  // Причина недоступности видна сразу, а не только при наведении:
-                  // иначе серый пункт выглядит сломанным
-                  hint: isolationMode ? 'самоизоляция' : undefined,
-                  disabled: isolationMode,
-                  onClick: checkSpelling,
-                },
-                {
-                  key: 'deyo',
-                  icon: <IconSwapLetter />,
-                  label: 'Убрать точки над ё',
-                  title: 'Заменить ё на е во всем тексте',
-                  onClick: handleDeyo,
-                },
-                {
-                  key: 'invisibles',
-                  icon: <IconInvisible />,
-                  label: 'Убрать невидимые символы',
-                  title: 'Символы нулевой ширины и прочие невидимки — их не видно, но они ломают поиск по тексту',
-                  onClick: handleStripInvisibles,
-                },
-                {
-                  key: 'footnotes',
-                  icon: <IconFootnote />,
-                  label: 'Сноски и источники',
-                  title: 'Список использованных сносок',
-                  active: showFootnotes,
-                  onClick: () => setShowFootnotes(v => !v),
-                },
-                ...(isMobile ? [
-                  {
-                    key: 'image',
-                    icon: <IconImage />,
-                    label: 'Изображение',
-                    onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-image')),
-                  },
-                  {
-                    key: 'embed',
-                    icon: <IconEmbedGeneric />,
-                    label: 'Встроить (YouTube, Slides…)',
-                    onClick: () => window.dispatchEvent(new CustomEvent('pechatniki:insert-embed')),
-                  },
-                  {
-                    key: 'toc',
-                    icon: <IconTOC />,
-                    label: 'Оглавление',
-                    active: showTOC,
-                    onClick: () => setShowTOC(t => !t),
-                  },
-                  {
-                    key: 'buffer',
-                    icon: <IconDrafts />,
-                    label: 'Черновик',
-                    active: showBuffer,
-                    onClick: toggleBuffer,
-                  },
-                  {
-                    key: 'share',
-                    icon: <IconShare />,
-                    label: 'Поделиться заметкой',
-                    onClick: () => setShowShare(true),
-                  },
-                  {
-                    key: 'export',
-                    icon: <IconExport />,
-                    label: 'Экспорт',
-                    onClick: () => setShowPreview(true),
-                  },
-                  {
-                    key: 'settings',
-                    icon: <IconSettings />,
-                    label: 'Настройки',
-                    active: showTypograf,
-                    onClick: toggleSettings,
-                  },
-                ] : [
-                  {
-                    key: 'shortcuts',
-                    icon: <IconKeyboard />,
-                    label: 'Горячие клавиши',
-                    title: 'Список горячих клавиш (⌘/)',
-                    onClick: () => setShowShortcuts(true),
-                  },
-                ]),
-              ]}
-            />
+          {/* ← Назад — появляется при переходе по ссылке на документ.
+              На узком экране только значок: с подписью шапка переполняется. */}
+          {navCanBack && (
+            <button className="chip" onClick={handleNavBack} title="Назад" aria-label="Назад">
+              <IconBack size={14} />
+              {!isMobile && 'Назад'}
+            </button>
+          )}
+
+          <div className="app-header__right">
+            {/* Обработка текста и файлы. Форматирование живёт в нижней панели,
+                поэтому здесь его нет — и на телефоне шапка не переполняется. */}
+            <div className="app-header__tools">
+              <button className={`btn-icon${isMobile ? '' : ' btn-icon--outline'}`} onClick={handleApplyTypograf} title="Применить типограф (⌘⇧T)" aria-label="Применить типограф"><IconTypograf /></button>
+              {toolsMenu}
+              {!isMobile && (
+                <>
+                  <span className="app-header__sep" />
+                  <button className="btn-icon btn-icon--outline" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
+                  <button className="btn-icon btn-icon--outline" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
+                  <button className="btn-icon btn-icon--outline" onClick={toggleBuffer} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
+                  <button className="btn-icon btn-icon--outline" onClick={toggleSettings} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
+                </>
+              )}
+            </div>
+
             {!isMobile && (
-              <>
-                <span className="header-sep" />
-                <button className="btn-icon" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
-                <button className="btn-icon" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
-                <span className="header-sep" />
-                <button className="btn-icon" onClick={toggleBuffer} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
-                <button className="btn-icon" onClick={() => setZenMode(z => !z)} title="Режим Дзен (⌘⇧D)" aria-label="Режим Дзен" aria-pressed={zenMode}><IconZen /></button>
-                <button className="btn-icon" onClick={toggleSettings} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
-              </>
+              <div className="app-header__controls">
+                <button className="chip" onClick={toggleFocus} aria-pressed={focusMode} title="Режим фокуса (⌘⇧D)">
+                  <span className="glyph-ring" aria-hidden="true" />
+                  <span className="chip__label">Фокус</span>
+                </button>
+                <div className="seg" role="radiogroup" aria-label="Тема">
+                  <button className="seg__opt" role="radio" aria-checked={theme === 'dark'} onClick={() => setTheme('dark')}>Темная</button>
+                  <button className="seg__opt" role="radio" aria-checked={theme === 'light'} onClick={() => setTheme('light')}>Светлая</button>
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        </header>
       )}
 
       <div className="app-body">
-        {showDocs && !zenMode && !showPreview && (
+        {showDocs && !focusMode && !showPreview && (
           <DocsPanel
             docs={docs}
             projects={projects}
@@ -1478,11 +1642,15 @@ export default function App() {
           />
         )}
 
-        {showTOC && !zenMode && !showPreview && (
-          <TOC editor={editor} onClose={() => setShowTOC(false)} />
+        {railVisible && (
+          <Rail
+            editor={editor}
+            docs={docs}
+            onTransfer={(id) => handleSelectDoc(id, true)}
+          />
         )}
 
-        {showFootnotes && !zenMode && !showPreview && (
+        {showFootnotes && !focusMode && !showPreview && (
           <FootnotesPanel
             editor={editor}
             onEdit={(item, number) => window.dispatchEvent(new CustomEvent('pechatniki:edit-footnote', {
@@ -1497,13 +1665,23 @@ export default function App() {
           <Editor
             onReady={setEditor}
             onChange={() => { setIsDirty(true); scheduleSave() }}
-            zenMode={zenMode}
+            focusMode={focusMode}
             initialContent={initialContent}
             docs={docs}
             onDocSelect={handleSelectDoc}
             stopPhrases={stopPhrases}
             typograf={typografEnabled ? tp : null}
-          />
+            metaDay={metaDate.day}
+            meta={docMeta}
+          >
+            {mountRecent && (
+              <RecentDocs
+                docs={recentDocs}
+                visible={recentVisible}
+                onSelect={(id) => handleSelectDoc(id)}
+              />
+            )}
+          </Editor>
         </div>
 
         {showPreview && (
@@ -1536,36 +1714,16 @@ export default function App() {
           />
         )}
 
-        {showBuffer && !zenMode && !showPreview && (
+        {showBuffer && !focusMode && !showPreview && (
           <BufferPanel onClose={() => setShowBuffer(false)} />
         )}
       </div>
 
-      {/* Нижний тулбар только на десктопе — на телефоне его закрывает клавиатура,
-          инструменты редактуры живут в шапке */}
-      {!showPreview && !isMobile && <Toolbar editor={editor} />}
-
-      {mountRecent && (
-        <RecentDocs
-          docs={recentDocs}
-          visible={recentVisible}
-          onSelect={(id) => handleSelectDoc(id)}
-        />
-      )}
-
-      {/* Значок из общего набора, а не глиф «✕»: глиф сидит на базовой линии
-          текста, а не в оптическом центре кружка, и крестик выглядел
-          сползшим. То же правило проверяет npm run check:icons. */}
-      {zenMode && (
-        <button
-          className="zen-exit"
-          onClick={() => setZenMode(false)}
-          title="Выйти из Дзен (Esc)"
-          aria-label="Выйти из режима Дзен"
-        >
-          <IconClose size={14} />
-        </button>
-      )}
+      {/* Форматирование — в нижней панели, только на десктопе: на телефоне
+          её закрывает клавиатура. В фокусе панель уходит.
+          Статус-бара из макета нет: тема и ветка есть в настройках, логотип —
+          в шапке, а полоса под ними отнимала высоту у текста. */}
+      {!showPreview && !isMobile && !focusMode && <Toolbar editor={editor} />}
 
       {spellErrors.length > 0 && (
         <SpellDialog
@@ -1627,6 +1785,7 @@ export default function App() {
 
       {notice && (
         <Notice
+          key={notice.text}
           text={notice.text}
           kind={notice.kind}
           onClose={() => setNotice(null)}
@@ -1635,4 +1794,3 @@ export default function App() {
     </div>
   )
 }
-

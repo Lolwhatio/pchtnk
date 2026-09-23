@@ -532,11 +532,12 @@ const FootnoteNumberPlugin = new Plugin({
   },
 })
 
-// ── Дзен: подсветка активного блока ──────────────────────────────────────────
+// ── Фокус: подсветка активного блока ─────────────────────────────────────────
+// Класс висит всегда, а гасит остальные блоки только CSS режима фокуса
 
-const zenFocusKey = new PluginKey('zenFocus')
-const ZenFocusPlugin = new Plugin({
-  key: zenFocusKey,
+const focusBlockKey = new PluginKey('focusBlock')
+const FocusBlockPlugin = new Plugin({
+  key: focusBlockKey,
   props: {
     decorations(state) {
       const { selection } = state
@@ -545,7 +546,7 @@ const ZenFocusPlugin = new Plugin({
         const from = offset
         const to   = offset + node.nodeSize
         if (selection.from >= from && selection.from < to) {
-          decorations.push(Decoration.node(from, to, { class: 'zen-active' }))
+          decorations.push(Decoration.node(from, to, { class: 'focus-active' }))
         }
       })
       return DecorationSet.create(state.doc, decorations)
@@ -758,18 +759,18 @@ const OptimaShortcuts = Extension.create({
     }
   },
   addProseMirrorPlugins() {
-    return [ZenFocusPlugin, FootnoteNumberPlugin]
+    return [FocusBlockPlugin, FootnoteNumberPlugin]
   }
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Editor({ onReady, onChange, zenMode, initialContent, docs, onDocSelect, stopPhrases, typograf }) {
+export default function Editor({ onReady, onChange, focusMode, initialContent, docs, onDocSelect, stopPhrases, typograf, metaDay, meta, children }) {
   const wrapRef = useRef(null)
   // editorProps собираются один раз, поэтому режим читаем через реф —
   // иначе обработчик навсегда запомнит значение с первого рендера
-  const zenModeRef = useRef(zenMode)
-  useEffect(() => { zenModeRef.current = zenMode }, [zenMode])
+  const focusModeRef = useRef(focusMode)
+  useEffect(() => { focusModeRef.current = focusMode }, [focusMode])
   const phrasesRef = useRef(stopPhrases ?? [])
   const typografRef = useRef(typograf)
   const isPastingRef = useRef(false)
@@ -780,17 +781,17 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
     typografRef.current = typograf
   }, [stopPhrases, typograf])
 
-  // Ставим строку с курсором на высоту, заданную в CSS (--zen-caret).
-  // Оттуда же считаются поля сверху и снизу — одно число на всё.
+  // Ставим строку с курсором на высоту, заданную в CSS (--focus-caret).
+  // Оттуда же считается поле снизу — одно число на всё.
   //
   // Синхронно, а не в requestAnimationFrame: прокрутка обязана случиться до
   // отрисовки. Отложи её на кадр — и браузер успеет показать курсор ещё не на
   // месте, а следующий кадр уже на месте. Курсор поедет по экрану, а именно
-  // движущийся курсор в Дзене и оставляет за собой след.
+  // движущийся курсор в фокусе и оставляет за собой след.
   const centerOnCaret = useCallback((view) => {
     const wrap = wrapRef.current
     if (!wrap || view.isDestroyed) return
-    const ratio = parseFloat(getComputedStyle(wrap).getPropertyValue('--zen-caret')) || 0.4
+    const ratio = parseFloat(getComputedStyle(wrap).getPropertyValue('--focus-caret')) || 0.4
     let coords
     try { coords = view.coordsAtPos(view.state.selection.head) } catch { return }
     const delta = (coords.top + coords.bottom) / 2 - window.innerHeight * ratio
@@ -831,7 +832,7 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       // Копирование: и текст, и HTML собираем сами — см. utils/clipboard
       clipboardTextSerializer: (slice) => sliceToText(slice),
       clipboardSerializer,
-      // Прокрутку к курсору в Дзене берём на себя целиком.
+      // Прокрутку к курсору в фокусе берём на себя целиком.
       //
       // Иначе их две: ProseMirror подтягивает курсор к краю окна, а наш
       // код следом ставит строку по центру. Причём PM прокручивает только
@@ -839,9 +840,9 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       //
       // Возвращаем true: это значит «прокрутка обработана», и PM свою
       // не делает. Считаем по координатам курсора, а не по декорации
-      // .zen-active — на этот момент она может быть ещё на прежнем абзаце.
+      // .focus-active — на этот момент она может быть ещё на прежнем абзаце.
       handleScrollToSelection(view) {
-        if (!zenModeRef.current) return false
+        if (!focusModeRef.current) return false
         if (!wrapRef.current) return false
         centerOnCaret(view)
         return true
@@ -1138,20 +1139,19 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
     }
   }, [onDocSelect, editor])
 
-  // ── Переключение Дзена ───────────────────────────────────────────────────
+  // ── Переключение фокуса ──────────────────────────────────────────────────
   // Слежение за курсором при наборе целиком в handleScrollToSelection выше.
   // Здесь — только то, что нужно в момент переключения режима.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
 
-    // Фокус: Дзен включают кнопкой в шапке, а она при входе исчезает вместе
-    // с шапкой — фокус уходил на body, и печатать было нельзя, пока не ткнёшь
-    // мышью в активную строку. view.focus(), а не editor.commands.focus():
-    // команда TipTap откладывает фокус до кадра отрисовки, и в неотрисовываемом
-    // окне он не доезжает вовсе.
+    // Фокус ввода возвращаем в текст: режим включают кнопкой в шапке, и без
+    // этого печатать было нельзя, пока не ткнёшь мышью в строку.
+    // view.focus(), а не editor.commands.focus(): команда TipTap откладывает
+    // фокус до кадра отрисовки, и в неотрисовываемом окне он не доезжает вовсе.
     editor.view.focus()
 
-    if (!zenMode) return
+    if (!focusMode) return
     // Первичное центрирование ждёт кадра: вход меняет раскладку целиком
     // (display и поля в пол-экрана), и до пересчёта координаты ещё старые
     let frame = requestAnimationFrame(() => {
@@ -1161,15 +1161,27 @@ export default function Editor({ onReady, onChange, zenMode, initialContent, doc
       })
     })
     return () => { if (frame) cancelAnimationFrame(frame) }
-  }, [editor, zenMode, centerOnCaret])
+  }, [editor, focusMode, centerOnCaret])
 
   return (
     <div
-      className={`editor-wrap${zenMode ? ' editor-wrap--zen' : ''}`}
+      className={`editor-wrap${focusMode ? ' editor-wrap--focus' : ''}`}
       ref={wrapRef}
       onClick={handleWrapClick}
     >
-      <EditorContent editor={editor} className="editor-content" />
+      <div className="editor-column">
+        {/* Строка над текстом: число в кружке, месяц и проект документа.
+            Не часть документа — в экспорт не попадает */}
+        {meta && (
+          <div className="editor-meta" contentEditable={false}>
+            <span className="editor-meta__num">{metaDay}</span>
+            <span className="editor-meta__text">{meta}</span>
+          </div>
+        )}
+        <EditorContent editor={editor} className="editor-content" />
+        {/* Что стоит под текстом в той же колонке — лаунчер недавних */}
+        {children}
+      </div>
 
       {suggestion && (
         <DocLinkPopup

@@ -1,6 +1,6 @@
 import TypografPanel from './TypografPanel'
 import { IconClose } from './icons'
-import { PALETTES } from '../utils/palettes'
+import { PALETTES, paletteById } from '../utils/palettes'
 import './Settings.css'
 
 // Клик по любому переключателю не должен уводить фокус из редактора.
@@ -12,6 +12,26 @@ import './Settings.css'
 // из CSS. Тот же приём стоит на кнопках тулбара.
 const keepFocus = (e) => e.preventDefault()
 
+// Знаки в строке посчитаны для кегля 17,5px Literata
+const WIDTHS = [
+  { px: '600', label: 'Узкая',   hint: '~66 знаков' },
+  { px: '720', label: 'Обычная', hint: '~80 знаков' },
+  { px: '840', label: 'Широкая', hint: '~93 знака' },
+]
+
+function Switch({ on, onToggle, label }) {
+  return (
+    <button
+      className="switch"
+      onClick={onToggle}
+      onMouseDown={keepFocus}
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+    />
+  )
+}
+
 export default function Settings({
   typograf, typografEnabled, onToggle,
   isolationMode, onIsolationToggle,
@@ -21,74 +41,68 @@ export default function Settings({
   palette, onPalette,
   onClose,
 }) {
-  const currentLine = PALETTES.find(p => p.id === palette) || PALETTES[0]
-  // Знаки в строке посчитаны для кегля 18px и средней ширины знака
-  // кириллицы 9,05px — она на 12,6% шире латиницы
-  const WIDTHS = [
-    { px: '600', label: 'Узкая',    hint: '66 знаков' },
-    { px: '720', label: 'Обычная',  hint: '80 знаков' },
-    { px: '840', label: 'Широкая',  hint: '93 знака' },
-  ]
+  const currentLine = paletteById(palette)
+  const width = WIDTHS.find(w => w.px === editorWidth)
+
   return (
     <div className="settings">
-      <div className="settings-header">
-        <span className="settings-title">Настройки</span>
-        <button className="settings-close" onClick={onClose}><IconClose size={13} /></button>
+      <div className="panel-head">
+        <span className="panel-head__title">Настройки</span>
+        <button className="btn-icon" onClick={onClose} title="Закрыть" aria-label="Закрыть настройки"><IconClose /></button>
       </div>
 
       <div className="settings-body">
 
-        {/* ── Вид ───────────────────────────────────── */}
+        {/* ── Вид ───────────────────────────────────
+            Тема есть и в шапке, но на телефоне её там нет — поэтому и здесь,
+            в одном месте со всеми настройками. Ветка — только здесь. */}
         <div className="settings-section-label">Вид</div>
         <div className="settings-row settings-row--stack">
-          <div className="settings-row-text">
-            <span className="settings-row-name">Тема</span>
-          </div>
-          <div className="settings-seg" role="radiogroup" aria-label="Тема">
+          <span className="settings-row-name">Тема</span>
+          <div className="seg" role="radiogroup" aria-label="Тема">
             {[
               { id: 'dark',  label: 'Темная' },
               { id: 'light', label: 'Светлая' },
             ].map(t => (
               <button
                 key={t.id}
-                className={`settings-seg-btn${theme === t.id ? ' settings-seg-btn--on' : ''}`}
+                className="seg__opt"
                 role="radio"
                 aria-checked={theme === t.id}
                 onClick={() => onTheme(t.id)}
                 onMouseDown={keepFocus}
               >
-                <span>{t.label}</span>
+                {t.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Палитра — вторая ось к теме: каждая линия есть и в тёмной,
-            и в светлой. Кружки вместо списка названий: линия узнаётся
-            по цвету и номеру быстрее, чем читается «Калужско-Рижская». */}
+        {/* Ветка — вторая ось к теме: каждая есть и в темной, и в светлой.
+            Кружки вместо списка названий: линия узнаётся по цвету и номеру
+            быстрее, чем читается «Калужско-Рижская». */}
         <div className="settings-row settings-row--stack">
           <div className="settings-row-text">
-            <span className="settings-row-name">Палитра</span>
-            <span className="settings-row-desc">Выберите цвет, который вам нравится</span>
+            <span className="settings-row-name">Ветка</span>
+            <span className="settings-row-desc">{currentLine.name}</span>
           </div>
-          <div className="settings-lines" role="radiogroup" aria-label="Палитра">
+          <div className="settings-lines" role="radiogroup" aria-label="Ветка">
             {PALETTES.map(p => (
               <button
                 key={p.id}
-                className={`settings-line${palette === p.id ? ' settings-line--on' : ''}`}
+                className="settings-line"
                 role="radio"
                 aria-checked={palette === p.id}
+                aria-label={`${p.num} · ${p.name}`}
                 title={p.name}
+                style={{ '--line': p.color, '--line-fg': p.fg }}
                 onClick={() => onPalette(p.id)}
                 onMouseDown={keepFocus}
               >
-                <span className="settings-line-dot" style={{ background: p.dot, color: p.fg }}>
-                  {p.num}
-                </span>
+                {p.num}
               </button>
             ))}
           </div>
-          <div className="settings-lines-name">{currentLine.name}</div>
         </div>
 
         {/* ── Приватность ───────────────────────────── */}
@@ -100,16 +114,7 @@ export default function Settings({
               Отключает все функции, которые потенциально отправляют текст на внешние серверы
             </span>
           </div>
-          <button
-            className={`settings-toggle${isolationMode ? ' settings-toggle--on' : ''}`}
-            onClick={onIsolationToggle}
-            onMouseDown={keepFocus}
-            role="switch"
-            aria-checked={isolationMode}
-            aria-label="Режим самоизоляции"
-          >
-            <span className="settings-toggle-knob" />
-          </button>
+          <Switch on={isolationMode} onToggle={onIsolationToggle} label="Режим самоизоляции" />
         </div>
 
         {/* ── Письмо ────────────────────────────────── */}
@@ -121,39 +126,31 @@ export default function Settings({
               Сколько знаков помещается в строку. Узкая читается легче, широкая вмещает больше
             </span>
           </div>
-          <div className="settings-seg" role="radiogroup" aria-label="Ширина колонки">
+          <div className="seg seg--wide" role="radiogroup" aria-label="Ширина колонки">
             {WIDTHS.map(w => (
               <button
                 key={w.px}
-                className={`settings-seg-btn${editorWidth === w.px ? ' settings-seg-btn--on' : ''}`}
+                className="seg__opt"
                 role="radio"
                 aria-checked={editorWidth === w.px}
                 onClick={() => onEditorWidth(w.px)}
                 onMouseDown={keepFocus}
+                title={w.hint}
               >
-                <span>{w.label}</span>
-                <span className="settings-seg-hint">{w.hint}</span>
+                {w.label}
               </button>
             ))}
           </div>
+          {width && <span className="settings-row-desc">{width.px} пикселей, {width.hint}</span>}
         </div>
         <div className="settings-row">
           <div className="settings-row-text">
             <span className="settings-row-name">Прятать панели при наборе</span>
             <span className="settings-row-desc">
-              Шапка и нижняя панель тают, пока вы печатаете, и возвращаются от движения мыши или Tab
+              Шапка и нижние панели тают, пока вы печатаете, и возвращаются от движения мыши или Tab. Знак остается
             </span>
           </div>
-          <button
-            className={`settings-toggle${fadeEnabled ? ' settings-toggle--on' : ''}`}
-            onClick={onFadeToggle}
-            onMouseDown={keepFocus}
-            role="switch"
-            aria-checked={fadeEnabled}
-            aria-label="Прятать панели при наборе"
-          >
-            <span className="settings-toggle-knob" />
-          </button>
+          <Switch on={fadeEnabled} onToggle={onFadeToggle} label="Прятать панели при наборе" />
         </div>
 
         {/* ── Типограф ──────────────────────────────── */}
@@ -170,4 +167,3 @@ export default function Settings({
     </div>
   )
 }
-
