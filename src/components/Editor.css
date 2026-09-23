@@ -162,7 +162,11 @@
   line-height: var(--line-height);
   color: var(--text);
   caret-color: var(--accent);
-  text-wrap: pretty;
+  /* text-wrap: pretty здесь нет намеренно. Chrome пересобирает им две
+     последние строки абзаца — и делает это на каждый набранный знак:
+     строка над курсором обрывалась на сотню точек раньше края колонки,
+     а текст перекладывался прямо под руками. Одинокое слово в конце
+     абзаца и так не остаётся — его держит useHangingWords. */
   min-height: var(--sheet-min-height);
 }
 
@@ -193,7 +197,6 @@
   position: relative;
   font-family: var(--font-ui);
   color: var(--ink);
-  text-wrap: pretty;
   scroll-margin-top: var(--sp-5);
 }
 
