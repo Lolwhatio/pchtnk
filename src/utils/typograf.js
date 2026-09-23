@@ -77,7 +77,7 @@ export const RULE_GROUPS = [
   {
     label: 'Числа и символы',
     rules: [
-      { name: 'ru/number/comma', label: 'Замена точки на запятую в числах', locale: 'ru' },
+      { name: 'ru/number/comma', label: 'Запятая вместо точки в числах с % и ° (3.14% → 3,14%)', locale: 'ru' },
       { name: 'common/number/fraction', label: '1/2 → ½, 1/4 → ¼, 3/4 → ¾' },
       { name: 'common/symbols/copy', label: '(c) → ©, (tm) → ™, (r) → ®' },
       { name: 'ru/symbols/NN', label: '№№ → №', locale: 'ru' },
@@ -86,7 +86,7 @@ export const RULE_GROUPS = [
   {
     label: 'Опечатки',
     rules: [
-      { name: 'ru/typo/switchingKeyboardLayout', label: 'Замена латинских букв на русские', locale: 'ru' },
+      { name: 'ru/typo/switchingKeyboardLayout', label: 'Латинские буквы в русском слове (Bспользуй → Вспользуй)', locale: 'ru' },
     ]
   },
 ]
