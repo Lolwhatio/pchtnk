@@ -1,6 +1,7 @@
 import { Plugin, PluginKey } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
 import { patchDecos, eachTextblock, blockText } from './decoUtils'
+import { widowPair } from '../utils/widows'
 
 export const hangingWordsKey = new PluginKey('hangingWords')
 
@@ -35,27 +36,9 @@ const SHORT_WORD = new RegExp(
 const BEFORE_DASH = /([^\s\u00A0]{1,30})([ \u00A0]+)([—–])(?=[\s\u00A0]|$)/gu
 
 // Висячая строка: последние два слова абзаца держим вместе, чтобы на
-// отдельной строке не оставалось одинокое слово. Пару шире 24 знаков не
-// склеиваем — перенос двух длинных слов оставил бы дыру больше висячей строки.
-const WIDOW_MAX_PAIR = 24
-const WIDOW_MIN_WORDS = 4
-
-function widowPair(text) {
-  const end = text.replace(/[\s\u00A0]+$/, '').length
-  if (!end) return null
-  const head = text.slice(0, end)
-  if (head.split(/[\s\u00A0]+/).filter(Boolean).length < WIDOW_MIN_WORDS) return null
-
-  // Начало предпоследнего слова: пропускаем последнее слово и пробелы перед ним
-  const lastWord = head.search(/[^\s\u00A0]+$/)
-  if (lastWord <= 0) return null
-  const gap = head.slice(0, lastWord).search(/[\s\u00A0]+$/)
-  if (gap <= 0) return null
-  const prevWord = head.slice(0, gap).search(/[^\s\u00A0]+$/)
-  if (prevWord < 0) return null
-
-  return end - prevWord <= WIDOW_MAX_PAIR ? [prevWord, end] : null
-}
+// отдельной строке не оставалось одинокое слово. Где проходит граница
+// пары — в utils/widows.js: то же правило применяется к тексту по ⌘⇧T
+// и в выгрузках, только там настоящим неразрывным пробелом.
 
 function blockDecos(node, pos, out) {
   const { text, map } = blockText(node, pos)
