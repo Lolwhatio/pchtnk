@@ -1148,7 +1148,11 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--editor-align', editorAlign)
+    const root = document.documentElement.style
+    root.setProperty('--editor-align', editorAlign)
+    // По формату строку растягивают пробелы, и без переносов по слогам
+    // они разъезжаются; при выключке влево переносы не нужны
+    root.setProperty('--editor-hyphens', editorAlign === 'justify' ? 'auto' : 'manual')
   }, [editorAlign])
 
   const handleApplyTypograf = useCallback(() => {

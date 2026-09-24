@@ -157,7 +157,7 @@ export default function Settings({
           <div className="settings-row-text">
             <span className="settings-row-name">Выключка</span>
             <span className="settings-row-desc">
-              Как кончаются строки. Длинные слова переносятся по слогам, поэтому по формату пробелы не разъезжаются
+              Как кончаются строки. По формату ровные обе кромки — там длинные слова переносятся по слогам, иначе пробелы разъезжаются
             </span>
           </div>
           <div className="seg seg--wide" role="radiogroup" aria-label="Выключка">
