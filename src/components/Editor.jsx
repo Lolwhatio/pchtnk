@@ -13,6 +13,7 @@ import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
 import FootnoteDialog from './FootnoteDialog'
 import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
+import { LiveTypograf } from '../hooks/useLiveTypograf'
 import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
 import { sliceToText, cleanClipboardDom } from '../utils/clipboard'
@@ -919,6 +920,7 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
         openOnClick: true,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
+      LiveTypograf,
       ResizableImage,
       EmbedExtension,
       Footnote,

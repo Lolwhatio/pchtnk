@@ -21,7 +21,7 @@ import {
   IconDocs, IconTOC, IconSettings, IconTools, IconExport, IconShare,
   IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible,
 } from './components/icons'
-import { tp } from './utils/typograf'
+import { tp, typografy } from './utils/typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
 import { useTooltips } from './hooks/useTooltips'
@@ -1140,7 +1140,7 @@ export default function App() {
     // Висячее слово здесь не трогаем: текст продолжают набирать, и связка
     // последних двух слов осталась бы неразрывной посреди фразы. Её ставят
     // предпросмотр и выгрузки — там текст уже готов (utils/widows.js)
-    const processed = tp.execute(html)
+    const processed = typografy(html)
     editor.commands.setContent(processed, false)
     try { editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size)) } catch { /* ignored */ }
     setIsDirty(true)
