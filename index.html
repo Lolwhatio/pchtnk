@@ -32,7 +32,7 @@
     <script>
       try {
         var root = document.documentElement
-        root.setAttribute('data-theme', localStorage.getItem('theme') || 'dark')
+        root.setAttribute('data-theme', localStorage.getItem('theme') || 'light')
         root.setAttribute('data-palette', localStorage.getItem('pechatniki-palette') || 'forest')
         var width = localStorage.getItem('pechatniki-editor-width')
         if (width) root.style.setProperty('--editor-width', width + 'px')

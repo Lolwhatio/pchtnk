@@ -298,7 +298,9 @@ function useTypingFade(editor, enabled) {
 export default function App() {
   const isMobile = useIsMobile()
   useTooltips()
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
+  // По умолчанию светлая: дневной свет — обычные условия, а тёмную
+  // включают осознанно, и выбор запоминается
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   // Значение из хранилища проверяем: удалённая палитра оставила бы атрибут,
   // под который нет ни одного блока, и приложение молча стало бы «лесом»
   // при выбранной «Некрасовской» в настройках
