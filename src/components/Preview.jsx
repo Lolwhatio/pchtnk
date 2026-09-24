@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import TypografPanel from './TypografPanel'
 import MarkdownSource from './MarkdownSource'
 import { editorToMarkdown, markdownToHtml } from '../utils/markdown'
+import { bindWidows } from '../utils/widows'
 import { IconSettings, IconBack } from './icons'
 import { pdfCss, splitPages, imagesReady, CONTENT_W, CONTENT_H } from '../utils/pdfLayout'
 import { buildPdfBlob } from '../utils/pdfFile'
@@ -195,7 +196,7 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
     if (!editor) return ''
     const raw = editorToMarkdown(editor)
     const rendered = markdownToHtml(raw)
-    return typografEnabled && typograf ? typograf.execute(rendered) : rendered
+    return typografEnabled && typograf ? bindWidows(typograf.execute(rendered)) : rendered
   }, [editor, typografEnabled, typograf])
 
   // MD / HTML / PDF выбирают формат и показывают его в предпросмотре,
@@ -339,7 +340,6 @@ export default function Preview({ editor, fileName, typograf, typografEnabled, o
 
       {showTypograf && (
         <TypografPanel
-          typograf={typograf}
           enabled={typografEnabled}
           onToggle={onTypografToggle}
           onClose={() => setShowTypograf(false)}

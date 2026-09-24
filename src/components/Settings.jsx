@@ -33,7 +33,7 @@ function Switch({ on, onToggle, label }) {
 }
 
 export default function Settings({
-  typograf, typografEnabled, onToggle,
+  typografEnabled, onToggle,
   isolationMode, onIsolationToggle,
   fadeEnabled, onFadeToggle,
   editorWidth, onEditorWidth,
@@ -156,7 +156,6 @@ export default function Settings({
         {/* ── Типограф ──────────────────────────────── */}
         <div className="settings-section-label">Типограф</div>
         <TypografPanel
-          typograf={typograf}
           enabled={typografEnabled}
           onToggle={onToggle}
           onClose={onClose}

@@ -1,4 +1,5 @@
 import { numberFootnotesJson, sourceKey } from './footnotes'
+import { bindWidows } from './widows'
 
 // ── HTML escape ───────────────────────────────────────────────────────────────
 
@@ -150,7 +151,7 @@ function inlinesToHtml(nodes, ctx) {
 // Typograf прячет теги за служебными метками, поэтому атрибуты, data-URI
 // картинок и id сносок он не трогает: правит только текст между тегами.
 function typografy(html, ctx) {
-  return ctx.typograf ? ctx.typograf.execute(html) : html
+  return ctx.typograf ? bindWidows(ctx.typograf.execute(html)) : html
 }
 
 function docToHtml(doc, ctx) {

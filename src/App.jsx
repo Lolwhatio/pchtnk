@@ -21,7 +21,8 @@ import {
   IconDocs, IconTOC, IconSettings, IconTools, IconExport, IconShare,
   IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible,
 } from './components/icons'
-import Typograf from 'typograf'
+import { tp } from './utils/typograf'
+import { bindWidows } from './utils/widows'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
 import { useTooltips } from './hooks/useTooltips'
@@ -34,7 +35,6 @@ import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/shar
 import './App.css'
 import './styles/mobile.css' // последним — перекрывает стили компонентов
 
-const tp = new Typograf({ locale: ['ru', 'en-US'] })
 
 // ── Хранилище документов ──────────────────────────────────────────────────────
 
@@ -1138,7 +1138,9 @@ export default function App() {
     if (!editor) return
     const { from } = editor.state.selection
     const html = editor.getHTML()
-    const processed = tp.execute(html)
+    // Типограф связывает только короткое последнее слово («вышел вон»),
+    // длинное остаётся висеть — добираем правилом редактора
+    const processed = bindWidows(tp.execute(html))
     editor.commands.setContent(processed, false)
     try { editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size)) } catch { /* ignored */ }
     setIsDirty(true)
@@ -1697,7 +1699,6 @@ export default function App() {
 
         {showTypograf && !showPreview && (
           <Settings
-            typograf={tp}
             typografEnabled={typografEnabled}
             onToggle={handleTypografToggle}
             isolationMode={isolationMode}

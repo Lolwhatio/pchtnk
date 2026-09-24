@@ -18,6 +18,7 @@ import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../
 import { markdownToHtml } from '../utils/markdown'
 import { sliceToText, cleanClipboardDom } from '../utils/clipboard'
 import { fileToImageSrc } from '../utils/images'
+import { unwrapHtmlBreaks, unwrapPlainText } from '../utils/unwrapText'
 import './Editor.css'
 
 // ── Markdown-детектор ─────────────────────────────────────────────────────────
@@ -877,26 +878,28 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
           return true
         }
 
-        // Если есть HTML — чистим от AI-мусора и прогоняем через типограф
+        // Если есть HTML — чистим от AI-мусора, снимаем чужую вёрстку строк
+        // и прогоняем через типограф
         const html = event.clipboardData?.getData('text/html')
         if (html) {
           event.preventDefault()
-          const clean = sanitizeAiHtml(html)
-          const withTypo = typografRef.current ? typografRef.current.execute(clean) : clean
           const container = document.createElement('div')
-          container.innerHTML = withTypo
+          container.innerHTML = sanitizeAiHtml(html)
+          unwrapHtmlBreaks(container)
+          if (typografRef.current) container.innerHTML = typografRef.current.execute(container.innerHTML)
           const slice = ProseDOMParser.fromSchema(view.state.schema).parseSlice(container)
           view.dispatch(view.state.tr.replaceSelection(slice))
           return true
         }
 
-        // Plain text — проверяем, похоже ли на markdown
+        // Plain text — проверяем, похоже ли на markdown, а потом на вёрстку
+        // по ширине чужого окна
         const plain = event.clipboardData?.getData('text/plain') || ''
-        if (looksLikeMarkdown(plain)) {
+        const asHtml = looksLikeMarkdown(plain) ? markdownToHtml(plain) : unwrapPlainText(plain)
+        if (asHtml) {
           event.preventDefault()
-          const converted = markdownToHtml(plain)
           const container = document.createElement('div')
-          container.innerHTML = converted
+          container.innerHTML = asHtml
           const slice = ProseDOMParser.fromSchema(view.state.schema).parseSlice(container)
           view.dispatch(view.state.tr.replaceSelection(slice))
           return true
