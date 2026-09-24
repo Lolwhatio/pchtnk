@@ -154,6 +154,11 @@
   line-height: var(--line-height);
   color: var(--text);
   caret-color: var(--accent);
+  /* Переносы по слогам: длинное русское слово иначе не влезает в остаток
+     строки и оставляет дыру до 120 точек. Язык для словаря переносов
+     берётся из lang в index.html. */
+  hyphens: auto;
+  -webkit-hyphens: auto;
   /* Ни text-wrap: pretty, ни живых запретов переноса здесь нет намеренно:
      в наборе текст не должен двигаться сам. Chrome пересобирал бы две
      последние строки абзаца на каждый знак, а неразрывная пара «предлог +
@@ -164,10 +169,29 @@
   min-height: var(--sheet-min-height);
 }
 
+/* Выключка — настройка («Письмо» в настройках): по формату, когда ровными
+   должны быть обе кромки, или по левому краю. Заголовки всегда влево:
+   растянутый по формату заголовок в крупном кегле разъезжается. */
+.editor-content .ProseMirror :is(p, li, blockquote, td, th) {
+  text-align: var(--editor-align, left);
+}
+/* Заголовок не переносим по слогам, зато балансируем длину строк:
+   двухстрочный заголовок делится пополам, а не «шесть слов и одно» */
+.editor-content .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  text-align: left;
+  hyphens: manual;
+  text-wrap: balance;
+}
+/* Код не переносим по слогам: там перенос значит другое */
+.editor-content .ProseMirror :is(pre, code) { hyphens: manual; }
+
 /* Между блоками — 26px, как gap колонки в макете. Внутри списков и ячеек
    свои отступы, см. ниже */
 .editor-content .ProseMirror > * { margin: 0; }
 .editor-content .ProseMirror > * + * { margin-top: var(--block-gap); }
+/* Между абзацами — 1,25 кегля: чуть плотнее, чем между разнородными
+   блоками, и абзацы читаются как один текст, а не как отдельные карточки */
+.editor-content .ProseMirror > p + p { margin-top: 1.25em; }
 
 /* Placeholder (TipTap extension). Только на первом абзаце пустого документа:
    класс is-empty висит на любом пустом узле, и без этого правило стирало бы

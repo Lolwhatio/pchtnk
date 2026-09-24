@@ -328,7 +328,14 @@ export default function App() {
   // Ширина колонки — вкусовая настройка: типографский оптимум в 66–75 знаков
   // на широком мониторе многим тесен
   const [editorWidth, setEditorWidth] = useState(
-    () => localStorage.getItem('pechatniki-editor-width') || '720'
+    // Ширины в настройках две: 660 и 720. Из прежних наборов в хранилище
+    // могли остаться 600 и 840 — такие сводим к основной
+    () => (localStorage.getItem('pechatniki-editor-width') === '660' ? '660' : '720')
+  )
+  // Выключка: по формату или по левому краю. По формату обе кромки ровные,
+  // дыры в конце строк расходятся по межсловным пробелам
+  const [editorAlign, setEditorAlign] = useState(
+    () => localStorage.getItem('pechatniki-align') || 'left'
   )
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
@@ -1133,6 +1140,15 @@ export default function App() {
     document.documentElement.style.setProperty('--editor-width', `${editorWidth}px`)
   }, [editorWidth])
 
+  const handleEditorAlign = useCallback((value) => {
+    setEditorAlign(value)
+    localStorage.setItem('pechatniki-align', value)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--editor-align', editorAlign)
+  }, [editorAlign])
+
   const handleApplyTypograf = useCallback(() => {
     if (!editor) return
     const { from } = editor.state.selection
@@ -1707,6 +1723,8 @@ export default function App() {
             onFadeToggle={handleFadeToggle}
             editorWidth={editorWidth}
             onEditorWidth={handleEditorWidth}
+            editorAlign={editorAlign}
+            onEditorAlign={handleEditorAlign}
             theme={theme}
             onTheme={setTheme}
             palette={palette}

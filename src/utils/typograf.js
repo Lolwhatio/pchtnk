@@ -122,9 +122,41 @@ export function capNbspChains(text) {
   })
 }
 
+// Абзацы, у которых бывают лишние пробелы по краям
+const BLOCKS = 'p, li, blockquote, h1, h2, h3, h4, h5, h6'
+
+function edgeTextNode(block, last) {
+  const walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  let found = null
+  for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+    if (!node.nodeValue) continue
+    found = node
+    if (!last) break
+  }
+  return found
+}
+
+// Пробел в начале и в конце абзаца невидим в готовом тексте, но в редакторе
+// сдвигает первую строку — получается красная строка, которой никто
+// не ставил. В наборе их не даёт появиться hooks/useTidySpaces, здесь
+// чистим то, что уже написано или вставлено
+function trimEdges(html) {
+  if (!/[ \u00A0]\s*<\/(p|li|blockquote|h[1-6])>|<(p|li|blockquote|h[1-6])[^>]*>[ \u00A0]/.test(html)) return html
+  const box = document.createElement('div')
+  box.innerHTML = html
+  for (const block of box.querySelectorAll(BLOCKS)) {
+    if (block.querySelector(BLOCKS)) continue
+    const first = edgeTextNode(block, false)
+    const last = edgeTextNode(block, true)
+    if (first) first.nodeValue = first.nodeValue.replace(/^[ \u00A0]+/, '')
+    if (last) last.nodeValue = last.nodeValue.replace(/[ \u00A0]+$/, '')
+  }
+  return box.innerHTML
+}
+
 /** Типограф во всех местах, где он применяется к тексту. */
 export function typografy(html) {
-  return capNbspChains(tp.execute(html))
+  return trimEdges(capNbspChains(tp.execute(html)))
 }
 
 // Русский основной, английский вторым: правила ru работают по русскому

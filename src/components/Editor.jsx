@@ -13,6 +13,7 @@ import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
 import FootnoteDialog from './FootnoteDialog'
 import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
+import { createTidySpacesPlugin } from '../hooks/useTidySpaces'
 import { LiveTypograf } from '../hooks/useLiveTypograf'
 import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
@@ -801,6 +802,7 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
 
   // eslint-disable-next-line react-hooks/refs
   const stopWordsPlugin = useMemo(() => createStopWordsPlugin(phrasesRef), []) // phrasesRef is stable, plugin reads .current lazily
+  const tidySpacesPlugin = useMemo(() => createTidySpacesPlugin(), [])
 
   // ── suggestion state ──────────────────────────────────────────────────────
   const [suggestion, setSuggestion] = useState(null)
@@ -943,6 +945,10 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
       Extension.create({
         name: 'stopWords',
         addProseMirrorPlugins: () => [stopWordsPlugin],
+      }),
+      Extension.create({
+        name: 'tidySpaces',
+        addProseMirrorPlugins: () => [tidySpacesPlugin],
       }),
     ],
     content:   initialContent ?? getInitialContent(),

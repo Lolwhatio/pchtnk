@@ -12,11 +12,20 @@ import './Settings.css'
 // из CSS. Тот же приём стоит на кнопках тулбара.
 const keepFocus = (e) => e.preventDefault()
 
-// Знаки в строке посчитаны для кегля 17,5px Literata
+// Выключка строк. По формату — как в книге: обе кромки ровные, а остаток
+// строки расходится по межсловным пробелам. Переносы по слогам работают
+// в обоих случаях, поэтому пробелы не разъезжаются.
+const ALIGNS = [
+  { id: 'left',    label: 'По левому краю', hint: 'Правая кромка рваная' },
+  { id: 'justify', label: 'По формату',     hint: 'Обе кромки ровные' },
+]
+
+// Знаки в строке — не расчёт, а замер: набранный текст в Literata 18px
+// с переносами по слогам. Типографская мера — 60–70 знаков; широкая чуть
+// шире неё, но Vito выбрал её основной
 const WIDTHS = [
-  { px: '600', label: 'Узкая',   hint: '~66 знаков' },
-  { px: '720', label: 'Обычная', hint: '~80 знаков' },
-  { px: '840', label: 'Широкая', hint: '~93 знака' },
+  { px: '660', label: 'Узкая',   hint: '~66 знаков' },
+  { px: '720', label: 'Широкая', hint: '~73 знака' },
 ]
 
 function Switch({ on, onToggle, label }) {
@@ -37,6 +46,7 @@ export default function Settings({
   isolationMode, onIsolationToggle,
   fadeEnabled, onFadeToggle,
   editorWidth, onEditorWidth,
+  editorAlign, onEditorAlign,
   theme, onTheme,
   palette, onPalette,
   onClose,
@@ -142,6 +152,29 @@ export default function Settings({
             ))}
           </div>
           {width && <span className="settings-row-desc">{width.px} пикселей, {width.hint}</span>}
+        </div>
+        <div className="settings-row settings-row--stack">
+          <div className="settings-row-text">
+            <span className="settings-row-name">Выключка</span>
+            <span className="settings-row-desc">
+              Как кончаются строки. Длинные слова переносятся по слогам, поэтому по формату пробелы не разъезжаются
+            </span>
+          </div>
+          <div className="seg seg--wide" role="radiogroup" aria-label="Выключка">
+            {ALIGNS.map(a => (
+              <button
+                key={a.id}
+                className="seg__opt"
+                role="radio"
+                aria-checked={editorAlign === a.id}
+                onClick={() => onEditorAlign(a.id)}
+                onMouseDown={keepFocus}
+                title={a.hint}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="settings-row">
           <div className="settings-row-text">
