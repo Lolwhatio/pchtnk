@@ -21,8 +21,7 @@ import {
   IconDocs, IconTOC, IconSettings, IconTools, IconExport, IconShare,
   IconDrafts, IconBack, IconFootnote, IconImage, IconInvisible,
 } from './components/icons'
-import { tp } from './utils/typograf'
-import { bindWidows } from './utils/widows'
+import { tp, typografy } from './utils/typograf'
 import { buildPosMap, fetchSpellerErrors } from './hooks/useYandexSpeller'
 import { loadStopPhrases } from './hooks/useStopWords'
 import { useTooltips } from './hooks/useTooltips'
@@ -299,7 +298,9 @@ function useTypingFade(editor, enabled) {
 export default function App() {
   const isMobile = useIsMobile()
   useTooltips()
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
+  // По умолчанию светлая: дневной свет — обычные условия, а тёмную
+  // включают осознанно, и выбор запоминается
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
   // Значение из хранилища проверяем: удалённая палитра оставила бы атрибут,
   // под который нет ни одного блока, и приложение молча стало бы «лесом»
   // при выбранной «Некрасовской» в настройках
@@ -329,7 +330,14 @@ export default function App() {
   // Ширина колонки — вкусовая настройка: типографский оптимум в 66–75 знаков
   // на широком мониторе многим тесен
   const [editorWidth, setEditorWidth] = useState(
-    () => localStorage.getItem('pechatniki-editor-width') || '720'
+    // Ширины в настройках две: 660 и 720. Из прежних наборов в хранилище
+    // могли остаться 600 и 840 — такие сводим к основной
+    () => (localStorage.getItem('pechatniki-editor-width') === '660' ? '660' : '720')
+  )
+  // Выключка: по формату или по левому краю. По формату обе кромки ровные,
+  // дыры в конце строк расходятся по межсловным пробелам
+  const [editorAlign, setEditorAlign] = useState(
+    () => localStorage.getItem('pechatniki-align') || 'left'
   )
   const [showBuffer,   setShowBuffer]   = useState(false)
   const [showShare,    setShowShare]    = useState(false)
@@ -1134,13 +1142,27 @@ export default function App() {
     document.documentElement.style.setProperty('--editor-width', `${editorWidth}px`)
   }, [editorWidth])
 
+  const handleEditorAlign = useCallback((value) => {
+    setEditorAlign(value)
+    localStorage.setItem('pechatniki-align', value)
+  }, [])
+
+  useEffect(() => {
+    const root = document.documentElement.style
+    root.setProperty('--editor-align', editorAlign)
+    // По формату строку растягивают пробелы, и без переносов по слогам
+    // они разъезжаются; при выключке влево переносы не нужны
+    root.setProperty('--editor-hyphens', editorAlign === 'justify' ? 'auto' : 'manual')
+  }, [editorAlign])
+
   const handleApplyTypograf = useCallback(() => {
     if (!editor) return
     const { from } = editor.state.selection
     const html = editor.getHTML()
-    // Типограф связывает только короткое последнее слово («вышел вон»),
-    // длинное остаётся висеть — добираем правилом редактора
-    const processed = bindWidows(tp.execute(html))
+    // Висячее слово здесь не трогаем: текст продолжают набирать, и связка
+    // последних двух слов осталась бы неразрывной посреди фразы. Её ставят
+    // предпросмотр и выгрузки — там текст уже готов (utils/widows.js)
+    const processed = typografy(html)
     editor.commands.setContent(processed, false)
     try { editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size)) } catch { /* ignored */ }
     setIsDirty(true)
@@ -1707,6 +1729,8 @@ export default function App() {
             onFadeToggle={handleFadeToggle}
             editorWidth={editorWidth}
             onEditorWidth={handleEditorWidth}
+            editorAlign={editorAlign}
+            onEditorAlign={handleEditorAlign}
             theme={theme}
             onTheme={setTheme}
             palette={palette}

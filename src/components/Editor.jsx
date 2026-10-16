@@ -13,7 +13,8 @@ import MediaDialog from './MediaDialog'
 import EmbedDialog from './EmbedDialog'
 import FootnoteDialog from './FootnoteDialog'
 import { createStopWordsPlugin, stopWordsKey } from '../hooks/useStopWords'
-import { createHangingWordsPlugin } from '../hooks/useHangingWords'
+import { createTidySpacesPlugin } from '../hooks/useTidySpaces'
+import { LiveTypograf } from '../hooks/useLiveTypograf'
 import { collectFootnotes, uniqueSources, numberFootnotes, sourceKey } from '../utils/footnotes'
 import { markdownToHtml } from '../utils/markdown'
 import { sliceToText, cleanClipboardDom } from '../utils/clipboard'
@@ -801,7 +802,7 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
 
   // eslint-disable-next-line react-hooks/refs
   const stopWordsPlugin = useMemo(() => createStopWordsPlugin(phrasesRef), []) // phrasesRef is stable, plugin reads .current lazily
-  const hangingWordsPlugin = useMemo(() => createHangingWordsPlugin(), [])
+  const tidySpacesPlugin = useMemo(() => createTidySpacesPlugin(), [])
 
   // ── suggestion state ──────────────────────────────────────────────────────
   const [suggestion, setSuggestion] = useState(null)
@@ -921,6 +922,7 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
         openOnClick: true,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
+      LiveTypograf,
       ResizableImage,
       EmbedExtension,
       Footnote,
@@ -945,8 +947,8 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
         addProseMirrorPlugins: () => [stopWordsPlugin],
       }),
       Extension.create({
-        name: 'hangingWords',
-        addProseMirrorPlugins: () => [hangingWordsPlugin],
+        name: 'tidySpaces',
+        addProseMirrorPlugins: () => [tidySpacesPlugin],
       }),
     ],
     content:   initialContent ?? getInitialContent(),

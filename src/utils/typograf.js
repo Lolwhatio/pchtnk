@@ -93,6 +93,72 @@ export const RULE_GROUPS = [
 
 export const RULES_KEY = 'typograf-rules'
 
+// Длина неразрывной связки в знаках. Типограф вешает неразрывный пробел
+// после каждого короткого слова, и связки сцепляются: «и т. д. на столе» —
+// шестнадцать знаков одним неделимым куском, который уезжает на другую
+// строку целиком и оставляет дыру. Держим связку короткой: предлог
+// с соседним словом, а дальше обычный пробел.
+const MAX_CHAIN = 14
+
+const CHAIN = /[^\s\u00A0]+(?:\u00A0[^\s\u00A0]+)+/g
+
+/** Разорвать слишком длинные цепочки неразрывных пробелов. */
+export function capNbspChains(text) {
+  if (!text.includes('\u00A0')) return text
+  return text.replace(CHAIN, run => {
+    const parts = run.split('\u00A0')
+    let out = parts[0]
+    let length = parts[0].length
+    for (const part of parts.slice(1)) {
+      if (length + 1 + part.length <= MAX_CHAIN) {
+        out += `\u00A0${part}`
+        length += 1 + part.length
+      } else {
+        out += ` ${part}`
+        length = part.length
+      }
+    }
+    return out
+  })
+}
+
+// Абзацы, у которых бывают лишние пробелы по краям
+const BLOCKS = 'p, li, blockquote, h1, h2, h3, h4, h5, h6'
+
+function edgeTextNode(block, last) {
+  const walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  let found = null
+  for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+    if (!node.nodeValue) continue
+    found = node
+    if (!last) break
+  }
+  return found
+}
+
+// Пробел в начале и в конце абзаца невидим в готовом тексте, но в редакторе
+// сдвигает первую строку — получается красная строка, которой никто
+// не ставил. В наборе их не даёт появиться hooks/useTidySpaces, здесь
+// чистим то, что уже написано или вставлено
+function trimEdges(html) {
+  if (!/[ \u00A0]\s*<\/(p|li|blockquote|h[1-6])>|<(p|li|blockquote|h[1-6])[^>]*>[ \u00A0]/.test(html)) return html
+  const box = document.createElement('div')
+  box.innerHTML = html
+  for (const block of box.querySelectorAll(BLOCKS)) {
+    if (block.querySelector(BLOCKS)) continue
+    const first = edgeTextNode(block, false)
+    const last = edgeTextNode(block, true)
+    if (first) first.nodeValue = first.nodeValue.replace(/^[ \u00A0]+/, '')
+    if (last) last.nodeValue = last.nodeValue.replace(/[ \u00A0]+$/, '')
+  }
+  return box.innerHTML
+}
+
+/** Типограф во всех местах, где он применяется к тексту. */
+export function typografy(html) {
+  return trimEdges(capNbspChains(tp.execute(html)))
+}
+
 // Русский основной, английский вторым: правила ru работают по русскому
 // тексту, en — по английскому
 export const tp = new Typograf({ locale: ['ru', 'en-US'] })
@@ -102,8 +168,16 @@ export function loadDisabledRules() {
   try { return JSON.parse(localStorage.getItem(RULES_KEY) || '{}') } catch { return {} }
 }
 
+// Выключенные правила помним и здесь: по ним живая типографика в наборе
+// решает, подставлять ли ёлочки и тире (hooks/useLiveTypograf)
+let disabledRules = {}
+
+/** Включено ли правило — для тех, кто типографит сам, а не через execute. */
+export const isRuleOn = (name) => !disabledRules[name]
+
 /** Привести правила экземпляра в соответствие с настройками. */
 export function applyRules(disabled) {
+  disabledRules = disabled
   for (const group of RULE_GROUPS) {
     for (const rule of group.rules) {
       for (const name of rule.rules ?? [rule.name]) {

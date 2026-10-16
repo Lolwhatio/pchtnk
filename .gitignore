@@ -18,10 +18,9 @@ release/
 # Unrelated reference files
 реф/
 
-# Шрифт логотипа Unifix SP — демо-версия с лицензией Shareware. Репозиторий
-# публичный, поэтому файл лежит только локально; без него знак набирается
-# Onest (см. src/utils/logoFont.js). Купите полную лицензию — уберите эти строки.
-src/assets/fonts/unifix-sp.*
+# Шрифт логотипа Unifix SP лежит в репозитории: лицензия куплена
+# (src/assets/fonts/unifix-sp.otf). А демо-версия из пакета дизайна —
+# нет: её лицензия Shareware распространять не разрешает.
 design_handoff_pechatniki/fonts/
 
 # Editor directories and files

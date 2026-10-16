@@ -11,7 +11,7 @@ function createWindow() {
     trafficLightPosition: { x: 18, y: 21 }, // по центру шапки 57px, по её левому полю
     vibrancy: 'under-window',
     visualEffectState: 'active',
-    backgroundColor: '#0F1810', // холст ветки 10 — окно не мигает серым до загрузки
+    backgroundColor: '#F3F4EF', // холст светлой темы — окно не мигает серым до загрузки
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
