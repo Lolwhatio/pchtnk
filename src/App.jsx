@@ -253,6 +253,15 @@ function isTypingKey(e) {
   return e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete'
 }
 
+// Клавиши, которыми ничего не печатают, но и показывать панели по ним
+// незачем: Shift держат ради заглавной буквы, Alt — ради символа. Без этого
+// панели выныривали на каждую заглавную, то есть на каждое предложение.
+const TYPING_HELPERS = new Set([
+  'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph',
+  // Промежуточные состояния ввода: мёртвая клавиша и набор через IME
+  'Dead', 'Process',
+])
+
 function useTypingFade(editor, enabled) {
   const [faded, setFaded] = useState(false)
   const fadedRef = useRef(false)
@@ -270,7 +279,7 @@ function useTypingFade(editor, enabled) {
     }
     // Возврат с клавиатуры: без этого выйти из затухания можно было только мышью
     const revealOnKey = (e) => {
-      if (!isTypingKey(e)) reveal()
+      if (!isTypingKey(e) && !TYPING_HELPERS.has(e.key)) reveal()
     }
 
     dom.addEventListener('keydown', fade)
