@@ -31,6 +31,11 @@ import { stripInvisibles, pluralInvisible } from './utils/invisibles'
 import { isPalette, DEFAULT_PALETTE } from './utils/palettes'
 import { exportKnowledgeBase } from './utils/export'
 import { encodeShareUrl, decodeShareUrl, decodeWithPassword } from './utils/share'
+
+// Отправка зашифрованных заметок ссылкой временно скрыта из интерфейса
+// (до релиза). Код и приём входящих ссылок на месте: уже разосланные
+// ссылки продолжают открываться. Вернуть — поставить true.
+const SHARE_ENABLED = false
 import './App.css'
 import './styles/mobile.css' // последним — перекрывает стили компонентов
 
@@ -109,7 +114,6 @@ const WELCOME_MD = `# Добро пожаловать в Печатники
 - **Деёизация** — заменит ё на е для текстов, где принята буква е.
 - **Структура** — заголовки документа слева, как станции на линии метро: линия показывает, где вы сейчас.
 - **Документы и проекты** — все ваши тексты живут в панели слева (кнопка «Документы» в шапке).
-- **Поделиться заметкой** — документ превращается в ссылку без облачного хранения, при желании с паролем.
 - **Экспорт** — Markdown, PDF или вся база знаний одним файлом.
 
 ## Попробуйте прямо в этом документе
@@ -1501,12 +1505,12 @@ export default function App() {
             active: showBuffer,
             onClick: toggleBuffer,
           },
-          {
+          ...(SHARE_ENABLED ? [{
             key: 'share',
             icon: <IconShare />,
             label: 'Поделиться заметкой',
             onClick: () => setShowShare(true),
-          },
+          }] : []),
           {
             key: 'export',
             icon: <IconExport />,
@@ -1627,7 +1631,7 @@ export default function App() {
               {!isMobile && (
                 <>
                   <span className="app-header__sep" />
-                  <button className="btn-icon btn-icon--outline" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>
+                  {SHARE_ENABLED && <button className="btn-icon btn-icon--outline" onClick={() => setShowShare(true)} title="Поделиться заметкой" aria-label="Поделиться заметкой"><IconShare /></button>}
                   <button className="btn-icon btn-icon--outline" onClick={() => setShowPreview(true)} title="Экспорт" aria-label="Экспорт"><IconExport /></button>
                   <button className="btn-icon btn-icon--outline" onClick={toggleBuffer} title="Черновик" aria-label="Черновик" aria-pressed={showBuffer}><IconDrafts /></button>
                   <button className="btn-icon btn-icon--outline" onClick={toggleSettings} title="Настройки" aria-label="Настройки" aria-pressed={showTypograf}><IconSettings /></button>
@@ -1770,7 +1774,7 @@ export default function App() {
         />
       )}
 
-      {showShare && (
+      {SHARE_ENABLED && showShare && (
         <ShareDialog
           onShare={handleShare}
           isolationMode={isolationMode}
