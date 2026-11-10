@@ -59,3 +59,152 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* ── Диалог: настройки слева, предпросмотр справа ── */
+
+.dialog.kb-dialog {
+  width: min(1080px, 100%);
+  height: min(720px, calc(100dvh - 32px));
+}
+
+.kb-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.kb-settings {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-soft);
+}
+
+.kb-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* В колонке со скроллом ничего не сжимаем — иначе список проектов
+   с max-height схлопывается в ноль */
+.kb-scroll > * { flex-shrink: 0; }
+
+.kb-actions {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.kb-section {
+  margin-top: 6px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Шрифт — три плитки «Ag», как в настройках страницы Notion */
+.kb-fonts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.kb-font {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-block);
+  color: var(--muted);
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+.kb-font:hover { border-color: var(--border-strong); color: var(--text); }
+.kb-font[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--row-active);
+  color: var(--ink);
+}
+.kb-font__ag { font-size: 24px; line-height: 1.1; }
+.kb-font__name { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 600; }
+
+.kb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kb-row--stack { flex-direction: column; align-items: stretch; gap: 8px; }
+.kb-row__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kb-row__name { font-family: var(--font-ui); font-size: var(--fs-row); font-weight: 600; color: var(--text); }
+.kb-row__desc { font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--muted); }
+
+.kb-row .seg { align-self: flex-start; }
+
+.kb-lines { display: flex; flex-wrap: wrap; gap: 10px; padding: 3px 0 3px 3px; }
+.kb-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--line);
+  color: var(--line-fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  line-height: 1;
+}
+.kb-line[aria-checked="true"] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--line); }
+.kb-line:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink); }
+
+/* Предпросмотр: файл в окне браузера, уменьшенный вдвое — так видно
+   страницу целиком, как её увидит читатель на обычном экране */
+.kb-preview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  padding: 18px;
+  background: var(--bg);
+}
+.kb-preview__window {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-block);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+.kb-preview__frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 200%;
+  border: 0;
+  transform: scale(0.5);
+  transform-origin: 0 0;
+  background: #fff;
+}
+.kb-preview__empty {
+  margin: auto;
+  max-width: 280px;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  color: var(--muted);
+}
+
+/* Узкое окно: предпросмотр не помещается — остаются настройки */
+@media (max-width: 760px) {
+  .kb-preview { display: none; }
+  .kb-settings { width: 100%; border-right: 0; }
+}

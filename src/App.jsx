@@ -880,9 +880,14 @@ export default function App() {
   // ── Экспорт базы знаний (HTML) ────────────────────────────────────────────
   const [showKbExport, setShowKbExport] = useState(false)
 
-  const handleKbConfirm = useCallback(({ docs: selectedDocs, title }) => {
-    exportKnowledgeBase(selectedDocs, title, typografEnabled ? tp : null)
-    setShowKbExport(false)
+  const handleKbConfirm = useCallback(async ({ docs: selectedDocs, title, options }) => {
+    try {
+      await exportKnowledgeBase(selectedDocs, title, typografEnabled ? tp : null, options)
+      setShowKbExport(false)
+    } catch (err) {
+      // Отмена в «Сохранить как» — диалог остаётся открытым, настройки целы
+      if (err?.name !== 'AbortError') setNotice({ kind: 'error', text: 'Не получилось сохранить файл. Попробуйте еще раз.' })
+    }
   }, [typografEnabled])
 
   // ── Импорт из ZIP-бэкапа ──────────────────────────────────────────────────
@@ -1790,6 +1795,8 @@ export default function App() {
         <KbExportDialog
           docs={docs}
           projects={projects}
+          palette={palette}
+          typograf={typografEnabled ? tp : null}
           onConfirm={handleKbConfirm}
           onClose={() => setShowKbExport(false)}
         />
