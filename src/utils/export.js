@@ -140,6 +140,7 @@ function inlinesToHtml(nodes, ctx) {
         case 'bold':   text = `<strong>${text}</strong>`; break
         case 'italic': text = `<em>${text}</em>`; break
         case 'strike': text = `<s>${text}</s>`; break
+        case 'underline': text = `<u>${text}</u>`; break
         case 'code':   text = `<code>${text}</code>`; break
         case 'link':   text = `<a href="${esc(m.attrs?.href || '')}" target="_blank" rel="noopener noreferrer">${text}</a>`; break
       }
@@ -439,6 +440,7 @@ hr{border:none;border-top:1px solid var(--border);margin:2em 0}
 .fn-back:hover{color:var(--accent)}
 .kb-img{margin:1.5em 0;border-radius:8px}
 .kb-img img{display:block;max-width:100%;height:auto;border-radius:8px}
+u{text-decoration:underline;text-underline-offset:2px}
 strong{font-weight:700;color:var(--text-heading)}
 em{font-style:italic}
 s{color:var(--text-muted);text-decoration:line-through}

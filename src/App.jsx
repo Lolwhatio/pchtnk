@@ -12,6 +12,7 @@ import BufferPanel from './components/BufferPanel'
 import ShareDialog from './components/ShareDialog'
 import ShortcutsDialog from './components/ShortcutsDialog'
 import KbExportDialog from './components/KbExportDialog'
+import MobileFormatBar from './components/MobileFormatBar'
 import FootnotesPanel from './components/FootnotesPanel'
 import RecentDocs from './components/RecentDocs'
 import OverflowMenu from './components/OverflowMenu'
@@ -1767,6 +1768,8 @@ export default function App() {
           Статус-бара из макета нет: тема и ветка есть в настройках, логотип —
           в шапке, а полоса под ними отнимала высоту у текста. */}
       {!showPreview && !isMobile && !focusMode && <Toolbar editor={editor} />}
+      {/* На телефоне нижней панели нет — форматирование в панели над клавиатурой */}
+      {!showPreview && isMobile && <MobileFormatBar editor={editor} />}
 
       {spellErrors.length > 0 && (
         <SpellDialog

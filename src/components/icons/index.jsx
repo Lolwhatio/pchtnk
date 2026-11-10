@@ -229,6 +229,17 @@ export function IconItalic({ size }) {
   )
 }
 
+// Подчёркнутый — «П» не рисуем: буквы в наборе только у «Ж»-жирного,
+// здесь достаточно чаши с чертой под ней
+export function IconUnderline({ size }) {
+  return (
+    <Svg size={size}>
+      <path d="M4.4 2.4v4.8a3.6 3.6 0 0 0 7.2 0V2.4" />
+      <path d="M3 13.6h10" />
+    </Svg>
+  )
+}
+
 export function IconStrike({ size }) {
   return (
     <Svg size={size}>

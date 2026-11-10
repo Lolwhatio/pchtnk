@@ -27,8 +27,10 @@
   /* ── Полоса набора ── */
   /* Поля 14px вместо 28: при 375px это добавляет к строке несколько знаков,
      а на 320px решает, рвутся слова или нет */
+  /* Снизу — ещё и высота панели форматирования (52px), чтобы конец
+     текста не прятался под ней */
   .editor-wrap {
-    padding: 22px 14px calc(34px + env(safe-area-inset-bottom, 0px));
+    padding: 22px 14px calc(34px + 52px + env(safe-area-inset-bottom, 0px));
   }
   .editor-column { gap: 22px; }
 
