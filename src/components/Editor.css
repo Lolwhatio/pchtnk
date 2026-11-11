@@ -149,6 +149,10 @@
      уезжает в начало следующей строки и выглядит как случайный отступ.
      С pre-wrap такой пробел «повисает» в конце строки, как и положено. */
   white-space: pre-wrap;
+  /* Safari всему contenteditable ставит -webkit-nbsp-mode: space — и
+     неразрывный пробел в редакторе переносится, как обычный. Типограф
+     привязывал предлоги, а «и» всё равно висело в конце строки. */
+  -webkit-nbsp-mode: normal;
   font-family: var(--font-editor);
   font-size: var(--font-size);
   line-height: var(--line-height);
