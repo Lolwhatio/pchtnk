@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { IconClose } from './icons'
 import { PALETTES } from '../utils/palettes'
-import { KB_FONTS, buildKnowledgeBaseHtml, kbRoute, normalizeLook } from '../utils/export'
+import { buildKnowledgeBaseHtml, kbRoute, normalizeLook } from '../utils/export'
 import { loadKbFonts } from '../utils/kbFonts'
 import { fileToImageSrc } from '../utils/images'
 import './KbExportDialog.css'
@@ -18,6 +18,8 @@ function loadLook() {
   let look = {}, coverImage = null
   try { look = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') } catch { /* умолчания */ }
   try { coverImage = localStorage.getItem(COVER_KEY) } catch { /* без картинки */ }
+  // Тему по умолчанию берём из приложения: в какой работают, такой и выгружают
+  if (look.theme !== 'light' && look.theme !== 'dark') look.theme = document.documentElement.getAttribute('data-theme') || 'light'
   return normalizeLook({ ...look, coverImage })
 }
 
@@ -230,21 +232,6 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
 
               <div className="kb-section">Оформление</div>
 
-              <div className="kb-fonts" role="radiogroup" aria-label="Шрифт">
-                {Object.entries(KB_FONTS).map(([id, f]) => (
-                  <button
-                    key={id}
-                    className="kb-font"
-                    role="radio"
-                    aria-checked={look.font === id}
-                    onClick={() => set({ font: id })}
-                  >
-                    <span className="kb-font__ag" style={{ fontFamily: f.stack }}>Ag</span>
-                    <span className="kb-font__name">{f.label}</span>
-                  </button>
-                ))}
-              </div>
-
               <div className="kb-row kb-row--stack">
                 <span className="kb-row__name">Тема</span>
                 <Seg
@@ -252,7 +239,6 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
                   value={look.theme}
                   onChange={theme => set({ theme })}
                   options={[
-                    { id: 'auto',  label: 'Как у читателя' },
                     { id: 'light', label: 'Светлая' },
                     { id: 'dark',  label: 'Темная' },
                   ]}

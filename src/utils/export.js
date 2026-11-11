@@ -191,23 +191,18 @@ function docParts(doc, ctx) {
 // Выгрузка набрана как сам редактор: те же шрифты (зашиты в файл, см.
 // kbFonts.js), те же токены ветки, меню — линия со станциями, как
 // «Структура», дата — число в кружке, главная — список, как «Продолжить».
-// Настраивается в диалоге «Скачать проект»: шрифт текста, тема, ветка,
-// шапка (нет, цвет ветки, своя картинка), вид главной, даты, кегль, ширина.
+// Шрифты одни, как в редакторе: Literata — текст, Onest — заголовки.
+// Настраивается в диалоге «Скачать проект»: тема, ветка, шапка (нет, цвет
+// ветки, своя картинка), вид главной, даты, кегль, ширина.
 
-const ONEST = "'PK Onest','Onest Variable',system-ui,sans-serif"
-const MONO  = "'PK Mono','JetBrains Mono Variable',ui-monospace,Menlo,monospace"
-
-export const KB_FONTS = {
-  serif: { label: 'С засечками', stack: "'PK Literata','Literata Variable',Georgia,serif" },
-  sans:  { label: 'Без засечек', stack: ONEST },
-  mono:  { label: 'Моно',        stack: MONO },
-}
+const LITERATA = "'PK Literata','Literata Variable',Georgia,serif"
+const ONEST    = "'PK Onest','Onest Variable',system-ui,sans-serif"
+const MONO     = "'PK Mono','JetBrains Mono Variable',ui-monospace,Menlo,monospace"
 
 export const KB_DEFAULTS = {
-  font: 'serif',
   small: false,     // мелкий текст
   wide: false,      // во всю ширину
-  theme: 'auto',    // light | dark | auto (как в системе у читателя)
+  theme: 'light',   // light | dark
   palette: null,    // null — та, что выбрана в приложении
   cover: 'none',    // none | color | image
   coverImage: null, // data-URI картинки для шапки
@@ -221,6 +216,8 @@ export function normalizeLook(o) {
   if (look.cover === true) look.cover = 'color'
   if (look.cover === false) look.cover = 'none'
   if (look.cover === 'image' && !look.coverImage) look.cover = 'none'
+  if (look.theme !== 'dark') look.theme = 'light'  // «как у читателя» убрано
+  delete look.font                                  // выбор шрифта убран
   return look
 }
 
@@ -287,20 +284,15 @@ function themeVars(theme, palette) {
 
 function kbCss(o) {
   const palette = o.palette || document.documentElement.getAttribute('data-palette') || null
-  const light = themeVars('light', palette)
-  const dark  = themeVars('dark', palette)
-  const colors = o.theme === 'auto'
-    ? `:root{\n${light}\n  color-scheme:light dark;\n}\n@media (prefers-color-scheme:dark){:root{\n${dark}\n}}`
-    : `:root{\n${o.theme === 'dark' ? dark : light}\n  color-scheme:${o.theme};\n}`
-  const text = (KB_FONTS[o.font] || KB_FONTS.serif).stack
+  const colors = `:root{\n${themeVars(o.theme, palette)}\n  color-scheme:${o.theme};\n}`
   const cover = o.cover === 'image' && o.coverImage
     ? `\n.cover--image{background-image:url("${o.coverImage}")}`
     : ''
   return `${o.fontCss || ''}
 ${colors}
 :root{
-  --font-text:${text};
-  --font-head:${o.font === 'mono' ? MONO : ONEST};
+  --font-text:${LITERATA};
+  --font-head:${ONEST};
   --font-ui:${ONEST};
   --font-mono:${MONO};
   --fs:${o.small ? 16 : 18}px;

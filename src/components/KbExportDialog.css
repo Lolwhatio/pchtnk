@@ -109,32 +109,6 @@
   color: var(--faint);
 }
 
-/* Шрифт — три плитки «Ag», как в настройках страницы Notion */
-.kb-fonts {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.kb-font {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-block);
-  color: var(--muted);
-  transition: border-color var(--transition), color var(--transition), background var(--transition);
-}
-.kb-font:hover { border-color: var(--border-strong); color: var(--text); }
-.kb-font[aria-checked="true"] {
-  border-color: var(--accent);
-  background: var(--row-active);
-  color: var(--ink);
-}
-.kb-font__ag { font-size: 24px; line-height: 1.1; }
-.kb-font__name { font-family: var(--font-ui); font-size: var(--fs-tiny); font-weight: 600; }
-
 .kb-row {
   display: flex;
   align-items: center;
