@@ -952,7 +952,10 @@ export default function Editor({ onReady, onChange, focusMode, initialContent, d
       }),
     ],
     content:   initialContent ?? getInitialContent(),
-    autofocus: 'end',
+    // В начало, а не в конец: при запуске открывается либо пустой лист
+    // (там это одно и то же), либо приветственный документ — и с 'end'
+    // он открывался прокрученным к последнему абзацу, мимо заголовка
+    autofocus: 'start',
     onUpdate: () => { onChange?.() },
   })
 
