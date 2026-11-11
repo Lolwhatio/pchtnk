@@ -208,3 +208,19 @@
   .kb-preview { display: none; }
   .kb-settings { width: 100%; border-right: 0; }
 }
+
+/* Своя картинка в шапку */
+.kb-cover {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kb-cover__thumb {
+  width: 72px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--r-block);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.kb-cover__upload { align-self: flex-start; }

@@ -1,17 +1,24 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { IconClose } from './icons'
 import { PALETTES } from '../utils/palettes'
-import { KB_DEFAULTS, KB_FONTS, buildKnowledgeBaseHtml, kbRoute } from '../utils/export'
+import { KB_FONTS, buildKnowledgeBaseHtml, kbRoute, normalizeLook } from '../utils/export'
+import { loadKbFonts } from '../utils/kbFonts'
+import { fileToImageSrc } from '../utils/images'
 import './KbExportDialog.css'
 
 const NO_PROJECT = '__none__'
 const STORE_KEY = 'pechatniki-kb-export'
+const COVER_KEY = 'pechatniki-kb-cover'
 
 // Оформление запоминаем между выгрузками — это удобство, не данные:
-// не прочиталось (приватное окно) — берём умолчания
+// не прочиталось (приватное окно) — берём умолчания. Картинка шапки —
+// отдельным ключом: она тяжёлая, и если хранилище её не примет,
+// остальные настройки всё равно сохранятся.
 function loadLook() {
-  try { return { ...KB_DEFAULTS, ...JSON.parse(localStorage.getItem(STORE_KEY) || '{}') } }
-  catch { return { ...KB_DEFAULTS } }
+  let look = {}, coverImage = null
+  try { look = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') } catch { /* умолчания */ }
+  try { coverImage = localStorage.getItem(COVER_KEY) } catch { /* без картинки */ }
+  return normalizeLook({ ...look, coverImage })
 }
 
 function Seg({ label, value, options, onChange }) {
@@ -69,9 +76,48 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
   const [look, setLook]         = useState(loadLook)
   const set = (patch) => setLook(l => ({ ...l, ...patch }))
 
+  const { coverImage, ...lookRest } = look
+  const lookJson = JSON.stringify(lookRest)
   useEffect(() => {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(look)) } catch { /* не страшно */ }
-  }, [look])
+    try { localStorage.setItem(STORE_KEY, lookJson) } catch { /* не страшно */ }
+  }, [lookJson])
+  useEffect(() => {
+    try {
+      if (coverImage) localStorage.setItem(COVER_KEY, coverImage)
+      else localStorage.removeItem(COVER_KEY)
+    } catch { /* не влезла — останется до закрытия диалога */ }
+  }, [coverImage])
+
+  // Шрифты Печатников для файла — грузим один раз при открытии
+  // Пока шрифты грузятся, «Скачать» ждёт: иначе файл ушёл бы без них
+  const [fonts, setFonts] = useState({ file: '', preview: '' })
+  const [fontsSettled, setFontsSettled] = useState(false)
+  useEffect(() => {
+    let alive = true
+    loadKbFonts()
+      .then(f => { if (alive) setFonts(f) })
+      .catch(() => { /* наберётся системными */ })
+      .finally(() => { if (alive) setFontsSettled(true) })
+    return () => { alive = false }
+  }, [])
+
+  // Своя картинка в шапку — с устройства. Ужимаем, как картинки в тексте:
+  // шире 1600px в шапке не нужно, а файл выгрузки не должен пухнуть
+  const fileRef = useRef(null)
+  const [coverError, setCoverError] = useState('')
+  const handleCoverFile = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setCoverError('Это не картинка'); return }
+    try {
+      const src = await fileToImageSrc(file)
+      setCoverError('')
+      set({ cover: 'image', coverImage: src })
+    } catch {
+      setCoverError('Не получилось открыть картинку')
+    }
+  }
 
   // Ветка выгрузки: своя, если выбрана, иначе та, что в приложении
   const linePalette = look.palette && PALETTES.some(p => p.id === look.palette) ? look.palette : palette
@@ -84,7 +130,8 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
       : ''
   const effectiveTitle = titleDirty ? title : autoTitle
 
-  const selectedDocs = selectedGroups.flatMap(g => g.docs)
+  const selectedDocs = selectedGroups.flatMap(g =>
+    g.id === NO_PROJECT ? g.docs : g.docs.map(d => ({ ...d, projectTitle: g.title })))
   const needsTitle   = !effectiveTitle.trim()
   const canExport    = selectedDocs.length > 0 && !needsTitle
 
@@ -96,7 +143,7 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
     })
   }
 
-  const options = { ...look, palette: linePalette }
+  const options = { ...look, palette: linePalette, fontCss: fonts.file }
 
   const handleConfirm = () => {
     if (!canExport) return
@@ -106,13 +153,13 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
   // ── Предпросмотр ─────────────────────────────────────────────────────────
   // Тот же HTML, что уйдёт в файл. Скрипты в рамке не запускаем (sandbox
   // без allow-scripts), поэтому переходы по меню ведём отсюда.
-  const previewKey = JSON.stringify([options, effectiveTitle, [...selected]])
+  const previewKey = JSON.stringify([lookRest, linePalette, coverImage?.length, fonts.preview.length, effectiveTitle, [...selected]])
   const deferredKey = useDeferredValue(previewKey)
   const previewHtml = useMemo(() => {
     if (!selectedDocs.length) return ''
     // Скрипт файла в рамке всё равно заблокирован — вырезаем, чтобы
     // браузер не сыпал ошибками в консоль
-    return buildKnowledgeBaseHtml(selectedDocs, effectiveTitle.trim() || 'Без названия', typograf, options)
+    return buildKnowledgeBaseHtml(selectedDocs, effectiveTitle.trim() || 'Без названия', typograf, { ...options, fontCss: fonts.preview })
       .replace(/<script>[\s\S]*?<\/script>/, '')
   }, [deferredKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -242,20 +289,46 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
                   value={look.home}
                   onChange={home => set({ home })}
                   options={[
-                    { id: 'cards', label: 'Карточки' },
                     { id: 'list',  label: 'Список' },
+                    { id: 'cards', label: 'Карточки' },
                   ]}
                 />
               </div>
 
-              <Toggle name="Обложка" desc="Полоса цвета над заголовком" on={look.cover} onToggle={() => set({ cover: !look.cover })} />
+              <div className="kb-row kb-row--stack">
+                <span className="kb-row__name">Шапка</span>
+                <Seg
+                  label="Шапка"
+                  value={look.cover}
+                  onChange={cover => cover === 'image' && !look.coverImage ? fileRef.current?.click() : set({ cover })}
+                  options={[
+                    { id: 'none',  label: 'Нет' },
+                    { id: 'color', label: 'Цвет ветки' },
+                    { id: 'image', label: 'Картинка' },
+                  ]}
+                />
+                {look.coverImage && (
+                  <div className="kb-cover">
+                    <img className="kb-cover__thumb" src={look.coverImage} alt="" />
+                    <button className="btn btn--sm btn--secondary" onClick={() => fileRef.current?.click()}>Заменить</button>
+                    <button className="btn btn--sm btn--ghost" onClick={() => set({ coverImage: null, cover: look.cover === 'image' ? 'none' : look.cover })}>Убрать</button>
+                  </div>
+                )}
+                {!look.coverImage && (
+                  <button className="btn btn--sm btn--secondary kb-cover__upload" onClick={() => fileRef.current?.click()}>
+                    Загрузить картинку…
+                  </button>
+                )}
+                {coverError && <span className="dialog__error">{coverError}</span>}
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCoverFile} />
+              </div>
               <Toggle name="Даты" desc="Когда документ последний раз правили" on={look.dates} onToggle={() => set({ dates: !look.dates })} />
               <Toggle name="Мелкий текст" on={look.small} onToggle={() => set({ small: !look.small })} />
               <Toggle name="Во всю ширину" on={look.wide} onToggle={() => set({ wide: !look.wide })} />
             </div>
 
             <div className="kb-actions">
-              <button className="btn btn--primary btn--block" disabled={!canExport} onClick={handleConfirm}>
+              <button className="btn btn--primary btn--block" disabled={!canExport || !fontsSettled} onClick={handleConfirm}>
                 Скачать{selectedDocs.length > 0 ? ` (${selectedDocs.length} док.)` : ''}
               </button>
             </div>

@@ -10,14 +10,6 @@ function esc(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-// ── Plurals ───────────────────────────────────────────────────────────────────
-
-function pluralDocs(n) {
-  const m10 = n % 10, m100 = n % 100
-  if (m10 === 1 && m100 !== 11)                        return 'страница'
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'страницы'
-  return 'страниц'
-}
 
 // ── TipTap JSON → HTML ────────────────────────────────────────────────────────
 
@@ -196,13 +188,19 @@ function docParts(doc, ctx) {
 }
 
 // ── Оформление ───────────────────────────────────────────────────────────────
-// Настраивается в диалоге «Скачать проект», как оформление страницы в Notion:
-// шрифт, мелкий текст, ширина, тема, цвет, обложка, вид главной.
+// Выгрузка набрана как сам редактор: те же шрифты (зашиты в файл, см.
+// kbFonts.js), те же токены ветки, меню — линия со станциями, как
+// «Структура», дата — число в кружке, главная — список, как «Продолжить».
+// Настраивается в диалоге «Скачать проект»: шрифт текста, тема, ветка,
+// шапка (нет, цвет ветки, своя картинка), вид главной, даты, кегль, ширина.
+
+const ONEST = "'PK Onest','Onest Variable',system-ui,sans-serif"
+const MONO  = "'PK Mono','JetBrains Mono Variable',ui-monospace,Menlo,monospace"
 
 export const KB_FONTS = {
-  serif: { label: 'С засечками', stack: "Georgia,'Iowan Old Style','Times New Roman',serif" },
-  sans:  { label: 'Без засечек', stack: "-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" },
-  mono:  { label: 'Моно',        stack: "ui-monospace,'SF Mono',Menlo,Consolas,monospace" },
+  serif: { label: 'С засечками', stack: "'PK Literata','Literata Variable',Georgia,serif" },
+  sans:  { label: 'Без засечек', stack: ONEST },
+  mono:  { label: 'Моно',        stack: MONO },
 }
 
 export const KB_DEFAULTS = {
@@ -211,41 +209,31 @@ export const KB_DEFAULTS = {
   wide: false,      // во всю ширину
   theme: 'auto',    // light | dark | auto (как в системе у читателя)
   palette: null,    // null — та, что выбрана в приложении
-  cover: true,      // цветная обложка над заголовком
-  home: 'cards',    // cards | list
-  dates: true,      // даты на главной и под заголовком
+  cover: 'none',    // none | color | image
+  coverImage: null, // data-URI картинки для шапки
+  home: 'list',     // list | cards
+  dates: true,      // даты на главной и над заголовком
 }
 
-const UI_STACK = KB_FONTS.sans.stack
+// Раньше обложка была галочкой
+export function normalizeLook(o) {
+  const look = { ...KB_DEFAULTS, ...o }
+  if (look.cover === true) look.cover = 'color'
+  if (look.cover === false) look.cover = 'none'
+  if (look.cover === 'image' && !look.coverImage) look.cover = 'none'
+  return look
+}
 
-// Палитра выгрузки — из тех же токенов, что и приложение. Значения не
-// копируем в отдельную таблицу (разъехалась бы с variables.css), а
-// собираем из правил самой таблицы стилей: :root + [data-theme] +
+// Токены приложения, которые нужны выгрузке, — под теми же именами.
+// Значения не копируем в отдельную таблицу (разъехалась бы с variables.css),
+// а собираем из правил самой таблицы стилей: :root + [data-theme] +
 // [data-palette] — те блоки, что сработали бы на <html> с выбранной
 // темой и веткой. Так можно выгрузить светлую, не переключая приложение.
-//
-// Имена переменных внутри выгрузки остались прежними — стили файла ниже
-// написаны на них. Акцент для текста — accent-ink: ссылки и заголовки
-// там — текст, а салатовый на светлой бумаге не читается.
-const KB_TOKENS = {
-  'bg-primary':     'bg',
-  'bg-secondary':   'surface',
-  'bg-panel':       'surface',
-  'bg-hover':       'row-active',
-  'bg-active':      'row-active',
-  'accent':         'accent-ink',
-  'accent-hover':   'accent-ink',
-  'accent-fill':    'accent',
-  'on-accent':      'on-accent',
-  'accent-dim':     'syntax',
-  'text-primary':   'text',
-  'text-heading':   'ink',
-  'text-secondary': 'muted',
-  'text-muted':     'faint',
-  'border':         'border',
-  'border-light':   'border-strong',
-  'danger':         'error-ink',
-}
+const KB_TOKENS = [
+  'bg', 'surface', 'border-soft', 'border', 'border-strong', 'rail-off',
+  'faint', 'muted', 'text', 'ink', 'syntax', 'row-active',
+  'accent', 'accent-ink', 'on-accent', 'transfer', 'transfer-ink', 'error-ink',
+]
 
 function specificity(sel) {
   return (sel.match(/\[/g) || []).length
@@ -282,21 +270,19 @@ function collectThemeVars(theme, palette) {
   document.body.appendChild(probe)
   const cs = getComputedStyle(probe)
   const out = {}
-  for (const token of new Set(Object.values(KB_TOKENS))) out[token] = cs.getPropertyValue('--' + token).trim()
+  for (const token of KB_TOKENS) out[token] = cs.getPropertyValue('--' + token).trim()
   probe.remove()
   return out
 }
 
 function themeVars(theme, palette) {
   const cs = getComputedStyle(document.documentElement)
-  const live = (t) => cs.getPropertyValue('--' + t).trim()
   const vals = collectThemeVars(theme, palette) || {}
-  const val = (t, fallback) => vals[t] || live(t) || fallback
-  const rows = Object.entries(KB_TOKENS).map(([name, token]) => `  --${name}:${val(token, '#000')};`).join('\n')
+  const val = (t) => vals[t] || cs.getPropertyValue('--' + t).trim() || '#888'
+  const rows = KB_TOKENS.map(t => `  --${t}:${val(t)};`).join('\n')
   // Подсветку выделения собираем из акцента: rgba в токенах не лежит
-  const [r, g, b] = (val('accent', '#B0D23F').replace('#', '').match(/../g) || [])
-    .map(h => parseInt(h, 16))
-  return `${rows}\n  --selection:rgba(${r},${g},${b},.22);`
+  const [r, g, b] = (val('accent').replace('#', '').match(/../g) || []).map(h => parseInt(h, 16))
+  return `${rows}\n  --selection:rgba(${r},${g},${b},.28);`
 }
 
 function kbCss(o) {
@@ -306,219 +292,220 @@ function kbCss(o) {
   const colors = o.theme === 'auto'
     ? `:root{\n${light}\n  color-scheme:light dark;\n}\n@media (prefers-color-scheme:dark){:root{\n${dark}\n}}`
     : `:root{\n${o.theme === 'dark' ? dark : light}\n  color-scheme:${o.theme};\n}`
-  const font = (KB_FONTS[o.font] || KB_FONTS.serif).stack
-  return `${colors}
+  const text = (KB_FONTS[o.font] || KB_FONTS.serif).stack
+  const cover = o.cover === 'image' && o.coverImage
+    ? `\n.cover--image{background-image:url("${o.coverImage}")}`
+    : ''
+  return `${o.fontCss || ''}
+${colors}
 :root{
-  --font-text:${font};
-  --font-ui:${UI_STACK};
-  --measure:${o.wide ? 'none' : '680px'};
+  --font-text:${text};
+  --font-head:${o.font === 'mono' ? MONO : ONEST};
+  --font-ui:${ONEST};
+  --font-mono:${MONO};
+  --fs:${o.small ? 16 : 18}px;
+  --measure:${o.wide ? 'none' : '720px'};
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:${o.small ? 15 : 17}px;-webkit-font-smoothing:antialiased}
-::selection{background:var(--selection)}` + KB_CSS_REST
+::selection{background:var(--selection)}` + KB_CSS_REST + cover
 }
 
 const KB_CSS_REST = `
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;text-size-adjust:100%}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
 body{
-  font-family:var(--font-text);
-  background:var(--bg-primary);
-  color:var(--text-primary);
-  display:flex;
-  min-height:100vh;
-  line-height:1.7;
+  display:flex;min-height:100vh;
+  background:var(--bg);color:var(--text);
+  font-family:var(--font-text);font-size:var(--fs);line-height:1.5;
 }
 
-/* ── Боковое меню ─────────── */
-.sidebar{
-  width:256px;flex-shrink:0;
-  background:var(--bg-panel);
-  border-right:1px solid var(--border);
-  position:sticky;top:0;height:100vh;
-  overflow-y:auto;
-  display:flex;flex-direction:column;
+/* ── Ветка: документы — станции на линии, как «Структура» ── */
+.rail{
+  flex:0 0 280px;position:sticky;top:0;height:100vh;overflow-y:auto;
+  padding:34px 22px 34px 28px;
+  border-right:1px solid var(--border-soft);
+  display:flex;flex-direction:column;gap:22px;
 }
-.sidebar-brand{
-  display:flex;align-items:center;gap:10px;
-  font-family:var(--font-ui);
-  font-size:14px;font-weight:650;line-height:1.3;
-  color:var(--text-heading);
-  padding:20px 20px 18px;
-  border-bottom:1px solid var(--border);
-  text-decoration:none;
+.rail-brand{
+  font-family:var(--font-ui);font-size:15px;font-weight:700;line-height:1.3;
+  color:var(--ink);text-decoration:none;
 }
-.sidebar-brand::before{
-  content:'';flex:none;width:10px;height:10px;border-radius:50%;
-  background:var(--accent-fill);
+.rail-brand:hover{color:var(--accent-ink)}
+.rail-title{font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--faint)}
+.stations{position:relative;display:flex;flex-direction:column;gap:2px}
+.stations::before{
+  content:'';position:absolute;left:10px;top:15px;bottom:15px;width:4px;border-radius:2px;
+  background:var(--rail-off);
 }
-.sidebar-brand:hover{color:var(--accent)}
-.nav-list{list-style:none;padding:10px 0;flex:1}
-.nav-list li a{
-  display:block;
-  font-family:var(--font-ui);font-size:13px;line-height:1.45;
-  color:var(--text-secondary);text-decoration:none;
-  padding:6px 20px;
-  border-left:2px solid transparent;
-  transition:background .15s ease,color .15s ease;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+.station{
+  position:relative;display:flex;align-items:center;gap:14px;
+  padding:6px 10px 6px 0;text-decoration:none;
 }
-.nav-list li a:hover{background:var(--bg-hover);color:var(--text-primary)}
-.nav-list li a.active{
-  border-left-color:var(--accent-fill);
-  color:var(--text-heading);
-  background:var(--bg-active);
-  font-weight:600;
+.station .dot{
+  flex:none;display:flex;justify-content:center;width:24px;z-index:1;
 }
+.station .dot::before{
+  content:'';width:14px;height:14px;border-radius:50%;
+  background:var(--rail-off);box-shadow:0 0 0 5px var(--bg);
+}
+.station .label{
+  min-width:0;font-family:var(--font-ui);font-size:13px;font-weight:500;line-height:1.35;
+  color:var(--text);overflow-wrap:anywhere;
+}
+.station:hover .label{color:var(--ink)}
+.station.passed .dot::before,.station.active .dot::before{background:var(--accent)}
+.station.active .label{color:var(--ink);font-weight:600}
 
-/* ── Страница ─────────────── */
+/* ── Страница ── */
 .main{flex:1;min-width:0}
-.page{display:none;padding:56px 72px 80px}
+.page{display:none;padding:56px 56px 96px}
 .page.visible{display:block}
-/* По центру свободного места, как колонка в редакторе */
 .article{max-width:var(--measure);margin:0 auto}
 
-/* Обложка — полоса цвета ветки над заголовком, во всю ширину страницы */
-.cover{
-  height:clamp(120px,22vh,200px);
-  margin:-56px -72px 40px;
-  background:
-    radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--accent-fill) 55%,var(--bg-primary)) 0%,transparent 60%),
-    linear-gradient(120deg,var(--accent-fill) 0%,color-mix(in srgb,var(--accent-fill) 35%,var(--bg-primary)) 100%);
+/* Шапка: цвет ветки или своя картинка, во всю ширину страницы */
+.cover{height:clamp(140px,26vh,260px);margin:-56px -56px 40px;background:var(--accent)}
+.cover--image{background-color:var(--surface);background-size:cover;background-position:center}
+
+/* Дата над заголовком: число в кружке, рядом месяц и проект */
+.meta{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.meta__num{
+  display:flex;align-items:center;justify-content:center;flex:none;
+  width:20px;height:20px;border-radius:10px;
+  background:var(--accent);color:var(--on-accent);
+  font-family:var(--font-ui);font-size:10px;font-weight:700;line-height:1;
 }
+.meta__text{font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--faint)}
 
-h1,h2,h3,h4,h5,h6{
-  font-family:var(--font-text);font-weight:700;
-  color:var(--text-heading);line-height:1.25;
-  text-wrap:balance;
-}
-h1{font-size:2.1em;margin-bottom:.4em}
-h2{font-size:1.5em;margin:1.4em 0 .4em}
-h3{font-size:1.25em;margin:1.4em 0 .4em}
-h4{font-size:1.1em;margin:1.3em 0 .3em}
-h5,h6{font-size:1em;margin:1.3em 0 .3em}
-
-p{margin-bottom:.85em}
-.empty-p{margin-bottom:.4em}
-
-a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;transition:color .15s ease}
-a:hover{color:var(--accent-hover)}
-.int-link{
-  display:inline-block;font-style:normal;text-decoration:none;
-  color:var(--accent);background:var(--bg-active);
-  padding:0 6px 0 4px;border-radius:4px;font-size:.9em;white-space:nowrap;
-  transition:background .15s ease;
-}
-.int-link::before{content:'↗ ';font-size:.8em;opacity:.65}
-.int-link:hover{background:var(--bg-hover)}
-.int-link-broken{color:var(--text-muted);font-style:italic;text-decoration:line-through}
-
-blockquote{border-left:3px solid var(--accent-fill);margin:1em 0;
-           padding:.3em 0 .3em 1.2em;color:var(--text-secondary);font-style:italic}
-code{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:.875em;
-     background:var(--bg-active);color:var(--accent);padding:.1em .35em;border-radius:3px}
-pre{background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;
-    padding:1em 1.2em;margin:1em 0;overflow-x:auto}
-pre code{background:none;padding:0;font-size:.875em;color:var(--text-primary)}
-ul,ol{padding-left:1.5em;margin:.5em 0 .75em}
-li{margin:.2em 0}
-li::marker{color:var(--accent-dim)}
-hr{border:none;border-top:1px solid var(--border);margin:2em 0}
-/* Сноски */
-.fn-ref{font-family:var(--font-ui);font-size:.62em;font-weight:600;vertical-align:super;line-height:1}
-.fn-ref a{color:var(--accent);text-decoration:none;background:var(--bg-active);border-radius:3px;padding:1px 3px}
-.fn-ref a:hover{background:var(--bg-hover)}
-.sources{margin:2.5em 0 1em;padding:18px 20px;border:1px solid var(--border);border-radius:8px;background:var(--bg-panel)}
-.sources-title{font-family:var(--font-ui);font-size:11px!important;font-weight:600;letter-spacing:.07em;
-  text-transform:uppercase;color:var(--text-muted);margin:0 0 10px}
-.sources-items{margin:0;padding-left:1.4em;font-family:var(--font-ui);font-size:13.5px;line-height:1.6;color:var(--text-secondary)}
-.sources-items li{margin:.3em 0}
-.sources-items li::marker{color:var(--accent);font-variant-numeric:tabular-nums}
-.fn-back{color:var(--text-muted);text-decoration:none;margin-left:4px}
-.fn-back:hover{color:var(--accent)}
-.kb-img{margin:1.5em 0;border-radius:8px}
-.kb-img img{display:block;max-width:100%;height:auto;border-radius:8px}
-u{text-decoration:underline;text-underline-offset:2px}
-strong{font-weight:700;color:var(--text-heading)}
+/* ── Текст — как в редакторе ── */
+.body>*+*{margin-top:26px}
+.body>p+p{margin-top:1.25em}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-head);color:var(--ink);text-wrap:balance}
+h1{font-size:38px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+h2{font-size:25px;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+h3{font-size:19px;font-weight:600;line-height:1.3}
+h4,h5,h6{font-weight:600;line-height:1.35}
+h4{font-size:17px}h5{font-size:15.5px}h6{font-size:14px;color:var(--muted)}
+.page-title{margin-bottom:34px}
+.empty-p{min-height:1em}
+strong{font-weight:700;color:var(--ink)}
 em{font-style:italic}
-s{color:var(--text-muted);text-decoration:line-through}
-/* Таблицы: fixed — чтобы длинная ячейка не раздувала колонку;
-   у последнего блока в ячейке гасим нижний отступ абзаца */
-.table-scroll{overflow-x:auto;margin:1.4em 0}
-table{border-collapse:collapse;width:100%;table-layout:fixed;margin:1.4em 0}
-.table-scroll table{margin:0;min-width:520px}
-th,td{border:1px solid var(--border-light);padding:.55em .8em;
-      text-align:left;vertical-align:top}
-th{background:var(--bg-panel);font-family:var(--font-ui);font-size:.875em;font-weight:600}
+s{color:var(--faint)}
+u{text-decoration:underline;text-underline-offset:3px}
+a{color:var(--accent-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+/* Ссылка на другой документ — пересадка: кольцо и подчёркивание её цветом */
+.int-link{
+  color:var(--ink);white-space:nowrap;
+  text-decoration-color:var(--transfer);text-decoration-thickness:1.5px;
+}
+.int-link::before{
+  content:'';display:inline-block;width:.62em;height:.62em;margin-right:.3em;
+  border:.17em solid var(--transfer);border-radius:50%;vertical-align:.02em;
+}
+.int-link:hover{text-decoration-thickness:2.5px}
+.int-link-broken{color:var(--faint);text-decoration:line-through}
+blockquote{
+  padding:18px 20px;border-left:4px solid var(--transfer);
+  border-radius:0 6px 6px 0;background:var(--surface);
+  font-size:.92em;font-style:italic;line-height:1.7;color:var(--muted);
+}
+blockquote>*+*{margin-top:.6em}
+code{font-family:var(--font-mono);font-size:.86em;color:var(--transfer-ink)}
+pre{padding:14px 16px;background:var(--surface);border:1px solid var(--border-soft);border-radius:6px;overflow-x:auto}
+pre code{font-size:12.5px;line-height:1.8;color:var(--text)}
+ul,ol{padding-left:0}
+li{line-height:1.7}
+li>*{margin:0}
+li+li,li>*+*{margin-top:11px}
+ul{list-style:none}
+ul>li{padding-left:21px}
+ul>li>p:first-child::before{
+  content:'-';display:inline-block;width:21px;margin-left:-21px;
+  font-family:var(--font-mono);font-size:15px;font-style:normal;font-weight:400;color:var(--syntax);
+}
+ol{list-style:decimal;padding-left:30px}
+ol>li::marker{font-family:var(--font-mono);font-size:15px;color:var(--syntax)}
+hr{border:none;height:4px;border-radius:2px;background:var(--rail-off)}
+.kb-img img{display:block;max-width:100%;height:auto;border-radius:6px}
+.kb-embed{font-family:var(--font-ui);font-size:14px}
+/* Таблицы: fixed — чтобы длинная ячейка не раздувала колонку */
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+.table-scroll table{min-width:520px}
+th,td{border:1px solid var(--border);padding:.55em .8em;text-align:left;vertical-align:top}
+th{background:var(--surface);font-family:var(--font-ui);font-size:.85em;font-weight:600}
 td>*:last-child,th>*:last-child{margin-bottom:0}
+/* Сноски */
+.fn-ref{font-family:var(--font-ui);font-size:.62em;font-weight:700;vertical-align:super;line-height:1}
+.fn-ref a{color:var(--accent-ink);text-decoration:none}
+.sources{padding:18px 20px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.sources-title{font-family:var(--font-ui);font-size:12px!important;font-weight:600;color:var(--faint);margin:0 0 10px}
+.sources-items{margin:0;padding-left:1.4em;font-family:var(--font-ui);font-size:13.5px;line-height:1.6;color:var(--muted)}
+.sources-items li{margin:.3em 0}
+.fn-back{color:var(--faint);text-decoration:none;margin-left:4px}
 
-/* ── Шапка страницы ───────── */
-.page-header{margin-bottom:2em}
-.page-header h1{margin-bottom:.2em}
-.subtitle{color:var(--text-muted);font-family:var(--font-ui);font-size:13px}
-
-/* ── Главная: карточки ────── */
-.card-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:14px;margin-top:1.5em;
+/* ── Главная ── */
+.subtitle{margin-top:10px;font-family:var(--font-ui);font-size:13px;font-weight:500;color:var(--faint)}
+/* Список — как «Продолжить» под пустым листом */
+.doc-list{
+  list-style:none;display:flex;flex-direction:column;gap:2px;padding:6px;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface);
 }
-.card{
-  background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;
-  padding:18px 20px;text-decoration:none;
-  display:flex;flex-direction:column;gap:6px;min-height:96px;
-  transition:background .15s ease,border-color .15s ease,transform .15s ease;
-}
-.card::before{content:'';width:22px;height:4px;border-radius:2px;background:var(--accent-fill);margin-bottom:6px}
-.card:hover{border-color:var(--border-light);transform:translateY(-2px)}
-.card-title{font-family:var(--font-text);font-weight:700;font-size:15px;
-            color:var(--text-heading);line-height:1.35}
-.card-date{margin-top:auto;font-size:12px;color:var(--text-muted);font-family:var(--font-ui)}
-
-/* ── Главная: список ──────── */
-.doc-list{list-style:none;padding:0;margin:1em 0 0;border-top:1px solid var(--border)}
-.doc-list li{margin:0}
+.doc-list li{margin:0;padding:0}
+.doc-list li::before{content:none}
 .doc-list a{
-  display:flex;align-items:baseline;gap:16px;
-  padding:14px 4px;border-bottom:1px solid var(--border);
-  text-decoration:none;color:var(--text-heading);
-  transition:background .15s ease;
+  display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:6px;
+  font-family:var(--font-ui);text-decoration:none;
 }
-.doc-list a:hover{background:var(--bg-hover)}
-.doc-list .card-title{flex:1;min-width:0;font-size:1em}
-.doc-list .card-date{margin:0;white-space:nowrap}
+.doc-list a:hover{background:var(--row-active)}
+.doc-list a::before{content:'';flex:none;width:8px;height:8px;border-radius:50%;background:var(--rail-off)}
+.doc-list a:hover::before{background:var(--accent)}
+.doc-title{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-date{flex:none;font-family:var(--font-ui);font-size:11px;color:var(--faint)}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.card{
+  display:flex;flex-direction:column;gap:10px;min-height:92px;padding:16px 18px;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface);
+  text-decoration:none;transition:border-color .15s ease;
+}
+.card:hover{border-color:var(--accent)}
+.card .doc-title{white-space:normal;font-size:15px;font-weight:600;line-height:1.35}
+.card .doc-date{margin-top:auto}
 
-/* ── Подвал ───────────────── */
-.page-footer{margin-top:4em;padding-top:1.4em;border-top:1px solid var(--border);
-             font-family:var(--font-ui);font-size:13px}
-.page-footer a{color:var(--text-secondary);text-decoration:none}
-.page-footer a:hover{color:var(--accent)}
+.page-footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--border-soft);font-family:var(--font-ui);font-size:13px}
+.page-footer a{color:var(--muted);text-decoration:none}
+.page-footer a:hover{color:var(--ink)}
 
-/* ── Узкий экран ──────────── */
+/* ── Узкий экран ── */
 @media(max-width:780px){
   body{flex-direction:column}
-  .sidebar{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
-  .page{padding:32px 20px 60px}
-  .cover{margin:-32px -20px 28px}
+  .rail{position:static;height:auto;flex:none;padding:22px 20px;border-right:none;border-bottom:1px solid var(--border-soft)}
+  .page{padding:28px 20px 64px}
+  .cover{margin:-28px -20px 28px}
+  h1{font-size:30px}h2{font-size:22px}h3{font-size:18px}
 }
 `
 
 // Мини-роутер: показывает одну страницу по location.hash, подсвечивает
-// пункт меню. Всё внутри одного файла — работает с file:// без сервера.
-// Якорь внутри страницы (сноска, «вернуться к тексту») открывает страницу,
-// где он лежит, — раньше он прятал все страницы разом.
+// станцию в меню, а станции до неё — как пройденные. Всё внутри одного
+// файла — работает с file:// без сервера. Якорь внутри страницы (сноска,
+// «вернуться к тексту») открывает страницу, где он лежит.
 export function kbRoute(doc, hash, scroll = true) {
   const id = (hash || '').replace(/^#/, '')
   const target = id && doc.getElementById(id)
   const page = (target && target.closest('.page')) || doc.getElementById('home')
   const pages = doc.querySelectorAll('.page')
   for (let i = 0; i < pages.length; i++) pages[i].classList.toggle('visible', pages[i] === page)
-  const links = doc.querySelectorAll('.nav-list a, .sidebar-brand')
-  for (let j = 0; j < links.length; j++) {
-    const href = links[j].getAttribute('href') || ''
-    links[j].classList.toggle('active', href === '#' + page.id || (page.id === 'home' && href === '#'))
+  const stations = doc.querySelectorAll('.station')
+  let found = -1
+  for (let j = 0; j < stations.length; j++) {
+    if (stations[j].getAttribute('href') === '#' + page.id) found = j
+  }
+  for (let k = 0; k < stations.length; k++) {
+    stations[k].classList.toggle('active', k === found)
+    stations[k].classList.toggle('passed', found > -1 && k < found)
   }
   if (!scroll) return
   if (target && target !== page) target.scrollIntoView()
@@ -540,32 +527,56 @@ function title(doc, ctx) {
   return esc(typografy(doc.title || 'Без названия', ctx))
 }
 
-const fmtDate = (ts) => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+function pluralDocsWord(n) {
+  const m10 = n % 10, m100 = n % 100
+  if (m10 === 1 && m100 !== 11)                          return 'документ'
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'документа'
+  return 'документов'
+}
 
-function buildSidebar(docs, hrefFor, ctx) {
-  return docs.map(doc =>
-    `      <li><a href="${esc(hrefFor(doc))}">${title(doc, ctx)}</a></li>`
+const shortDate = (ts) => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace(/\s*г\.$/, '')
+
+// «(10) ноября · Проект» — как строка над текстом в редакторе
+function metaLine(ts, project) {
+  const d = new Date(ts)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  const month = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) })
+    .replace(/^\d+\s*/, '').replace(/\s*г\.$/, '')
+  const text = project ? `${month} · ${esc(project)}` : month
+  return `<div class="meta"><span class="meta__num">${d.getDate()}</span><span class="meta__text">${text}</span></div>`
+}
+
+const coverHtml = (o) => o.cover === 'color' ? '\n    <div class="cover"></div>'
+  : o.cover === 'image' && o.coverImage ? '\n    <div class="cover cover--image"></div>' : ''
+
+function buildRail(docs, hrefFor, kbTitle, ctx) {
+  const stations = docs.map(doc =>
+    `      <a class="station" href="${esc(hrefFor(doc))}"><span class="dot"></span><span class="label">${title(doc, ctx)}</span></a>`
   ).join('\n')
+  return `<aside class="rail">
+  <a class="rail-brand" href="#">${esc(typografy(kbTitle, ctx))}</a>
+  <div class="rail-title">Документы</div>
+  <nav class="stations">
+${stations}
+  </nav>
+</aside>`
 }
 
 function buildHomePage(docs, hrefFor, kbTitle, ctx, o) {
-  const date = (doc) => o.dates
-    ? `<div class="card-date">${fmtDate(doc.updatedAt || doc.createdAt || Date.now())}</div>` : ''
-  const items = o.home === 'list'
-    ? `<ul class="doc-list">${docs.map(doc => `
-      <li><a href="${esc(hrefFor(doc))}"><span class="card-title">${title(doc, ctx)}</span>${date(doc)}</a></li>`).join('')}
-    </ul>`
-    : `<div class="card-grid">${docs.map(doc => `
-      <a href="${esc(hrefFor(doc))}" class="card">
-        <div class="card-title">${title(doc, ctx)}</div>${date(doc)}
-      </a>`).join('')}
-    </div>`
+  const date = (doc) => o.dates ? `<span class="doc-date">${shortDate(doc.updatedAt || doc.createdAt || Date.now())}</span>` : ''
+  const items = o.home === 'cards'
+    ? `<div class="card-grid">${docs.map(doc => `
+        <a href="${esc(hrefFor(doc))}" class="card"><span class="doc-title">${title(doc, ctx)}</span>${date(doc)}</a>`).join('')}
+      </div>`
+    : `<ul class="doc-list">${docs.map(doc => `
+        <li><a href="${esc(hrefFor(doc))}"><span class="doc-title">${title(doc, ctx)}</span>${date(doc)}</a></li>`).join('')}
+      </ul>`
   return `
-  <section class="page visible" id="home">${o.cover ? '\n    <div class="cover"></div>' : ''}
+  <section class="page visible" id="home">${coverHtml(o)}
     <article class="article">
-      <header class="page-header">
+      <header class="page-title">
         <h1>${esc(typografy(kbTitle, ctx))}</h1>
-        <p class="subtitle">${docs.length}&nbsp;${pluralDocs(docs.length)}</p>
+        <p class="subtitle">${docs.length}&nbsp;${pluralDocsWord(docs.length)}</p>
       </header>
       ${items}
     </article>
@@ -575,14 +586,17 @@ function buildHomePage(docs, hrefFor, kbTitle, ctx, o) {
 function buildDocPage(doc, ctx, o) {
   const { titleHtml, bodyHtml } = docParts(doc, ctx)
   const h1 = titleHtml != null ? typografy(titleHtml, ctx) : title(doc, ctx)
-  const ts = doc.updatedAt || doc.createdAt
+  const ts = doc.createdAt || doc.updatedAt
   return `
-  <section class="page" id="d-${esc(doc.id)}">${o.cover ? '\n    <div class="cover"></div>' : ''}
+  <section class="page" id="d-${esc(doc.id)}">${coverHtml(o)}
     <article class="article">
-      <header class="page-header">
-        <h1>${h1}</h1>${o.dates && ts ? `\n        <p class="subtitle">${fmtDate(ts)}</p>` : ''}
+      <header class="page-title">
+        ${o.dates && ts ? metaLine(ts, doc.projectTitle) : ''}
+        <h1>${h1}</h1>
       </header>
+      <div class="body">
       ${typografy(bodyHtml, ctx)}
+      </div>
       <footer class="page-footer">
         <a href="#">← К содержанию</a>
       </footer>
@@ -592,13 +606,15 @@ function buildDocPage(doc, ctx, o) {
 
 // ── Public export ─────────────────────────────────────────────────────────────
 // База знаний — ОДИН самодостаточный HTML-файл: открывается двойным
-// кликом, внутри главная с карточками, боковое меню и все документы
-// с рабочими ссылками между ними.
+// кликом, внутри главная, меню-ветка и все документы с рабочими ссылками
+// между ними.
 
 // `typograf` — экземпляр Typograf с настройками пользователя или null,
 // если типографику отключили. Прогоняется по тем же правилам, что и предпросмотр.
+// options.fontCss — @font-face со шрифтами (loadKbFonts); без него файл
+// набирается тем, что найдётся в системе.
 export function buildKnowledgeBaseHtml(docs, kbTitle = 'База знаний', typograf = null, options = {}) {
-  const o = { ...KB_DEFAULTS, ...options }
+  const o = normalizeLook(options)
   const hrefFor  = (doc) => `#d-${doc.id}`
   const docsById = Object.fromEntries(docs.map(d => [d.id, d]))
   // Порядок — тот, что задан в панели документов: раз пользователь выстроил
@@ -614,14 +630,7 @@ export function buildKnowledgeBaseHtml(docs, kbTitle = 'База знаний', 
 <style>${kbCss(o)}</style>
 </head>
 <body>
-<aside class="sidebar">
-  <a class="sidebar-brand" href="#">${esc(typografy(kbTitle, ctx))}</a>
-  <nav>
-    <ul class="nav-list">
-${buildSidebar(docs, hrefFor, ctx)}
-    </ul>
-  </nav>
-</aside>
+${buildRail(docs, hrefFor, kbTitle, ctx)}
 <main class="main">
 ${buildHomePage(docs, hrefFor, kbTitle, ctx, o)}
 ${docs.map(doc => buildDocPage(doc, ctx, o)).join('\n')}
