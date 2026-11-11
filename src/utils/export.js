@@ -207,6 +207,8 @@ export const KB_DEFAULTS = {
   cover: 'none',    // none | color | image
   coverImage: null, // data-URI картинки для шапки
   home: 'list',     // list | cards
+  about: '',        // текст о проекте на главной
+  photo: null,      // data-URI фото справа от текста, как на визитке
   dates: true,      // даты на главной и над заголовком
 }
 
@@ -439,6 +441,12 @@ td>*:last-child,th>*:last-child{margin-bottom:0}
 .fn-back{color:var(--faint);text-decoration:none;margin-left:4px}
 
 /* ── Главная ── */
+/* О проекте: текст, справа фото — как визитка в портфолио */
+.intro{display:flex;gap:40px;align-items:flex-start;margin-bottom:40px}
+.intro__text{flex:1;min-width:0}
+.intro__text>*+*{margin-top:1.25em}
+.intro__photo{flex:0 0 220px;width:220px;aspect-ratio:4/5;object-fit:cover;border-radius:8px;border:1px solid var(--border-soft)}
+.intro--photo-only{justify-content:flex-start}
 .subtitle{margin-top:10px;font-family:var(--font-ui);font-size:13px;font-weight:500;color:var(--faint)}
 /* Список — как «Продолжить» под пустым листом */
 .doc-list{
@@ -476,6 +484,8 @@ td>*:last-child,th>*:last-child{margin-bottom:0}
   .rail{position:static;height:auto;flex:none;padding:22px 20px;border-right:none;border-bottom:1px solid var(--border-soft)}
   .page{padding:28px 20px 64px}
   .cover{margin:-28px -20px 28px}
+  .intro{flex-direction:column-reverse;gap:24px}
+  .intro__photo{flex:none;width:160px}
   h1{font-size:30px}h2{font-size:22px}h3{font-size:18px}
 }
 `
@@ -554,6 +564,27 @@ ${stations}
 </aside>`
 }
 
+// Ссылки и почта в тексте «О проекте» — кликабельные: в портфолио там
+// обычно контакты. Текст уже экранирован, поэтому & в адресе — это &amp;
+function linkify(escaped) {
+  return escaped
+    .replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)»]/g, url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`)
+    .replace(/(^|[\s(«])([\w.+-]+@[\w-]+\.[\w.-]*\w)/g, '$1<a href="mailto:$2">$2</a>')
+}
+
+function aboutHtml(o, ctx) {
+  const paras = (o.about || '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+  if (!paras.length && !o.photo) return ''
+  const text = paras.map(p => `<p>${linkify(esc(typografy(p, ctx)).replace(/\n/g, '<br>'))}</p>`).join('\n        ')
+  const photo = o.photo ? `\n      <img class="intro__photo" src="${o.photo}" alt="">` : ''
+  return `
+      <div class="intro${paras.length ? '' : ' intro--photo-only'}">${paras.length ? `
+        <div class="intro__text">
+        ${text}
+        </div>` : ''}${photo}
+      </div>`
+}
+
 function buildHomePage(docs, hrefFor, kbTitle, ctx, o) {
   const date = (doc) => o.dates ? `<span class="doc-date">${shortDate(doc.updatedAt || doc.createdAt || Date.now())}</span>` : ''
   const items = o.home === 'cards'
@@ -569,7 +600,7 @@ function buildHomePage(docs, hrefFor, kbTitle, ctx, o) {
       <header class="page-title">
         <h1>${esc(typografy(kbTitle, ctx))}</h1>
         <p class="subtitle">${docs.length}&nbsp;${pluralDocsWord(docs.length)}</p>
-      </header>
+      </header>${aboutHtml(o, ctx)}
       ${items}
     </article>
   </section>`

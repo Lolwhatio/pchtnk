@@ -18,9 +18,11 @@ function loadLook() {
   let look = {}, coverImage = null
   try { look = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') } catch { /* умолчания */ }
   try { coverImage = localStorage.getItem(COVER_KEY) } catch { /* без картинки */ }
+  // Текст и фото «О проекте» — только для этой выгрузки: каждый раз с чистого листа
+  try { localStorage.removeItem('pechatniki-kb-photo') } catch { /* прежняя версия их хранила */ }
   // Тему по умолчанию берём из приложения: в какой работают, такой и выгружают
   if (look.theme !== 'light' && look.theme !== 'dark') look.theme = document.documentElement.getAttribute('data-theme') || 'light'
-  return normalizeLook({ ...look, coverImage })
+  return normalizeLook({ ...look, coverImage, about: '', photo: null })
 }
 
 function Seg({ label, value, options, onChange }) {
@@ -78,8 +80,8 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
   const [look, setLook]         = useState(loadLook)
   const set = (patch) => setLook(l => ({ ...l, ...patch }))
 
-  const { coverImage, ...lookRest } = look
-  const lookJson = JSON.stringify(lookRest)
+  const { coverImage, photo, about, ...lookRest } = look
+  const lookJson = JSON.stringify(lookRest)  // без текста и фото — они не запоминаются
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, lookJson) } catch { /* не страшно */ }
   }, [lookJson])
@@ -103,23 +105,26 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
     return () => { alive = false }
   }, [])
 
-  // Своя картинка в шапку — с устройства. Ужимаем, как картинки в тексте:
-  // шире 1600px в шапке не нужно, а файл выгрузки не должен пухнуть
-  const fileRef = useRef(null)
-  const [coverError, setCoverError] = useState('')
-  const handleCoverFile = async (e) => {
+  // Картинки с устройства: шапка и фото к тексту о проекте. Ужимаем,
+  // как картинки в тексте: шире 1600px не нужно, а файл не должен пухнуть
+  const fileRef  = useRef(null)
+  const photoRef = useRef(null)
+  const [imageError, setImageError] = useState({ cover: '', photo: '' })
+  const pickImage = (kind, toPatch) => async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) { setCoverError('Это не картинка'); return }
+    if (!file.type.startsWith('image/')) { setImageError(x => ({ ...x, [kind]: 'Это не картинка' })); return }
     try {
       const src = await fileToImageSrc(file)
-      setCoverError('')
-      set({ cover: 'image', coverImage: src })
+      setImageError(x => ({ ...x, [kind]: '' }))
+      set(toPatch(src))
     } catch {
-      setCoverError('Не получилось открыть картинку')
+      setImageError(x => ({ ...x, [kind]: 'Не получилось открыть картинку' }))
     }
   }
+  const handleCoverFile = pickImage('cover', src => ({ cover: 'image', coverImage: src }))
+  const handlePhotoFile = pickImage('photo', src => ({ photo: src }))
 
   // Ветка выгрузки: своя, если выбрана, иначе та, что в приложении
   const linePalette = look.palette && PALETTES.some(p => p.id === look.palette) ? look.palette : palette
@@ -155,7 +160,7 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
   // ── Предпросмотр ─────────────────────────────────────────────────────────
   // Тот же HTML, что уйдёт в файл. Скрипты в рамке не запускаем (sandbox
   // без allow-scripts), поэтому переходы по меню ведём отсюда.
-  const previewKey = JSON.stringify([lookRest, linePalette, coverImage?.length, fonts.preview.length, effectiveTitle, [...selected]])
+  const previewKey = JSON.stringify([lookRest, about, linePalette, coverImage?.length, photo?.length, fonts.preview.length, effectiveTitle, [...selected]])
   const deferredKey = useDeferredValue(previewKey)
   const previewHtml = useMemo(() => {
     if (!selectedDocs.length) return ''
@@ -228,6 +233,34 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
                     ? 'Подставили из проекта — можно поменять.'
                     : 'Попадет на главную, в меню и в имя файла.'}
                 </p>
+              </div>
+
+              <div className="kb-about">
+                <label className="dialog__label" htmlFor="kb-about">
+                  <span>О проекте <span className="dialog__optional">(необязательно)</span></span>
+                </label>
+                <textarea
+                  id="kb-about"
+                  className="field kb-about__text"
+                  rows={4}
+                  value={look.about}
+                  onChange={e => set({ about: e.target.value })}
+                  placeholder="Пара слов о проекте или о себе — встанет на главной под названием. Ссылки и почта станут кликабельными."
+                />
+                <div className="kb-cover">
+                  {look.photo ? (
+                    <>
+                      <img className="kb-cover__thumb kb-cover__thumb--photo" src={look.photo} alt="" />
+                      <button className="btn btn--sm btn--secondary" onClick={() => photoRef.current?.click()}>Заменить</button>
+                      <button className="btn btn--sm btn--ghost" onClick={() => set({ photo: null })}>Убрать</button>
+                    </>
+                  ) : (
+                    <button className="btn btn--sm btn--secondary" onClick={() => photoRef.current?.click()}>Добавить фото…</button>
+                  )}
+                </div>
+                <p className="dialog__hint">Фото встанет справа от текста, как на визитке.</p>
+                {imageError.photo && <span className="dialog__error">{imageError.photo}</span>}
+                <input ref={photoRef} type="file" accept="image/*" hidden onChange={handlePhotoFile} />
               </div>
 
               <div className="kb-section">Оформление</div>
@@ -305,7 +338,7 @@ export default function KbExportDialog({ docs, projects = [], palette, typograf,
                     Загрузить картинку…
                   </button>
                 )}
-                {coverError && <span className="dialog__error">{coverError}</span>}
+                {imageError.cover && <span className="dialog__error">{imageError.cover}</span>}
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleCoverFile} />
               </div>
               <Toggle name="Даты" desc="Когда документ последний раз правили" on={look.dates} onToggle={() => set({ dates: !look.dates })} />
